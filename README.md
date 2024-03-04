@@ -5,6 +5,7 @@ ffmpeg实现音视频封装、编解码pipeline
 * 实现了视频的硬编解码，仅支持英伟达显卡。支持软硬编码自动切换(优先使用硬编解码、不支持则自动切换到软编码，ffmpeg需要在编译的时候添加Nvidia硬编解码功能)
 * 支持格式，视频：H264/H265，音频：AAC
 * 代码包含四个模块，如下图所示：
+
   ![未命名绘图](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/fbde5819-4527-4eec-8b7b-508264efc995)
 * Warpper实现了对四个模块的组合，如下图所示：
   ![媒体流程](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/f7fb8e07-ab2a-49c5-88e1-49301b6431bd)
