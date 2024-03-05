@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "typeDef.h"
+#include "TypeDef.h"
 typedef struct AudioDataSt {
     unsigned char *data;
     int data_len;

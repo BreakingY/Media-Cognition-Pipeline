@@ -18,7 +18,7 @@ extern "C" {
 #include <libswscale/swscale.h>
 };
 #include "log_helpers.h"
-#include "typeDef.h"
+#include "TypeDef.h"
 /*
    Init-> AddVideo/AddAudio->Open->SendHeader->SendPacket->SendTrailer
    input without startCode
