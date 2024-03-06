@@ -10,7 +10,7 @@ ffmpeg实现音视频封装、编解码pipeline
 * Warpper实现了对四个模块的组合，如下图所示：
   ![媒体流程](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/f7fb8e07-ab2a-49c5-88e1-49301b6431bd)
 * 采用模块化和接口化的管理方式，可自行组装扩展形成业务pipeline，比如把解封装模块换成RTSP客户端模块，就可以实现从rtsp拉取实时音视频流；或者添加视频处理模块、音频处理模块，对解码后的音视频进行处理，例如，AI检测、语音识别等。
-
+* 日志使用的spdlog，地址：https://github.com/gabime/spdlog
 
 # Linux编译
 * ffmpeg版本：>=4.x 如果ffmpeg没有安装在/usr/local下面请修改CMakeLists.txt，把头文件和库路径添加进去
