@@ -27,18 +27,18 @@ extern "C" {
 }
 
 typedef struct HardDataNodeSt {
-    unsigned char *esData;
-    int esDataLen;
+    unsigned char *es_data;
+    int es_data_len;
     HardDataNodeSt()
     {
-        esData = NULL;
-        esDataLen = 0;
+        es_data = NULL;
+        es_data_len = 0;
     }
     virtual ~HardDataNodeSt()
     {
-        if (esData) {
-            free(esData);
-            esData = NULL;
+        if (es_data) {
+            free(es_data);
+            es_data_len = NULL;
         }
     }
 } HardDataNode;
@@ -55,12 +55,12 @@ public:
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
 
-public:
-    int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type);
-    static void *decodeThread(void *arg);
-    void decodeVideo(HardDataNode *data);
-    static void *scaleThread(void *arg);
-    void scaleVideo(AVFrame *frame);
+private:
+    int hwDecoderInit(AVCodecContext *ctx, const enum AVHWDeviceType type);
+    static void *DecodeThread(void *arg);
+    void DecodeVideo(HardDataNode *data);
+    static void *ScaleThread(void *arg);
+    void ScaleVideo(AVFrame *frame);
 
 public:
     bool is_hard_ = false;

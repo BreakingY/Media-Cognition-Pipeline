@@ -27,18 +27,18 @@ extern "C" {
 }
 
 typedef struct AACDataNodeSt {
-    unsigned char *esData;
-    int esDataLen;
+    unsigned char *es_data;
+    int es_data_len;
     AACDataNodeSt()
     {
-        esData = NULL;
-        esDataLen = 0;
+        es_data = NULL;
+        es_data_len = 0;
     }
     virtual ~AACDataNodeSt()
     {
-        if (esData) {
-            free(esData);
-            esData = NULL;
+        if (es_data) {
+            free(es_data);
+            es_data = NULL;
         }
     }
 } AACDataNode;
@@ -53,11 +53,11 @@ public:
     void SetResampleArg(enum AVSampleFormat fmt, int channels, int ratio);
     void InputAACData(unsigned char *data, int data_len);
 
-public:
-    static void *aacDecodeThread(void *arg);
-    void decodeAudio(AACDataNode *data);
-    static void *aacScaleThread(void *arg);
-    void scaleAudio(AVFrame *frame);
+private:
+    static void *AACDecodeThread(void *arg);
+    void DecodeAudio(AACDataNode *data);
+    static void *AACScaleThread(void *arg);
+    void ScaleAudio(AVFrame *frame);
 
 public:
     AVCodecContext *audio_codec_ctx_;

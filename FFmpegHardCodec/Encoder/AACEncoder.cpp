@@ -115,8 +115,8 @@ int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)
         pcm_frames_.pop_front();
     }
 #endif
-    AACPCMNode *PCMData = new AACPCMNode(data, data_len);
-    pcm_frames_.push_back(PCMData);
+    AACPCMNode *pcm_data = new AACPCMNode(data, data_len);
+    pcm_frames_.push_back(pcm_data);
     pthread_mutex_unlock(&pcm_mutex_);
     pthread_cond_signal(&pcm_cond_);
 
@@ -144,15 +144,16 @@ void *AACEncoder::AACScaleThread(void *arg)
     while (!self->abort_) {
         pthread_mutex_lock(&self->pcm_mutex_);
         if (!self->pcm_frames_.empty()) {
-            AACPCMNode *PCMNode = self->pcm_frames_.front();
+            AACPCMNode *pcm_node = self->pcm_frames_.front();
             self->pcm_frames_.pop_front();
             pthread_mutex_unlock(&self->pcm_mutex_);
 #if 1
-            /*FFmpeg真正进行重采样的函数是swr_convert。它的返回值就是重采样输出的点数。
-            使用FFmpeg进行重采样时内部是有缓存的，而内部缓存了多少个采样点，可以用函数swr_get_delay获取。
-            也就是说调用函数swr_convert时你传递进去的第三个参数表示你希望输出的采样点数，
-            但是函数swr_convert的返回值才是真正输出的采样点数，这个返回值一定是小于或等于你希望输出的采样点数。
-            */
+            /**
+             * FFmpeg真正进行重采样的函数是swr_convert。它的返回值就是重采样输出的点数。
+             * 使用FFmpeg进行重采样时内部是有缓存的，而内部缓存了多少个采样点，可以用函数swr_get_delay获取。
+             * 也就是说调用函数swr_convert时你传递进去的第三个参数表示你希望输出的采样点数，
+             * 但是函数swr_convert的返回值才是真正输出的采样点数，这个返回值一定是小于或等于你希望输出的采样点数。
+             */
             int64_t delay = swr_get_delay(self->encode_swr_ctx_, self->src_ratio_);
             int64_t real_dst_nb_samples = av_rescale_rnd(delay + self->src_nb_samples_, self->dst_ratio_, self->src_ratio_, AV_ROUND_UP);
             if (real_dst_nb_samples > self->dst_nb_samples_) {
@@ -166,13 +167,13 @@ void *AACEncoder::AACScaleThread(void *arg)
             frame_enc->channels = self->dst_nb_channels_;
             frame_enc->channel_layout = av_get_default_channel_layout(self->dst_nb_channels_);
             av_frame_get_buffer(frame_enc, 1);
-            int ret = swr_convert(self->encode_swr_ctx_, frame_enc->data, frame_enc->nb_samples, (uint8_t **)&PCMNode->PCMData, self->src_nb_samples_);
+            int ret = swr_convert(self->encode_swr_ctx_, frame_enc->data, frame_enc->nb_samples, (uint8_t **)&pcm_node->pcm_data, self->src_nb_samples_);
 
             pthread_mutex_lock(&self->frame_mutex_);
             self->dec_frames_.push_back(frame_enc);
             pthread_mutex_unlock(&self->frame_mutex_);
             pthread_cond_signal(&self->frame_cond_);
-            delete PCMNode;
+            delete pcm_node;
 
         } else {
             struct timespec n_ts;

@@ -19,6 +19,9 @@ ffmpeg实现音视频封装、编解码pipeline
 * make -j
 * 测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4
 
+# TODO
+* 同步优化
+
 # 技术交流
 * kxsun617@163.com
 

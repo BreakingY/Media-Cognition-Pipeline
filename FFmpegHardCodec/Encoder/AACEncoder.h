@@ -19,19 +19,18 @@ extern "C" {
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 }
-// 只接受packed数据
 typedef struct AACPCMNodeSt {
-    unsigned char *PCMData;
+    unsigned char *pcm_data;
     int data_len;
     AACPCMNodeSt(unsigned char *data, int len)
     {
-        PCMData = (unsigned char *)malloc(len);
-        memcpy(PCMData, data, len);
+        pcm_data = (unsigned char *)malloc(len);
+        memcpy(pcm_data, data, len);
         data_len = len;
     }
     virtual ~AACPCMNodeSt()
     {
-        free(PCMData);
+        free(pcm_data);
     }
 } AACPCMNode;
 
@@ -44,7 +43,7 @@ public:
     int Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_samples);
     void SetCallback(EncDataCallListner *call_func);
 
-public:
+private:
     static void *AACScaleThread(void *arg);
     static void *AACEncThread(void *arg);
 

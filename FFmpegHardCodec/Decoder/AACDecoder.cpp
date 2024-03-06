@@ -29,8 +29,8 @@ AACDecoder::AACDecoder()
     pthread_mutex_init(&packet_mutex_, NULL);
     pthread_cond_init(&frame_cond_, NULL);
     pthread_mutex_init(&frame_mutex_, NULL);
-    pthread_create(&dec_thread_id_, NULL, &AACDecoder::aacDecodeThread, this);
-    pthread_create(&sws_thread_id_, NULL, &AACDecoder::aacScaleThread, this);
+    pthread_create(&dec_thread_id_, NULL, &AACDecoder::AACDecodeThread, this);
+    pthread_create(&sws_thread_id_, NULL, &AACDecoder::AACScaleThread, this);
 }
 AACDecoder::~AACDecoder()
 {
@@ -92,9 +92,9 @@ void AACDecoder::InputAACData(unsigned char *data, int data_len)
 {
 
     AACDataNode *node = new AACDataNode();
-    node->esData = (unsigned char *)malloc(data_len);
-    memcpy(node->esData, data, data_len);
-    node->esDataLen = data_len;
+    node->es_data = (unsigned char *)malloc(data_len);
+    memcpy(node->es_data, data, data_len);
+    node->es_data_len = data_len;
     pthread_mutex_lock(&packet_mutex_);
     es_packets_.push_back(node);
     pthread_mutex_unlock(&packet_mutex_);
@@ -104,10 +104,10 @@ void AACDecoder::SetCallback(DecDataCallListner *call_func)
 {
     callback_ = call_func;
 }
-void AACDecoder::decodeAudio(AACDataNode *data)
+void AACDecoder::DecodeAudio(AACDataNode *data)
 {
-    packet_.data = data->esData;
-    packet_.size = data->esDataLen;
+    packet_.data = data->es_data;
+    packet_.size = data->es_data_len;
     int ret;
     ret = avcodec_send_packet(audio_codec_ctx_, &packet_);
     while (ret >= 0) {
@@ -137,7 +137,7 @@ void AACDecoder::decodeAudio(AACDataNode *data)
     av_packet_unref(&packet_);
     return;
 }
-void *AACDecoder::aacDecodeThread(void *arg)
+void *AACDecoder::AACDecodeThread(void *arg)
 {
     AACDecoder *self = (AACDecoder *)arg;
     while (!self->aborted_) {
@@ -146,7 +146,7 @@ void *AACDecoder::aacDecodeThread(void *arg)
             AACDataNode *packet = self->es_packets_.front();
             self->es_packets_.pop_front();
             pthread_mutex_unlock(&self->packet_mutex_);
-            self->decodeAudio(packet);
+            self->DecodeAudio(packet);
 
             delete packet;
         } else {
@@ -164,12 +164,12 @@ void *AACDecoder::aacDecodeThread(void *arg)
             continue;
         }
     }
-    log_info("aacDecodeThread Finished ");
+    log_info("AACDecodeThread Finished ");
     // 刷新缓冲区
     AACDataNode *node = new AACDataNode();
-    node->esData = NULL;
-    node->esDataLen = 0;
-    self->decodeAudio(node);
+    node->es_data = NULL;
+    node->es_data_len = 0;
+    self->DecodeAudio(node);
     delete node;
     return NULL;
 }
@@ -180,7 +180,7 @@ void AACDecoder::SetResampleArg(enum AVSampleFormat fmt, int channels, int ratio
     dst_ratio_ = ratio;
 }
 
-void AACDecoder::scaleAudio(AVFrame *frame)
+void AACDecoder::ScaleAudio(AVFrame *frame)
 {
 
     if (!swr_ctx_) {
@@ -195,21 +195,22 @@ void AACDecoder::scaleAudio(AVFrame *frame)
         }
         dst_nb_samples_ = av_rescale_rnd(src_nb_samples_, dst_ratio_, src_ratio_, AV_ROUND_UP);
     }
-    /*
-    swr_convert Parameters
-    s	allocated Swr context, with parameters set
-    out	output buffers, 如果是packed模式音频，只需设置第一个
-    out_count	一个通道中可用的输出样本数-非空间大小
-    in	input buffers, 如果是packed模式音频，只需设置第一个
-    in_count	一个通道中可用的输入采样数
-    返回值是单个通道的采样点个数
-    */
+    /**
+     * swr_convert Parameters
+     * s	allocated Swr context, with parameters set
+     * out	output buffers, 如果是packed模式音频，只需设置第一个
+     * out_count	一个通道中可用的输出样本数-非空间大小
+     * in	input buffers, 如果是packed模式音频，只需设置第一个
+     * in_count	一个通道中可用的输入采样数
+     * 返回值是单个通道的采样点个数
+     */
 #if 1
-    /*FFmpeg真正进行重采样的函数是swr_convert。它的返回值就是重采样输出的点数。
-    使用FFmpeg进行重采样时内部是有缓存的，而内部缓存了多少个采样点，可以用函数swr_get_delay获取。
-    也就是说调用函数swr_convert时你传递进去的第三个参数表示你希望输出的采样点数，
-    但是函数swr_convert的返回值才是真正输出的采样点数，这个返回值一定是小于或等于你希望输出的采样点数。
-    */
+    /**
+     * FFmpeg真正进行重采样的函数是swr_convert。它的返回值就是重采样输出的点数。
+     * 使用FFmpeg进行重采样时内部是有缓存的，而内部缓存了多少个采样点，可以用函数swr_get_delay获取。
+     * 也就是说调用函数swr_convert时你传递进去的第三个参数表示你希望输出的采样点数，
+     * 但是函数swr_convert的返回值才是真正输出的采样点数，这个返回值一定是小于或等于你希望输出的采样点数。
+     */
     int64_t delay = swr_get_delay(swr_ctx_, src_ratio_);
     int64_t real_dst_nb_samples = av_rescale_rnd(delay + src_nb_samples_, dst_ratio_, src_ratio_, AV_ROUND_UP);
     if (real_dst_nb_samples > dst_nb_samples_) {
@@ -249,7 +250,7 @@ void AACDecoder::scaleAudio(AVFrame *frame)
     // av_freep(&p);
     av_frame_free(&frame);
 }
-void *AACDecoder::aacScaleThread(void *arg)
+void *AACDecoder::AACScaleThread(void *arg)
 {
     AACDecoder *self = (AACDecoder *)arg;
     while (!self->aborted_) {
@@ -258,7 +259,7 @@ void *AACDecoder::aacScaleThread(void *arg)
             AVFrame *frame = self->yuv_frames_.front();
             self->yuv_frames_.pop_front();
             pthread_mutex_unlock(&self->frame_mutex_);
-            self->scaleAudio(frame);
+            self->ScaleAudio(frame);
         } else {
 
             struct timespec n_ts;
@@ -274,6 +275,6 @@ void *AACDecoder::aacScaleThread(void *arg)
             continue;
         }
     }
-    log_info("aacScaleThread Finished ");
+    log_info("AACScaleThread Finished ");
     return NULL;
 }

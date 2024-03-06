@@ -8,8 +8,7 @@ HardVideoEncoder::HardVideoEncoder()
     h264_codec_ctx_ = NULL;
     h264_codec_ = NULL;
     sws_context_ = NULL;
-    m_bsacle_abort_ = false;
-    m_bencode_abort_ = false;
+    abort_ = false;
     callback_ = NULL;
     pthread_cond_init(&bgr_cond_, NULL);
     pthread_mutex_init(&bgr_mutex_, NULL);
@@ -35,9 +34,27 @@ void HardVideoEncoder::SetDataCallback(EncDataCallListner *call_func)
 }
 HardVideoEncoder::~HardVideoEncoder()
 {
-    if (!m_bencode_abort_) {
-        Stop();
+    int ret = 1;
+    abort_ = true;
+    ret = pthread_join(encode_id_, NULL);
+    if (ret != 0) {
+        log_error("Jion encode_id Error!");
     }
+
+    ret = pthread_join(scale_id_, NULL);
+    if (ret != 0) {
+        log_error("Jion video_scale_id Error!");
+    }
+
+    bgr_frames_.clear();
+
+    for (std::list<AVFrame *>::iterator it = yuv_frames_.begin(); it != yuv_frames_.end(); ++it) {
+        AVFrame *frame = *it;
+        av_freep(&frame->data[0]);
+        av_frame_free(&frame);
+    }
+    yuv_frames_.clear();
+
     if (h264_codec_ctx_ != NULL) {
         avcodec_close(h264_codec_ctx_);
         avcodec_free_context(&h264_codec_ctx_);
@@ -54,10 +71,10 @@ HardVideoEncoder::~HardVideoEncoder()
 
     log_info("~HardVideoEncoder");
 }
-/*
-ffmpeg -codecs | grep 264
-        (decoders: h264 h264_v4l2m2m h264_cuvid ) (encoders: libx264 libx264rgb h264_nvenc h264_v4l2m2m h264_vaapi nvenc nvenc_h264 )
-*/
+/**
+ * ffmpeg -codecs | grep 264
+ *         (decoders: h264 h264_v4l2m2m h264_cuvid ) (encoders: libx264 libx264rgb h264_nvenc h264_v4l2m2m h264_vaapi nvenc nvenc_h264 )
+ */
 int HardVideoEncoder::HardEncInit(int width, int height, int fps)
 {
     if (h264_codec_) {
@@ -100,9 +117,10 @@ int HardVideoEncoder::HardEncInit(int width, int height, int fps)
     h264_codec_ctx_->gop_size = 2 * fps;
     h264_codec_ctx_->thread_count = 1;
     h264_codec_ctx_->slices = 1; // int slice_count; // slice数 int slices; // 切片数量。 表示图片细分的数量。 用于并行解码。
-    /** 遇到问题：编码得到的h264文件播放时提示"non-existing PPS 0 referenced"
-     *  分析原因：未将pps sps 等信息写入
-     *  解决方案：加入标记AV_CODEC_FLAG2_LOCAL_HEADER
+    /**
+     * 遇到问题：编码得到的h264文件播放时提示"non-existing PPS 0 referenced"
+     * 分析原因：未将pps sps 等信息写入
+     * 解决方案：加入标记AV_CODEC_FLAG2_LOCAL_HEADER
      */
     h264_codec_ctx_->flags |= AV_CODEC_FLAG2_LOCAL_HEADER;
     h264_codec_ctx_->flags |= AV_CODEC_FLAG_LOW_DELAY;
@@ -146,9 +164,10 @@ int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
     h264_codec_ctx_->gop_size = 2 * fps;
     h264_codec_ctx_->thread_count = 1;
     h264_codec_ctx_->slices = 1; // int slice_count; // slice数 int slices; // 切片数量。 表示图片细分的数量。 用于并行解码。
-    /** 遇到问题：编码得到的h264文件播放时提示"non-existing PPS 0 referenced"
-     *  分析原因：未将pps sps 等信息写入
-     *  解决方案：加入标记AV_CODEC_FLAG2_LOCAL_HEADER
+    /**
+     * 遇到问题：编码得到的h264文件播放时提示"non-existing PPS 0 referenced"
+     * 分析原因：未将pps sps 等信息写入
+     * 解决方案：加入标记AV_CODEC_FLAG2_LOCAL_HEADER
      */
     h264_codec_ctx_->flags |= AV_CODEC_FLAG2_LOCAL_HEADER;
     h264_codec_ctx_->flags |= AV_CODEC_FLAG_LOW_DELAY;
@@ -191,7 +210,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
     HardVideoEncoder *self = (HardVideoEncoder *)arg;
     int last_width;
     long local_cnt = 0;
-    while (!self->m_bsacle_abort_) {
+    while (!self->abort_) {
         pthread_mutex_lock(&self->bgr_mutex_);
         if (!self->bgr_frames_.empty()) {
             cv::Mat bgr_frame = self->bgr_frames_.front();
@@ -264,7 +283,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
 {
     HardVideoEncoder *self = (HardVideoEncoder *)arg;
     int ret = 0;
-    while (!self->m_bencode_abort_) {
+    while (!self->abort_) {
         pthread_mutex_lock(&self->yuv_mutex_);
         if (!self->yuv_frames_.empty()) {
             AVFrame *yuv_frame = self->yuv_frames_.front();
@@ -393,30 +412,4 @@ int HardVideoEncoder::AddVideoFrame(cv::Mat bgr_frame)
     }
 
     return 1;
-}
-int HardVideoEncoder::Stop()
-{
-    int ret = 1;
-    m_bencode_abort_ = true;
-    m_bsacle_abort_ = true;
-    ret = pthread_join(encode_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion encode_id Error!");
-    }
-
-    ret = pthread_join(scale_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion video_scale_id Error!");
-    }
-
-    bgr_frames_.clear();
-
-    for (std::list<AVFrame *>::iterator it = yuv_frames_.begin(); it != yuv_frames_.end(); ++it) {
-        AVFrame *frame = *it;
-        av_freep(&frame->data[0]);
-        av_frame_free(&frame);
-    }
-    yuv_frames_.clear();
-
-    return ret;
 }

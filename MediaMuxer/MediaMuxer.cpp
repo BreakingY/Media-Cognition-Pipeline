@@ -48,7 +48,7 @@ void Muxer::DeInit()
     vid_stream_ = NULL;
     video_index_ = -1;
 }
-void Muxer::write_extra_h264(unsigned char *extra_data, int &extra_data_size)
+void Muxer::H264WriteExtra(unsigned char *extra_data, int &extra_data_size)
 {
 
     unsigned char *extra_data_start = extra_data;
@@ -82,7 +82,7 @@ void Muxer::write_extra_h264(unsigned char *extra_data, int &extra_data_size)
 
     extra_data_size = extra_data - extra_data_start;
 }
-void Muxer::write_extra_h265(unsigned char *extra_data, int &extra_data_size)
+void Muxer::H265WriteExtra(unsigned char *extra_data, int &extra_data_size)
 {
     int i = 0;
     unsigned char *buffer = extra_data;
@@ -162,7 +162,7 @@ void Muxer::write_extra_h265(unsigned char *extra_data, int &extra_data_size)
     extra_data_size = i;
     return;
 }
-bool Muxer::parameters_change(unsigned char *vps, int vps_len, unsigned char *sps, int sps_len, unsigned char *pps, int pps_len)
+bool Muxer::ParametersChange(unsigned char *vps, int vps_len, unsigned char *sps, int sps_len, unsigned char *pps, int pps_len)
 {
     int idx_vps, idx_sps, idx_pps;
     if (vps != NULL) {
@@ -255,13 +255,13 @@ int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, 
         out_codecpar->extradata_size = 0;
         memset(out_codecpar->extradata, 0, 1024);
         if (type == VIDEO_H264) {
-            write_extra_h264(out_codecpar->extradata, out_codecpar->extradata_size);
+            H264WriteExtra(out_codecpar->extradata, out_codecpar->extradata_size);
         } else {
             vps_buf_[0] = (uint8_t *)malloc(extra.vps_len);
             memcpy(vps_buf_[0], extra.vps, extra.vps_len);
             vps_len_[0] = extra.vps_len;
             vps_number_++;
-            write_extra_h265(out_codecpar->extradata, out_codecpar->extradata_size);
+            H265WriteExtra(out_codecpar->extradata, out_codecpar->extradata_size);
         }
     }
     av_dump_format(fmt_ctx_, 0, url_.c_str(), 1);
@@ -301,17 +301,17 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
 
     return data;
 }
-void Muxer::write_extra_aac(int channels, int sample_rate, int audio_object_type, AVCodecParameters *params)
+void Muxer::AACWriteExtra(int channels, int sample_rate, int audio_object_type, AVCodecParameters *params)
 {
     int aac_extradata_size = -1;
     uint8_t *aac_extradata = generate_aac_specific_config(channels, sample_rate, audio_object_type, &aac_extradata_size);
     if (aac_extradata == NULL) {
-        log_error("write_extra_aac error");
+        log_error("AACWriteExtra error");
         return;
     }
     // 音频特定配置信息（AudioSpecificConfig）的长度必须大于等于2字节
     if (aac_extradata_size < 2) {
-        log_error("write_extra_aac error");
+        log_error("AACWriteExtra error");
         return;
     }
 
@@ -371,7 +371,7 @@ int Muxer::AddAudio(int channels, int sample_rate, int audio_object_type, AudioT
     if (fmt_ctx_->oformat->flags & AVFMT_GLOBALHEADER) {
         global_header_ = true;
         st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-        write_extra_aac(channels, sample_rate, audio_object_type, out_codecpar);
+        AACWriteExtra(channels, sample_rate, audio_object_type, out_codecpar);
     }
 
     av_dump_format(fmt_ctx_, 0, url_.c_str(), 1);
@@ -395,7 +395,7 @@ int Muxer::SendHeader()
     log_debug("{}:SendHeader ok", url_);
     return 0;
 }
-void Muxer::rewrite_video_extra_data()
+void Muxer::RewriteVideoExtraData()
 {
     AVCodecParameters *out_codecpar = vid_stream_->codecpar;
     int alloc_size = out_codecpar->extradata + 1024;
@@ -403,9 +403,9 @@ void Muxer::rewrite_video_extra_data()
     out_codecpar->extradata_size = 0;
     memset(out_codecpar->extradata, 0, alloc_size);
     if (video_type_ == VIDEO_H264) {
-        write_extra_h264(out_codecpar->extradata, out_codecpar->extradata_size);
+        H264WriteExtra(out_codecpar->extradata, out_codecpar->extradata_size);
     } else if (video_type_ == VIDEO_H265) {
-        write_extra_h265(out_codecpar->extradata, out_codecpar->extradata_size);
+        H265WriteExtra(out_codecpar->extradata, out_codecpar->extradata_size);
     } else {
         log_error("video_type_ error:{}", video_type_);
     }
@@ -433,24 +433,24 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
             }
             if (global_header_ && (nal_type == 6 || nal_type == 7 || nal_type == 8)) { // annexb skip sei sps pps
                 if (nal_type == 7) {
-                    bool changeFlag = parameters_change(NULL, -1, data, size, NULL, -1);
+                    bool changeFlag = ParametersChange(NULL, -1, data, size, NULL, -1);
                     if (changeFlag) { // sps change
                         sps_buf_[sps_number_] = (uint8_t *)malloc(size);
                         memcpy(sps_buf_[sps_number_], data, size);
                         sps_len_[sps_number_] = size;
                         sps_number_++;
-                        rewrite_video_extra_data();
+                        RewriteVideoExtraData();
                         log_debug("rewrite sps ok");
                     }
                 }
                 if (nal_type == 8) {
-                    bool changeFlag = parameters_change(NULL, -1, NULL, -1, data, size);
+                    bool changeFlag = ParametersChange(NULL, -1, NULL, -1, data, size);
                     if (changeFlag) { // pps change
                         pps_buf_[pps_number_] = (uint8_t *)malloc(size);
                         memcpy(pps_buf_[pps_number_], data, size);
                         pps_len_[pps_number_] = size;
                         pps_number_++;
-                        rewrite_video_extra_data();
+                        RewriteVideoExtraData();
                         log_debug("rewrite pps ok");
                     }
                 }
@@ -475,35 +475,35 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
             }
             if (global_header_ && (nal_type == 32 || nal_type == 33 || nal_type == 34)) { // annexb skip vps sps pps
                 if (nal_type == 32) {
-                    bool changeFlag = parameters_change(data, size, NULL, -1, NULL, -1);
+                    bool changeFlag = ParametersChange(data, size, NULL, -1, NULL, -1);
                     if (changeFlag) { // vps change
                         vps_buf_[vps_number_] = (uint8_t *)malloc(size);
                         memcpy(vps_buf_[vps_number_], data, size);
                         vps_len_[vps_number_] = size;
                         vps_number_++;
-                        rewrite_video_extra_data();
+                        RewriteVideoExtraData();
                         log_debug("rewrite vps ok");
                     }
                 }
                 if (nal_type == 33) {
-                    bool changeFlag = parameters_change(NULL, -1, data, size, NULL, -1);
+                    bool changeFlag = ParametersChange(NULL, -1, data, size, NULL, -1);
                     if (changeFlag) { // sps change
                         sps_buf_[sps_number_] = (uint8_t *)malloc(size);
                         memcpy(sps_buf_[sps_number_], data, size);
                         sps_len_[sps_number_] = size;
                         sps_number_++;
-                        rewrite_video_extra_data();
+                        RewriteVideoExtraData();
                         log_debug("rewrite sps ok");
                     }
                 }
                 if (nal_type == 34) {
-                    bool changeFlag = parameters_change(NULL, -1, NULL, -1, data, size);
+                    bool changeFlag = ParametersChange(NULL, -1, NULL, -1, data, size);
                     if (changeFlag) { // pps change
                         pps_buf_[pps_number_] = (uint8_t *)malloc(size);
                         memcpy(pps_buf_[pps_number_], data, size);
                         pps_len_[pps_number_] = size;
                         pps_number_++;
-                        rewrite_video_extra_data();
+                        RewriteVideoExtraData();
                         log_debug("rewrite pps ok");
                     }
                 }

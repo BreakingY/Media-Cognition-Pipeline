@@ -1,9 +1,9 @@
+#include "MediaWrapper.h"
+#include "log_helpers.h"
 #include <iostream>
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include "MediaWrapper.h"
-#include "log_helpers.h"
 int main(int argc, char **argv)
 {
     spdlog::set_pattern("[%H:%M:%S] [%l] [%s:%#] %v");

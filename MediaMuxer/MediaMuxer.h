@@ -1,11 +1,11 @@
 #ifndef MEDIAMUXER_H
 #define MEDIAMUXER_H
 #include <iostream>
+#include <mutex>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <thread>
-#include <mutex>
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -17,12 +17,12 @@ extern "C" {
 #include <libavutil/samplefmt.h>
 #include <libswscale/swscale.h>
 };
-#include "log_helpers.h"
 #include "TypeDef.h"
-/*
-   Init-> AddVideo/AddAudio->Open->SendHeader->SendPacket->SendTrailer
-   input without startCode
-*/
+#include "log_helpers.h"
+/**
+ *   Init-> AddVideo/AddAudio->Open->SendHeader->SendPacket->SendTrailer
+ *   input without startCode
+ */
 typedef struct ExtraDataSt {
     uint8_t *vps = NULL;
     uint8_t *sps = NULL;
@@ -52,11 +52,11 @@ public:
     int GetVideoStreamIndex();
 
 private:
-    void write_extra_h264(unsigned char *extra_data, int &extra_data_size);
-    void write_extra_h265(unsigned char *extra_data, int &extra_data_size);
-    void rewrite_video_extra_data();
-    void write_extra_aac(int channels, int sample_rate, int audio_object_type, AVCodecParameters *params);
-    bool parameters_change(unsigned char *vps, int vps_len, unsigned char *sps, int sps_len, unsigned char *pps, int pps_len);
+    void H264WriteExtra(unsigned char *extra_data, int &extra_data_size);
+    void H265WriteExtra(unsigned char *extra_data, int &extra_data_size);
+    void RewriteVideoExtraData();
+    void AACWriteExtra(int channels, int sample_rate, int audio_object_type, AVCodecParameters *params);
+    bool ParametersChange(unsigned char *vps, int vps_len, unsigned char *sps, int sps_len, unsigned char *pps, int pps_len);
 
 public:
     AVFormatContext *fmt_ctx_ = NULL;

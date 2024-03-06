@@ -87,7 +87,7 @@ MiedaWrapper::MiedaWrapper(char *input, char *ouput)
     mp4_muxer_ = new Muxer();
     mp4_muxer_->Init(ouput);
     reader_ = new MediaReader(input);
-    reader_->setDataListner(static_cast<MediaDataListner *>(this), [this]() {
+    reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
         return this->MediaOverhandle();
     });
 }
@@ -96,20 +96,20 @@ void MiedaWrapper::MediaOverhandle()
     over_flag_ = true;
     return;
 }
-/*
+/**
  * 音视频解封装、解码
  */
 // with startcode
 void MiedaWrapper::OnVideoData(VideoData data)
 {
-    video_type_ = reader_->getVideoType();
+    video_type_ = reader_->GetVideoType();
     if (video_type_ == VIDEO_NONE) {
         log_error("only support H264/H265");
         exit(1);
     }
-    width_ = reader_->m_pFormatCtx->streams[reader_->video_index]->codecpar->width;
-    height_ = reader_->m_pFormatCtx->streams[reader_->video_index]->codecpar->height;
-    fps_ = av_q2d(reader_->m_pFormatCtx->streams[reader_->video_index]->avg_frame_rate);
+    width_ = reader_->format_ctx_->streams[reader_->video_index_]->codecpar->width;
+    height_ = reader_->format_ctx_->streams[reader_->video_index_]->codecpar->height;
+    fps_ = av_q2d(reader_->format_ctx_->streams[reader_->video_index_]->avg_frame_rate);
     if (!hard_decoder_) {
         log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
         hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
@@ -121,17 +121,17 @@ void MiedaWrapper::OnVideoData(VideoData data)
 // widthout adts
 void MiedaWrapper::OnAudioData(AudioData data)
 {
-    audio_type_ = reader_->getAudioType();
+    audio_type_ = reader_->GetAudioType();
     if (audio_type_ != AUDIO_AAC) {
         log_error("only support AAC");
         exit(1);
     }
     // 添加adts
     char adts_header_buf[7] = {0};
-    adts_header(adts_header_buf, data.data_len,
-                data.profile,    // AAC编码级别
-                data.samplerate, // 采样率 Hz
-                data.channels);
+    GenerateAdtHeader(adts_header_buf, data.data_len,
+                      data.profile,    // AAC编码级别
+                      data.samplerate, // 采样率 Hz
+                      data.channels);
 
     if (buffer_audio_ == NULL || (buffer_audio_len_ < 7 + data.data_len)) {
         buffer_audio_ = (unsigned char *)realloc(buffer_audio_, 7 + data.data_len);
@@ -152,7 +152,7 @@ void MiedaWrapper::OnAudioData(AudioData data)
     return;
 }
 
-/*
+/**
  * 解码后音视频数据
  */
 void MiedaWrapper::OnRGBData(cv::Mat frame)
@@ -207,7 +207,7 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
     // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
     return;
 }
-/*
+/**
  * 编码后音视频数据
  */
 int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
@@ -308,7 +308,7 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
             mp4_muxer_->AddVideo(90000, video_type_, extra, width_, height_, fps_);
         }
         // 音频
-        if (reader_->haveAudio() && audio_stream_ == -1) {
+        if (reader_->HaveAudio() && audio_stream_ == -1) {
             mp4_muxer_->AddAudio(channels_, samplerate_, profile_ + 1, AUDIO_AAC);
         }
         if (video_stream_ == -1) {
@@ -345,7 +345,7 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     }
 #if 0
     struct AdtsHeader res;
-    parseAdtsHeader((uint8_t*)data, &res);
+    ParseAdtsHeader((uint8_t*)data, &res);
     log_info("channelCfg:{} rate:{}",res.channelCfg,sampling_frequencies[res.samplingFreqIndex]);
 #endif
     gettimeofday(&time_now_1_, NULL);

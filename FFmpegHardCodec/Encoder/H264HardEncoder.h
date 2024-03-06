@@ -30,12 +30,11 @@ public:
     int Init(cv::Mat init_frame, int fps);
     void SetDataCallback(EncDataCallListner *call_func);
 
-public:
+private:
     static void *VideoScaleThread(void *arg);
     static void *VideoEncThread(void *arg);
 
 private:
-    int Stop();
     EncDataCallListner *callback_;
     AVCodecContext *h264_codec_ctx_;
     AVCodec *h264_codec_;
@@ -55,8 +54,7 @@ private:
     pthread_t scale_id_;
     pthread_t encode_id_;
 
-    bool m_bsacle_abort_;
-    bool m_bencode_abort_;
+    bool abort_;
     uint64_t nframe_counter_;
     struct timeval time_now_;
     struct timeval time_pre_;
