@@ -1,6 +1,5 @@
 #ifndef VIDEOREADER_H
 #define VIDEOREADER_H
-#include "MediaInterface.h"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -18,6 +17,8 @@ extern "C" {
 #include <libavutil/log.h>
 #include <libavutil/time.h>
 }
+#include "TypeDef.h"
+#include "MediaInterface.h"
 using namespace std::chrono_literals; // 时间库由C++14支持
 static const uint64_t NANO_SECOND = UINT64_C(1000000000);
 #define BUFF_MAX 16 * 1024 * 1024
