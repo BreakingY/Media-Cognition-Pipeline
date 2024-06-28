@@ -21,7 +21,6 @@ extern "C" {
 #include "MediaInterface.h"
 using namespace std::chrono_literals; // 时间库由C++14支持
 static const uint64_t NANO_SECOND = UINT64_C(1000000000);
-#define BUFF_MAX 16 * 1024 * 1024
 #define DEBUGPRINT printf
 /*buf和frame的状态*/
 enum BufFrame_e {
@@ -31,14 +30,14 @@ enum BufFrame_e {
 };
 /*MP4缓冲区*/
 struct BufSt {
-    unsigned char buf[BUFF_MAX];
+    unsigned char *buf;
     int buf_len;
     int stat; // buf状态,READ表示可读 WRITE表示可写
     int pos;  ////frame读取buf的位置记录
 };
 /*NALU数据读取*/
 struct FrameSt {
-    unsigned char frame[BUFF_MAX];
+    unsigned char *frame;
     int frame_len;
     int startcode;
     int stat;
@@ -66,8 +65,8 @@ public:
 
 public:
     std::string file_;
-    struct BufSt buffer_;
-    struct FrameSt frame_;
+    struct BufSt *buffer_ = NULL;
+    struct FrameSt *frame_ = NULL;
     std::thread th_file_;
     std::thread th_video_;
     std::thread th_audio_;

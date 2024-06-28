@@ -46,7 +46,7 @@ struct AdtsHeader {
      */
     unsigned int numberOfRawDataBlockInFrame; // 2 bit
 };
-// AAC adts 头部填充，p_adts_header是长度为7的数组
-int GenerateAdtHeader(char *const p_adts_header, int data_length, int profile, int samplerate, int channels);
+// AAC adts 头部填充，adts_header_buffer是长度为7的数组
+int GenerateAdtHeader(char *adts_header_buffer, int data_len, int aactype, int frequency, int channels);
 // 解析头部,in是带有adts的aac数据
 int ParseAdtsHeader(uint8_t *in, struct AdtsHeader *res);

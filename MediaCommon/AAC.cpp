@@ -1,57 +1,96 @@
 #include "AAC.h"
+/*
+#define FF_PROFILE_AAC_MAIN 0
+#define FF_PROFILE_AAC_LOW  1
+#define FF_PROFILE_AAC_SSR  2
+#define FF_PROFILE_AAC_LTP  3
+#define FF_PROFILE_AAC_HE   4
+#define FF_PROFILE_AAC_HE_V2 28
+#define FF_PROFILE_AAC_LD   22
+#define FF_PROFILE_AAC_ELD  38
+#define FF_PROFILE_MPEG2_AAC_LOW 128
+#define FF_PROFILE_MPEG2_AAC_HE  131
+*/
+static int get_audio_obj_type(int aactype){
+    //AAC HE V2 = AAC LC + SBR + PS
+    //AAV HE = AAC LC + SBR
+    //所以无论是 AAC_HEv2 还是 AAC_HE 都是 AAC_LC
+    switch(aactype){
+        case 0:
+        case 2:
+        case 3:
+            return aactype+1;
+        case 1:
+        case 4:
+        case 28:
+            return 2;
+        default:
+            return 2;
 
-// arg:profile-编码级别、samplerate-采样率 Hz、channels通道数、没有位深(视频编解码也没有记录位深度)
-// 音频采样所得的PCM都含有三个要素：声道(channel)、采样率(sample rate)、样本格式(sample format)。
-int GenerateAdtHeader(char *const p_adts_header, int data_length, int profile, int samplerate, int channels)
-{
-
-    int sampling_frequency_index = 3; // 默认使用48000hz
-    int adtsLen = data_length + 7;
-
-    int frequencies_size = sizeof(sampling_frequencies) / sizeof(sampling_frequencies[0]);
-    int i = 0;
-    for (i = 0; i < frequencies_size; i++) {
-        if (sampling_frequencies[i] == samplerate) {
-            sampling_frequency_index = i;
-            break;
-        }
     }
-    if (i >= frequencies_size) {
-        log_error("unsupport samplerate:{}", samplerate);
-        return -1;
-    }
-
-    p_adts_header[0] = 0xff;      // syncword:0xfff                          高8bits
-    p_adts_header[1] = 0xf0;      // syncword:0xfff                          低4bits
-    p_adts_header[1] |= (0 << 3); // MPEG Version:0 for MPEG-4,1 for MPEG-2  1bit
-    p_adts_header[1] |= (0 << 1); // Layer:0                                 2bits
-    p_adts_header[1] |= 1;        // protection absent:1                     1bit
-
-    p_adts_header[2] = (profile) << 6; // profile:profile               2bits
-    p_adts_header[2] |=
-        (sampling_frequency_index & 0x0f) << 2; // sampling frequency index:sampling_frequency_index  4bits
-    p_adts_header[2] |= (0 << 1);               // private bit:0                   1bit
-    p_adts_header[2] |= (channels & 0x04) >> 2; // channel configuration:channels  高1bit
-
-    p_adts_header[3] = (channels & 0x03) << 6; // channel configuration:channels 低2bits
-    p_adts_header[3] |= (0 << 5);              // original：0                1bit
-    p_adts_header[3] |= (0 << 4);              // home：0                    1bit
-    p_adts_header[3] |= (0 << 3);              // copyright id bit：0        1bit
-    p_adts_header[3] |= (0 << 2);              // copyright id start：0      1bit
-    // ADTS从低地址到高地址存放长度数值的高2位 中间8位，低5位
-    // ADTS中标明13bit存放，一般存放数据长度这种大多是由低地址到高地址分别存放数值的高位到低位，这样符合人类的习惯
-    p_adts_header[3] |= ((adtsLen & 0x1800) >> 11); // frame length：value   高2bits
-
-    p_adts_header[4] = (uint8_t)((adtsLen & 0x7f8) >> 3); // frame length:value    中间8bits
-    p_adts_header[5] = (uint8_t)((adtsLen & 0x7) << 5);   // frame length:value    低3bits
-    p_adts_header[5] |= 0x1f;                             // buffer fullness:0x7ff 高5bits
-    p_adts_header[6] = 0xfc;                              // buffer fullness:0x7ff 低6bits
-    // number_of_raw_data_blocks_in_frame：
-    //    表示ADTS帧中有number_of_raw_data_blocks_in_frame + 1个AAC原始帧。
-
-    return 0;
 }
 
+static int get_sample_rate_index(int freq, int aactype){
+
+    int i = 0;
+    int freq_arr[13] = {
+        96000, 88200, 64000, 48000, 44100, 32000,
+        24000, 22050, 16000, 12000, 11025, 8000, 7350
+    };
+
+    //如果是 AAC HEv2 或 AAC HE, 则频率减半
+    if(aactype == 28 || aactype == 4){
+        freq /= 2;
+    }
+
+    for(i=0; i< 13; i++){
+        if(freq == freq_arr[i]){
+            return i;
+        }
+    }
+    return 4;//默认是44100
+}
+
+static int get_channel_config(int channels, int aactype){
+    //如果是 AAC HEv2 通道数减半
+    if(aactype == 28){
+        return (channels / 2);
+    }
+    return channels;
+}
+// aactype = ffmpeg --> AVCodecParameters *codecpar->profile
+int GenerateAdtHeader(char *adts_header_buffer, int data_len, int aactype, int frequency, int channels){
+
+    int audio_object_type = get_audio_obj_type(aactype);
+    int sampling_frequency_index = get_sample_rate_index(frequency, aactype);
+    int channel_config = get_channel_config(channels, aactype);
+
+    int adts_len = data_len + 7;
+
+    adts_header_buffer[0] = 0xff;         //syncword:0xfff                          高8bits
+    adts_header_buffer[1] = 0xf0;         //syncword:0xfff                          低4bits
+    adts_header_buffer[1] |= (0 << 3);    //MPEG Version:0 for MPEG-4,1 for MPEG-2  1bit
+    adts_header_buffer[1] |= (0 << 1);    //Layer:0                                 2bits
+    adts_header_buffer[1] |= 1;           //protection absent:1                     1bit
+
+    adts_header_buffer[2] = (audio_object_type - 1)<<6;            //profile:audio_object_type - 1                      2bits
+    adts_header_buffer[2] |= (sampling_frequency_index & 0x0f)<<2; //sampling frequency index:sampling_frequency_index  4bits
+    adts_header_buffer[2] |= (0 << 1);                             //private bit:0                                      1bit
+    adts_header_buffer[2] |= (channel_config & 0x04)>>2;           //channel configuration:channel_config               高1bit
+
+    adts_header_buffer[3] = (channel_config & 0x03)<<6;     //channel configuration:channel_config      低2bits
+    adts_header_buffer[3] |= (0 << 5);                      //original：0                               1bit
+    adts_header_buffer[3] |= (0 << 4);                      //home：0                                   1bit
+    adts_header_buffer[3] |= (0 << 3);                      //copyright id bit：0                       1bit
+    adts_header_buffer[3] |= (0 << 2);                      //copyright id start：0                     1bit
+    adts_header_buffer[3] |= ((adts_len & 0x1800) >> 11);           //frame length：value   高2bits
+
+    adts_header_buffer[4] = (uint8_t)((adts_len & 0x7f8) >> 3);     //frame length:value    中间8bits
+    adts_header_buffer[5] = (uint8_t)((adts_len & 0x7) << 5);       //frame length:value    低3bits
+    adts_header_buffer[5] |= 0x1f;                                 //buffer fullness:0x7ff 高5bits
+    adts_header_buffer[6] = 0xfc;
+    return 0;
+}
 int ParseAdtsHeader(uint8_t *in, struct AdtsHeader *res)
 {
     static int frame_number = 0;
