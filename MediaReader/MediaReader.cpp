@@ -413,8 +413,8 @@ void *MediaReader::VideoSyncThread(void *arg)
                     continue;
                 }
                 VideoData data;
-                data.data = self->frame_->frame;         //+self->frame.startcode;
-                data.data_len = self->frame_->frame_len; //-self->frame.startcode;
+                data.data = self->frame_->frame;         //+self->frame_->startcode;
+                data.data_len = self->frame_->frame_len; //-self->frame_->startcode;
                 data.pts = pts;
                 data.dts = dts;
 
