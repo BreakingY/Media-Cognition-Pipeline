@@ -165,6 +165,7 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
         hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
     }
     hard_encoder_->AddVideoFrame(frame);
+    return;
 }
 // FILE *fp_file = NULL;
 // data_len是单通道当本个数
@@ -341,7 +342,7 @@ void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
 int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
 {
     if (audio_stream_ == -1) {
-        return;
+        return 0;
     }
 #if 0
     struct AdtsHeader res;
@@ -364,6 +365,7 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     AVRational time_base_q = {1, AV_TIME_BASE};                             // 微妙
     int64_t audio_pts = av_rescale_q(pts_t * 1000, time_base_q, time_base); // 转换到ffmpeg时间基
     mp4_muxer_->SendPacket(data + 7, len - 7, audio_pts, audio_pts, audio_stream_);
+    return 0;
 }
 char *enc_aac_filename = "out.aac";
 FILE *enc_aac_fd = NULL;

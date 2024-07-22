@@ -145,6 +145,7 @@ void MediaReader::VideoInit(char *filename)
     AVStream *as = format_ctx_->streams[video_index_];
     fps_ = R2d(as->avg_frame_rate);
     printf("%s:%d fps_:%d\n", __FILE__, __LINE__, fps_);
+    return;
 }
 enum VideoType MediaReader::GetVideoType()
 {
@@ -247,6 +248,7 @@ void MediaReader::SetDataListner(MediaDataListner *lisnter, CloseCallbackFunc cb
 {
     data_listner_ = lisnter;
     colse_cb_ = cb;
+    return;
 }
 
 void *MediaReader::MediaReaderThread(void *arg)
@@ -340,6 +342,7 @@ void MediaReader::Reset()
         audio_finish_ = false;
     }
     DEBUGPRINT("%s:%d reset ok\n", __FILE__, __LINE__);
+    return;
 }
 void *MediaReader::VideoSyncThread(void *arg)
 {

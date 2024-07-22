@@ -28,6 +28,7 @@ static int get_audio_obj_type(int aactype){
             return 2;
 
     }
+    return 2;
 }
 
 static int get_sample_rate_index(int freq, int aactype){
@@ -140,4 +141,5 @@ int ParseAdtsHeader(uint8_t *in, struct AdtsHeader *res)
         log_error("failed to parse adts header\n");
         return -1;
     }
+    return 0;
 }

@@ -47,6 +47,7 @@ void Muxer::DeInit()
 
     vid_stream_ = NULL;
     video_index_ = -1;
+    return;
 }
 void Muxer::H264WriteExtra(unsigned char *extra_data, int &extra_data_size)
 {
@@ -81,6 +82,7 @@ void Muxer::H264WriteExtra(unsigned char *extra_data, int &extra_data_size)
     }
 
     extra_data_size = extra_data - extra_data_start;
+    return;
 }
 void Muxer::H265WriteExtra(unsigned char *extra_data, int &extra_data_size)
 {
@@ -198,6 +200,7 @@ bool Muxer::ParametersChange(unsigned char *vps, int vps_len, unsigned char *sps
             return true;
         }
     }
+    return false;
 }
 int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height, int fps)
 {
@@ -280,7 +283,7 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
         return NULL;
     }
     if (audioObjectType < 1 || audioObjectType > 4) {
-        return -1;
+        return NULL;
     }
 
     if (samplingFrequency != 96000 && samplingFrequency != 88200 &&
@@ -289,11 +292,11 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
         samplingFrequency != 24000 && samplingFrequency != 22050 &&
         samplingFrequency != 16000 && samplingFrequency != 12000 &&
         samplingFrequency != 11025 && samplingFrequency != 8000) {
-        return -1;
+        return NULL;
     }
 
     if (channelConfig < 1 || channelConfig > 7) {
-        return -1;
+        return NULL;
     }
 
     data[0] = (audioObjectType << 3) | ((samplingFrequency >> 1) & 0x7);
@@ -421,7 +424,7 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
     if (size <= 0) {
         log_warn("packet size:{}", size);
         av_packet_unref(&pkt_);
-        return;
+        return -1;
     }
     int nal_type;
     if (stream_index == video_index_) {
@@ -455,7 +458,7 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
                     }
                 }
                 av_packet_unref(&pkt_);
-                return;
+                return 0;
             }
             auto data_copy = (uint8_t *)av_malloc(size + 4 + AV_INPUT_BUFFER_PADDING_SIZE);
             memcpy(data_copy + 4, data, size);
@@ -508,7 +511,7 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
                     }
                 }
                 av_packet_unref(&pkt_);
-                return;
+                return 0;
             }
             auto data_copy = (uint8_t *)av_malloc(size + 4 + AV_INPUT_BUFFER_PADDING_SIZE);
             memcpy(data_copy + 4, data, size);
@@ -604,6 +607,7 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
             return -1;
         }
     }
+    return 0;
 }
 
 int Muxer::SendTrailer()

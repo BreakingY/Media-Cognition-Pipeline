@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     if (argc < 3) {
         log_info("only support H264/H265 AAC");
         log_info("./bin input ouput");
-        return;
+        return -1;
     }
     av_register_all();
     av_log_set_level(AV_LOG_FATAL);
@@ -25,4 +25,5 @@ int main(int argc, char **argv)
     }
     delete test;
     log_info("over");
+    return 0;
 }

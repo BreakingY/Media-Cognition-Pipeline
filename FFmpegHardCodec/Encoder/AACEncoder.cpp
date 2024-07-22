@@ -60,6 +60,7 @@ AACEncoder::~AACEncoder()
 void AACEncoder::SetCallback(EncDataCallListner *call_func)
 {
     callback_ = call_func;
+    return;
 }
 int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_samples)
 {
@@ -103,6 +104,7 @@ int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_sa
         }
         log_info("audio_encode_init ok");
     }
+    return 0;
 }
 int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)
 {

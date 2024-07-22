@@ -254,6 +254,7 @@ HardVideoDecoder::~HardVideoDecoder()
 void HardVideoDecoder::SetFrameFetchCallback(DecDataCallListner *call_func)
 {
     callback_ = call_func;
+    return;
 }
 
 void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts)
@@ -268,6 +269,7 @@ void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t
     es_packets_.push_back(node);
     pthread_mutex_unlock(&packet_mutex_);
     pthread_cond_signal(&packet_cond_);
+    return;
 }
 void HardVideoDecoder::DecodeVideo(HardDataNode *data)
 {
@@ -371,6 +373,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
         cnt++;
         // av_freep(&buffer);//调用avpicture_fill之后就不需要再这里释放，由后续流程释放
     }
+    return;
 }
 void *HardVideoDecoder::DecodeThread(void *arg)
 {
@@ -452,6 +455,7 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
     uint8_t *p = frame->data[0];
     av_freep(&p);
     av_frame_free(&frame);
+    return;
 }
 
 void *HardVideoDecoder::ScaleThread(void *arg)

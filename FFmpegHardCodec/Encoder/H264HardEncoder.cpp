@@ -31,6 +31,7 @@ HardVideoEncoder::HardVideoEncoder()
 void HardVideoEncoder::SetDataCallback(EncDataCallListner *call_func)
 {
     callback_ = call_func;
+    return;
 }
 HardVideoEncoder::~HardVideoEncoder()
 {

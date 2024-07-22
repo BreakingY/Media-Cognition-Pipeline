@@ -99,10 +99,12 @@ void AACDecoder::InputAACData(unsigned char *data, int data_len)
     es_packets_.push_back(node);
     pthread_mutex_unlock(&packet_mutex_);
     pthread_cond_signal(&packet_cond_);
+    return;
 }
 void AACDecoder::SetCallback(DecDataCallListner *call_func)
 {
     callback_ = call_func;
+    return;
 }
 void AACDecoder::DecodeAudio(AACDataNode *data)
 {
@@ -178,6 +180,7 @@ void AACDecoder::SetResampleArg(enum AVSampleFormat fmt, int channels, int ratio
     dst_sample_fmt_ = fmt;
     dst_nb_channels_ = channels;
     dst_ratio_ = ratio;
+    return;
 }
 
 void AACDecoder::ScaleAudio(AVFrame *frame)
@@ -249,6 +252,7 @@ void AACDecoder::ScaleAudio(AVFrame *frame)
     // uint8_t* p=frame->data[0];
     // av_freep(&p);
     av_frame_free(&frame);
+    return;
 }
 void *AACDecoder::AACScaleThread(void *arg)
 {
