@@ -4,6 +4,7 @@ ffmpeg实现音视频封装、编解码pipeline
 * 用ffmpeg实现对音视频解封装、重采样、编解码、封装(MP4)，并采用模块化和接口化管理
 * 实现了视频的硬编解码，仅支持英伟达显卡。支持软硬编解码自动切换(优先使用硬编解码、不支持则自动切换到软编解码，ffmpeg需要在编译的时候添加Nvidia硬编解码功能)
 * 支持格式，视频：H264/H265，音频：AAC
+* 不适用jetson。
 * 代码包含四个模块，如下图所示：
 
   ![未命名绘图](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/fbde5819-4527-4eec-8b7b-508264efc995)
