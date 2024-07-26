@@ -58,7 +58,6 @@ public:
     void PraseFrame();
     void SetDataListner(MediaDataListner *lisnter, CloseCallbackFunc cb);
     void VideoInit(char *filename);
-    int Mp4ToAnnexb(AVPacket &m_packet);
     bool HaveAudio();
     void GetAudioCon(int &channels, int &sample_rate, int &audio_object_type, int &bit_per_sample);
     void Reset();
@@ -84,7 +83,7 @@ public:
     // H264 H265
     int video_index_ = -1;
     int fps_ = 25;
-    AVBitStreamFilterContext *h26xbsfc_;
+    AVBSFContext *bsf_ctx_ = NULL;
 
     std::list<AVPacket> video_list_;
     std::mutex video_mtx_;

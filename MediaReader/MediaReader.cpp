@@ -133,10 +133,16 @@ void MediaReader::VideoInit(char *filename)
         is_mp4_ = false;
     }
     if (codec_id == AV_CODEC_ID_H264 && is_mp4_) {
-        h26xbsfc_ = av_bitstream_filter_init("h264_mp4toannexb");
+        const AVBitStreamFilter *pfilter = av_bsf_get_by_name("h264_mp4toannexb");
+        av_bsf_alloc(pfilter, &bsf_ctx_);
+        avcodec_parameters_copy(bsf_ctx_->par_in, format_ctx_->streams[video_index_]->codecpar);
+        av_bsf_init(bsf_ctx_);
         DEBUGPRINT("AV_CODEC_ID_H264\n");
     } else if ((codec_id == AV_CODEC_ID_H265 || codec_id == AV_CODEC_ID_HEVC) && is_mp4_) {
-        h26xbsfc_ = av_bitstream_filter_init("hevc_mp4toannexb");
+        const AVBitStreamFilter *pfilter = av_bsf_get_by_name("hevc_mp4toannexb");
+        av_bsf_alloc(pfilter, &bsf_ctx_);
+        avcodec_parameters_copy(bsf_ctx_->par_in, format_ctx_->streams[video_index_]->codecpar);
+        av_bsf_init(bsf_ctx_);
         DEBUGPRINT("AV_CODEC_ID_H265\n");
     }
     av_init_packet(&packet_);
@@ -171,29 +177,6 @@ enum AudioType MediaReader::GetAudioType()
     return AUDIO_NONE;
 }
 
-int MediaReader::Mp4ToAnnexb(AVPacket &v_packet)
-{
-    uint8_t *out_data = NULL;
-    int out_size = 0;
-    int ret = 0;
-    AVRational time_base = format_ctx_->streams[video_index_]->time_base;
-    AVRational time_base_q = {1, AV_TIME_BASE};
-    long curtimestamp = av_rescale_q(v_packet.pts, time_base, time_base_q);
-
-    av_bitstream_filter_filter(h26xbsfc_, format_ctx_->streams[video_index_]->codec, NULL, &out_data, &out_size, v_packet.data, v_packet.size, v_packet.flags & AV_PKT_FLAG_KEY);
-
-    AVPacket tmp_pkt;
-    av_init_packet(&tmp_pkt);
-    av_packet_copy_props(&tmp_pkt, &v_packet);
-    av_packet_from_data(&tmp_pkt, out_data, out_size);
-    tmp_pkt.size = out_size;
-    av_packet_unref(&v_packet);
-
-    av_copy_packet(&v_packet, &tmp_pkt);
-    av_packet_unref(&tmp_pkt);
-
-    return curtimestamp;
-}
 MediaReader::MediaReader(char *file_path)
 {
     file_ = file_path;
@@ -352,6 +335,7 @@ void *MediaReader::VideoSyncThread(void *arg)
     AVRational time_base_q = {1, AV_TIME_BASE};
     int64_t start_time = av_gettime();
     int64_t starttimestamp = -1;
+    int ret;
     while (!self->abort_) {
         std::unique_lock<std::mutex> guard(self->video_mtx_); // std::unique_lock<std::mutex> guard方式手动解锁的时候不要使用self->video_mtx_.unlock()的方式解锁(会概率性报错)，推荐使用guard.unlock();
         if (self->file_finish_ && self->video_list_.empty()) {
@@ -375,13 +359,13 @@ void *MediaReader::VideoSyncThread(void *arg)
                 starttimestamp = curtimestamp;
                 self->video_start_timestamp_ = starttimestamp;
             }
-            if (self->is_mp4_) {
-                self->Mp4ToAnnexb(video_packet);
-            }
-            self->buffer_->buf = video_packet.data;
-            self->buffer_->buf_len = video_packet.size;
-            self->buffer_->stat = READ;
-            self->buffer_->pos = 0;
+            // if (self->is_mp4_) {
+            //     self->Mp4ToAnnexb(video_packet);
+            // }
+            // self->buffer_->buf = video_packet.data;
+            // self->buffer_->buf_len = video_packet.size;
+            // self->buffer_->stat = READ;
+            // self->buffer_->pos = 0;
             int pts = av_rescale_q(video_packet.pts, time_base, time_base_q);
             int dts = av_rescale_q(video_packet.dts, time_base, time_base_q);
             
@@ -409,36 +393,53 @@ void *MediaReader::VideoSyncThread(void *arg)
                     av_usleep(sleepTime);
                 }
             }
-
-            while (self->buffer_->stat == READ) {
-                self->PraseFrame();
-                if (self->frame_->stat == WRITE) {
-                    continue;
+            av_bsf_send_packet(self->bsf_ctx_, &video_packet);
+            while (!self->abort_){
+                av_packet_unref(&video_packet);
+                if(self->is_mp4_){
+                    ret = av_bsf_receive_packet(self->bsf_ctx_, &video_packet);
+                    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
+                        break;
+                    }
+                    else if (ret < 0) {
+                        printf("av bsf receive pkt failed!\n");
+                        break;
+                    }
                 }
-                VideoData data;
-                data.data = self->frame_->frame;         //+self->frame_->startcode;
-                data.data_len = self->frame_->frame_len; //-self->frame_->startcode;
-                data.pts = pts;
-                data.dts = dts;
+                self->buffer_->buf = video_packet.data;
+                self->buffer_->buf_len = video_packet.size;
+                self->buffer_->stat = READ;
+                self->buffer_->pos = 0;
+                while (self->buffer_->stat == READ) {
+                    self->PraseFrame();
+                    if (self->frame_->stat == WRITE) {
+                        continue;
+                    }
+                    VideoData data;
+                    data.data = self->frame_->frame;         //+self->frame_->startcode;
+                    data.data_len = self->frame_->frame_len; //-self->frame_->startcode;
+                    data.pts = pts;
+                    data.dts = dts;
 
-                int type = -1;
-                AVCodecParameters *codec_parameters = self->format_ctx_->streams[self->video_index_]->codecpar;
-                enum AVCodecID codecId = codec_parameters->codec_id;
-                if (codecId == AV_CODEC_ID_H264) {
-                    type = data.data[0] & 0x1f;
-                } else if (codecId == AV_CODEC_ID_H265 || codecId == AV_CODEC_ID_HEVC) {
-                    type = (data.data[0] >> 1) & 0x3f;
-                }
-                // type == 9为分隔符
-                if (type == 9 || self->frame_->frame_len <= self->frame_->startcode) {
+                    int type = -1;
+                    AVCodecParameters *codec_parameters = self->format_ctx_->streams[self->video_index_]->codecpar;
+                    enum AVCodecID codecId = codec_parameters->codec_id;
+                    if (codecId == AV_CODEC_ID_H264) {
+                        type = data.data[0] & 0x1f;
+                    } else if (codecId == AV_CODEC_ID_H265 || codecId == AV_CODEC_ID_HEVC) {
+                        type = (data.data[0] >> 1) & 0x3f;
+                    }
+                    // type == 9为分隔符
+                    if (type == 9 || self->frame_->frame_len <= self->frame_->startcode) {
+                        self->frame_->stat = WRITE;
+                        continue;
+                    }
+
+                    if (self->data_listner_) {
+                        self->data_listner_->OnVideoData(data);
+                    }
                     self->frame_->stat = WRITE;
-                    continue;
                 }
-
-                if (self->data_listner_) {
-                    self->data_listner_->OnVideoData(data);
-                }
-                self->frame_->stat = WRITE;
             }
             av_packet_unref(&video_packet);
         } else {
@@ -540,8 +541,8 @@ MediaReader::~MediaReader()
     }
     avformat_close_input(&format_ctx_);
     av_packet_unref(&packet_);
-    if (is_mp4_) {
-        av_bitstream_filter_close(h26xbsfc_);
+    if(bsf_ctx_){
+        av_bsf_free(&bsf_ctx_);
     }
     if(buffer_){
         free(buffer_);
