@@ -100,6 +100,7 @@ void MediaReader::VideoInit(char *filename)
 {
     int ret;
     char errors[1024];
+    format_ctx_ = avformat_alloc_context();
     if ((ret = avformat_open_input(&format_ctx_, filename, NULL, NULL)) < 0) {
 
         av_strerror(ret, errors, 1024);
@@ -540,6 +541,7 @@ MediaReader::~MediaReader()
         }
     }
     avformat_close_input(&format_ctx_);
+    avformat_free_context(format_ctx_);
     av_packet_unref(&packet_);
     if(bsf_ctx_){
         av_bsf_free(&bsf_ctx_);
