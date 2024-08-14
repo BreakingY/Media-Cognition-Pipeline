@@ -250,13 +250,15 @@ MiedaWrapper::MiedaWrapper(char *input, char *ouput)
     if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){ // rtsp
         rtsp_flag_ = true;
         rtsp_client_proxy_ = new RtspClientProxy(input);
-        rtsp_client_proxy_->ProbeVideoFps(); // 如果在OnVideoData要获取视频帧率，必须在SetDataListner之前调用ProbeVideoFps,否则在RtspClientProxy::RtspVideoData调用data_listner_的时候会阻塞
+        rtsp_client_proxy_->ProbeVideoFps(); // 必须在SetDataListner之前调用ProbeVideoFps,否则在RtspClientProxy::RtspVideoData调用data_listner_的时候会阻塞
+        rtsp_client_proxy_->GetVideoCon(width_, height_, fps_);
         rtsp_client_proxy_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
         });
     }
     else{ // file
         reader_ = new MediaReader(input);
+        reader_->GetVideoCon(width_, height_, fps_);
         reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
         });
@@ -279,7 +281,6 @@ void MiedaWrapper::OnVideoData(VideoData data)
             log_error("only support H264/H265");
             exit(1);
         }
-        rtsp_client_proxy_->GetVideoCon(width_, height_, fps_);
     }
     else{ // file 
         video_type_ = reader_->GetVideoType();
@@ -287,7 +288,6 @@ void MiedaWrapper::OnVideoData(VideoData data)
             log_error("only support H264/H265");
             exit(1);
         }
-        reader_->GetVideoCon(width_, height_, fps_);
     }
     if (!hard_decoder_) {
         log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
