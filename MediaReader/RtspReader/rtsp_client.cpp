@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <poll.h>
 #include "rtsp_client.h"
-#include "common.h"
 #include "h264_demuxer.h"
 #include "h265_demuxer.h"
 #include "aac_demuxer.h"
