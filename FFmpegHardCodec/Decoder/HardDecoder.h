@@ -65,14 +65,14 @@ private:
 public:
     bool is_hard_ = false;
     enum AVCodecID decodec_id_;
-    DecDataCallListner *callback_;
-    AVCodecContext *codec_ctx_;
-    AVCodec *codec_;
+    DecDataCallListner *callback_ = NULL;
+    AVCodecContext *codec_ctx_ = NULL;
+    AVCodec *codec_ = NULL;
 
     AVPacket packet_;
-    AVFrame *frame_;
-    AVFrame *sw_frame_;
-    struct SwsContext *img_convert_ctx_;
+    AVFrame *frame_ = NULL;
+    AVFrame *sw_frame_ = NULL;
+    struct SwsContext *img_convert_ctx_ = NULL;
     enum AVPixelFormat out_pix_fmt_ = AV_PIX_FMT_NONE;
     // hard dec
     enum AVHWDeviceType type_ = AV_HWDEVICE_TYPE_NONE;

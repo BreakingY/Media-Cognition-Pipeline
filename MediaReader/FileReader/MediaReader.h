@@ -19,6 +19,7 @@ extern "C" {
 }
 #include "TypeDef.h"
 #include "MediaInterface.h"
+#include "AAC.h"
 using namespace std::chrono_literals; // 时间库由C++14支持
 static const uint64_t NANO_SECOND = UINT64_C(1000000000);
 #define DEBUGPRINT printf
@@ -51,18 +52,21 @@ public:
     enum VideoType GetVideoType();
     enum AudioType GetAudioType();
     virtual ~MediaReader();
+    void SetDataListner(MediaDataListner *lisnter, CloseCallbackFunc cb);
+    bool HaveAudio();
+    void GetVideoCon(int &width, int &height, int &fps);
+    void GetAudioCon(int &channels, int &sample_rate, int &audio_object_type, int &bit_per_sample);
+    void Reset();
+    
+private:
     static void *MediaReaderThread(void *arg);
     static void *VideoSyncThread(void *arg);
     static void *AudioSyncThread(void *arg);
     static void *CheckThread(void *arg);
     void PraseFrame();
-    void SetDataListner(MediaDataListner *lisnter, CloseCallbackFunc cb);
     void VideoInit(char *filename);
-    bool HaveAudio();
-    void GetAudioCon(int &channels, int &sample_rate, int &audio_object_type, int &bit_per_sample);
-    void Reset();
 
-public:
+private:
     std::string file_;
     struct BufSt *buffer_ = NULL;
     struct FrameSt *frame_ = NULL;

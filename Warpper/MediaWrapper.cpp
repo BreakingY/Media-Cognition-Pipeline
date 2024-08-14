@@ -1,4 +1,7 @@
 #include "MediaWrapper.h"
+// #define MP4MUXER
+
+#ifdef MP4MUXER
 static uint32_t find_start_code(uint8_t *buf, uint32_t zeros_in_startcode)
 {
     uint32_t info;
@@ -81,132 +84,6 @@ static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_
     *len = (p - q);
     *offset = p;
     return q;
-}
-MiedaWrapper::MiedaWrapper(char *input, char *ouput)
-{
-    mp4_muxer_ = new Muxer();
-    mp4_muxer_->Init(ouput);
-    reader_ = new MediaReader(input);
-    reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
-        return this->MediaOverhandle();
-    });
-}
-void MiedaWrapper::MediaOverhandle()
-{
-    over_flag_ = true;
-    return;
-}
-/**
- * 音视频解封装、解码
- */
-// with startcode
-void MiedaWrapper::OnVideoData(VideoData data)
-{
-    video_type_ = reader_->GetVideoType();
-    if (video_type_ == VIDEO_NONE) {
-        log_error("only support H264/H265");
-        exit(1);
-    }
-    width_ = reader_->format_ctx_->streams[reader_->video_index_]->codecpar->width;
-    height_ = reader_->format_ctx_->streams[reader_->video_index_]->codecpar->height;
-    fps_ = av_q2d(reader_->format_ctx_->streams[reader_->video_index_]->avg_frame_rate);
-    if (!hard_decoder_) {
-        log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
-        hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
-        hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
-    }
-    hard_decoder_->InputVideoData(data.data, data.data_len, 0, 0); // 实时解码，不需要传递pts
-    return;
-}
-// widthout adts
-void MiedaWrapper::OnAudioData(AudioData data)
-{
-    audio_type_ = reader_->GetAudioType();
-    if (audio_type_ != AUDIO_AAC) {
-        log_error("only support AAC");
-        exit(1);
-    }
-    // 添加adts
-    char adts_header_buf[7] = {0};
-    GenerateAdtHeader(adts_header_buf, data.data_len,
-                      data.profile,    // AAC编码级别
-                      data.samplerate, // 采样率 Hz
-                      data.channels);
-
-    if (buffer_audio_ == NULL || (buffer_audio_len_ < 7 + data.data_len)) {
-        buffer_audio_ = (unsigned char *)realloc(buffer_audio_, 7 + data.data_len);
-        buffer_audio_len_ = 7 + data.data_len;
-    }
-    memcpy(buffer_audio_, adts_header_buf, 7);
-    memcpy(buffer_audio_ + 7, data.data, data.data_len);
-    if (aac_decoder_ == NULL) {
-        log_debug("audio_type:AAC profile:{} samplerate:{} channels:{}", data.profile, data.samplerate, data.channels);
-        aac_decoder_ = new AACDecoder();
-        aac_decoder_->SetResampleArg(AV_SAMPLE_FMT_S16, 2, 44100); // 重采样输出格式，解码器会把解码后的PCM数据重采样成设定的格式
-        aac_decoder_->SetCallback(static_cast<DecDataCallListner *>(this));
-        samplerate_ = data.samplerate;
-        channels_ = data.channels;
-        profile_ = data.profile;
-    }
-    aac_decoder_->InputAACData(buffer_audio_, data.data_len + 7); // 实时解码，不需要传递pts
-    return;
-}
-
-/**
- * 解码后音视频数据
- */
-void MiedaWrapper::OnRGBData(cv::Mat frame)
-{
-    // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
-    // 之后再把处理后的图像进行编码
-    if (!hard_encoder_) {
-        hard_encoder_ = new HardVideoEncoder();
-        hard_encoder_->Init(frame, fps_);
-        hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
-    }
-    hard_encoder_->AddVideoFrame(frame);
-    return;
-}
-// FILE *fp_file = NULL;
-// data_len是单通道当本个数
-void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
-{
-    // 拿到解码后的PCM音频根据自己的业务需求进行处理，例如语音识别、语音合成等。
-    // 之后再把处理后的音频进行编码
-    if (aac_encoder_ == NULL) {
-        aac_encoder_ = new AACEncoder();
-        // aac编码模块只接受packed模式的pcm数据
-        // 和 aac_decoder_->SetResampleArg(AV_SAMPLE_FMT_S16,2,44100)保持一致即可，但如果aac_decoder_->SetResampleArg中指定了AV_SAMPLE_FMT_S16P,这里使用AV_SAMPLE_FMT_S16，数据就要转换成packed模型在送入队列
-        aac_encoder_->Init(AV_SAMPLE_FMT_S16, 2, 44100, data_len); // 输入格式，编码器会把PCM数据重采样成AAC编码器需要的格式然后进行编码
-        aac_encoder_->SetCallback(static_cast<EncDataCallListner *>(this));
-    }
-
-    // 转换成packed在传送给aac编码模块
-    enum AVSampleFormat dst_sample_fmt = AV_SAMPLE_FMT_S16;
-    int dst_nb_channels = channels_;
-    int out_spb = av_get_bytes_per_sample(dst_sample_fmt);
-    int buf_len = data_len * out_spb * dst_nb_channels;
-    if (buffer_pcm_ == NULL || (buffer_pcm_len_ < buf_len)) {
-        buffer_pcm_ = (unsigned char *)realloc(buffer_pcm_, buf_len);
-        buffer_pcm_len_ = buf_len;
-    }
-    int pos = 0;
-    if (av_sample_fmt_is_planar(dst_sample_fmt)) { // plannar,dst_linesize=data_len*out_spb
-        for (int i = 0; i < data_len; i++) {
-            for (int c = 0; c < dst_nb_channels; c++)
-                memcpy(buffer_pcm_ + pos, data[c] + i * out_spb, out_spb);
-            pos += out_spb;
-        }
-    } else { // packed,dst_linesize=data_len*out_spb*out_channels
-        memcpy(buffer_pcm_, data[0], data_len * out_spb * dst_nb_channels);
-    }
-    aac_encoder_->AddPCMFrame(buffer_pcm_, buf_len);
-    // if (fp_file == NULL) {
-    //     fp_file = fopen("test.pcm", "wb+");
-    // }
-    // fwrite(buffer_pcm_, 1, buf_len, fp_file);
-    // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
-    return;
 }
 /**
  * 编码后音视频数据
@@ -309,8 +186,15 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
             mp4_muxer_->AddVideo(90000, video_type_, extra, width_, height_, fps_);
         }
         // 音频
-        if (reader_->HaveAudio() && audio_stream_ == -1) {
-            mp4_muxer_->AddAudio(channels_, samplerate_, profile_ + 1, AUDIO_AAC);
+        if( ((rtsp_flag_ == true) && (rtsp_client_proxy_->GetAudioType() != AudioType::AUDIO_NONE))
+            || (reader_->GetAudioType() != AudioType::AUDIO_NONE) ){
+            if(audio_stream_ == -1){
+                int channels;
+                int samplerate;
+                int profile;
+                aac_encoder_->GetAudioCon(channels, samplerate, profile); // 获取AAC编码器输出信息
+                mp4_muxer_->AddAudio(channels, samplerate, profile, AUDIO_AAC);
+            }
         }
         if (video_stream_ == -1) {
             mp4_muxer_->Open();
@@ -327,17 +211,6 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
     }
 
     return 0;
-}
-char *enc_h264_filename = "out.h264";
-FILE *enc_h264_fd = NULL;
-void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
-{
-    if (enc_h264_fd == NULL) {
-        enc_h264_fd = fopen(enc_h264_filename, "wb");
-    }
-    fwrite(data, 1, data_len, enc_h264_fd);
-    WriteVideo2File(data, data_len);
-    return;
 }
 int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
 {
@@ -367,6 +240,165 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     mp4_muxer_->SendPacket(data + 7, len - 7, audio_pts, audio_pts, audio_stream_);
     return 0;
 }
+#endif
+MiedaWrapper::MiedaWrapper(char *input, char *ouput)
+{
+#ifdef MP4MUXER
+    mp4_muxer_ = new Muxer();
+    mp4_muxer_->Init(ouput);
+#endif
+    if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){ // rtsp
+        rtsp_flag_ = true;
+        rtsp_client_proxy_ = new RtspClientProxy(input);
+        rtsp_client_proxy_->ProbeVideoFps(); // 如果在OnVideoData要获取视频帧率，必须在SetDataListner之前调用ProbeVideoFps,否则在RtspClientProxy::RtspVideoData调用data_listner_的时候会阻塞
+        rtsp_client_proxy_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
+            return this->MediaOverhandle();
+        });
+    }
+    else{ // file
+        reader_ = new MediaReader(input);
+        reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
+            return this->MediaOverhandle();
+        });
+    }
+}
+void MiedaWrapper::MediaOverhandle()
+{
+    over_flag_ = true;
+    return;
+}
+/**
+ * 音视频解封装、解码
+ */
+// with startcode
+void MiedaWrapper::OnVideoData(VideoData data)
+{
+    if(rtsp_flag_ == true){ // rtsp
+        video_type_ = rtsp_client_proxy_->GetVideoType();
+        if (video_type_ == VIDEO_NONE) {
+            log_error("only support H264/H265");
+            exit(1);
+        }
+        rtsp_client_proxy_->GetVideoCon(width_, height_, fps_);
+    }
+    else{ // file 
+        video_type_ = reader_->GetVideoType();
+        if (video_type_ == VIDEO_NONE) {
+            log_error("only support H264/H265");
+            exit(1);
+        }
+        reader_->GetVideoCon(width_, height_, fps_);
+    }
+    if (!hard_decoder_) {
+        log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
+        hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
+        hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
+    }
+    // int type;
+    // if(video_type_ == VIDEO_H264){
+    //     type = data.data[4] & 0x1f;
+    // }
+    // else{
+    //     type = (data.data[4] >> 1) & 0x3f;
+    // }
+    hard_decoder_->InputVideoData(data.data, data.data_len, 0, 0); // 实时解码，不需要传递pts
+    return;
+}
+// width adts
+void MiedaWrapper::OnAudioData(AudioData data)
+{
+    if(rtsp_flag_ == true){
+        audio_type_ = rtsp_client_proxy_->GetAudioType();
+        if (audio_type_ != AUDIO_AAC) {
+            log_error("only support AAC");
+            exit(1);
+        }
+    }
+    else{
+        audio_type_ = reader_->GetAudioType();
+        if (audio_type_ != AUDIO_AAC) {
+            log_error("only support AAC");
+            exit(1);
+        }
+    }
+    if (aac_decoder_ == NULL) {
+        log_debug("audio_type:AAC profile:{} samplerate:{} channels:{}", data.profile, data.samplerate, data.channels);
+        aac_decoder_ = new AACDecoder();
+        aac_decoder_->SetResampleArg(AV_SAMPLE_FMT_S16, 2, 44100); // 重采样输出格式，解码器会把解码后的PCM数据重采样成设定的格式
+        aac_decoder_->SetCallback(static_cast<DecDataCallListner *>(this));
+    }
+    aac_decoder_->InputAACData(data.data, data.data_len); // 实时解码，不需要传递pts
+    return;
+}
+
+/**
+ * 解码后音视频数据
+ */
+void MiedaWrapper::OnRGBData(cv::Mat frame)
+{
+    // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
+    // 之后再把处理后的图像进行编码
+    if (!hard_encoder_) {
+        hard_encoder_ = new HardVideoEncoder();
+        hard_encoder_->Init(frame, fps_);
+        hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
+    }
+    hard_encoder_->AddVideoFrame(frame);
+    return;
+}
+// FILE *fp_file = NULL;
+// data_len是单通道当本个数 LC-AAC:1024 HE-AAC:2048
+void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
+{
+    // 拿到解码后的PCM音频根据自己的业务需求进行处理，例如语音识别、语音合成等。
+    // 之后再把处理后的音频进行编码
+    if (aac_encoder_ == NULL) {
+        aac_encoder_ = new AACEncoder();
+        // aac编码模块只接受packed模式的pcm数据
+        // 和 aac_decoder_->SetResampleArg(AV_SAMPLE_FMT_S16,2,44100)保持一致即可，但如果aac_decoder_->SetResampleArg中指定了AV_SAMPLE_FMT_S16P,这里使用AV_SAMPLE_FMT_S16，数据就要转换成packed模型在送入队列
+        aac_encoder_->Init(AV_SAMPLE_FMT_S16, 2 , 44100, data_len); // 输入格式，编码器会把PCM数据重采样成AAC编码器需要的格式然后进行编码
+        aac_encoder_->SetCallback(static_cast<EncDataCallListner *>(this));
+    }
+    
+    // 转换成packed在传送给aac编码模块
+    enum AVSampleFormat dst_sample_fmt = AV_SAMPLE_FMT_S16;
+    int dst_nb_channels = 2;
+    int out_spb = av_get_bytes_per_sample(dst_sample_fmt);
+    int buf_len = data_len * out_spb * dst_nb_channels;
+    if (buffer_pcm_ == NULL || (buffer_pcm_len_ < buf_len)) {
+        buffer_pcm_ = (unsigned char *)realloc(buffer_pcm_, buf_len);
+        buffer_pcm_len_ = buf_len;
+    }
+    int pos = 0;
+    if (av_sample_fmt_is_planar(dst_sample_fmt)) { // plannar,dst_linesize=data_len*out_spb
+        for (int i = 0; i < data_len; i++) {
+            for (int c = 0; c < dst_nb_channels; c++)
+                memcpy(buffer_pcm_ + pos, data[c] + i * out_spb, out_spb);
+            pos += out_spb;
+        }
+    } else { // packed,dst_linesize=data_len*out_spb*out_channels
+        memcpy(buffer_pcm_, data[0], data_len * out_spb * dst_nb_channels);
+    }
+    aac_encoder_->AddPCMFrame(buffer_pcm_, buf_len);
+    // if (fp_file == NULL) {
+    //     fp_file = fopen("test.pcm", "wb+");
+    // }
+    // fwrite(buffer_pcm_, 1, buf_len, fp_file); // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
+    return;
+}
+char *enc_h264_filename = "out.h264";
+FILE *enc_h264_fd = NULL;
+void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
+{
+    if (enc_h264_fd == NULL) {
+        enc_h264_fd = fopen(enc_h264_filename, "wb");
+    }
+    fwrite(data, 1, data_len, enc_h264_fd);
+#ifdef MP4MUXER
+    WriteVideo2File(data, data_len);
+#endif
+    return;
+}
 char *enc_aac_filename = "out.aac";
 FILE *enc_aac_fd = NULL;
 void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len)
@@ -375,7 +407,9 @@ void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len)
         enc_aac_fd = fopen(enc_aac_filename, "wb");
     }
     fwrite(data, 1, data_len, enc_aac_fd);
+#ifdef MP4MUXER
     WriteAudio2File(data, data_len);
+#endif
     return;
 }
 MiedaWrapper::~MiedaWrapper()
@@ -384,6 +418,10 @@ MiedaWrapper::~MiedaWrapper()
     if (reader_) {
         delete reader_;
         reader_ = NULL;
+    }
+    if(rtsp_client_proxy_){
+        delete rtsp_client_proxy_;
+        rtsp_client_proxy_ = NULL;
     }
     if (hard_decoder_) {
         delete hard_decoder_;
@@ -417,10 +455,6 @@ MiedaWrapper::~MiedaWrapper()
     if (pps_) {
         free(pps_);
         pps_ = NULL;
-    }
-    if (buffer_audio_) {
-        free(buffer_audio_);
-        buffer_audio_ = NULL;
     }
     if (buffer_pcm_) {
         free(buffer_pcm_);

@@ -304,10 +304,10 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
 
     return data;
 }
-void Muxer::AACWriteExtra(int channels, int sample_rate, int audio_object_type, AVCodecParameters *params)
+void Muxer::AACWriteExtra(int channels, int sample_rate, int profile, AVCodecParameters *params)
 {
     int aac_extradata_size = -1;
-    uint8_t *aac_extradata = generate_aac_specific_config(channels, sample_rate, audio_object_type, &aac_extradata_size);
+    uint8_t *aac_extradata = generate_aac_specific_config(channels, sample_rate, profile, &aac_extradata_size);
     if (aac_extradata == NULL) {
         log_error("AACWriteExtra error");
         return;
@@ -318,9 +318,9 @@ void Muxer::AACWriteExtra(int channels, int sample_rate, int audio_object_type, 
         return;
     }
 
-    uint8_t audio_object_type_dec = (aac_extradata[0] >> 3) & 0x1F;
+    uint8_t profile_dec = (aac_extradata[0] >> 3) & 0x1F;
     uint8_t sampling_frequency_fndex = ((aac_extradata[0] & 0x07) << 1) | ((aac_extradata[1] >> 7) & 0x01);
-    log_debug("audio_object_type_dec:{} audio_object_type:{}", audio_object_type_dec, audio_object_type);
+    log_debug("profile_dec:{} profile:{}", profile_dec, profile);
     log_debug("sampling_frequency_fndex:{},sample_rate:{}", sampling_frequency_fndex, sample_rate);
 
     params->extradata = av_mallocz(aac_extradata_size);
@@ -335,13 +335,13 @@ void Muxer::AACWriteExtra(int channels, int sample_rate, int audio_object_type, 
     }
     return;
 }
-int Muxer::AddAudio(int channels, int sample_rate, int audio_object_type, AudioType type)
+int Muxer::AddAudio(int channels, int sample_rate, int profile, AudioType type)
 {
     if (!fmt_ctx_) {
         log_error("fmt ctx is NULL");
         return -1;
     }
-    log_debug("channels:{} sample_rate:{} audio_object_type:{}", channels, sample_rate, audio_object_type);
+    log_debug("channels:{} sample_rate:{} profile:{}", channels, sample_rate, profile);
     audio_type_ = type;
     enum AVCodecID id;
     if (type != AUDIO_AAC) {
@@ -370,11 +370,11 @@ int Muxer::AddAudio(int channels, int sample_rate, int audio_object_type, AudioT
     out_codecpar->channels = channels;
     out_codecpar->sample_rate = sample_rate;
     out_codecpar->bit_rate = 0;
-    out_codecpar->profile = audio_object_type - 1;
+    out_codecpar->profile = profile;
     if (fmt_ctx_->oformat->flags & AVFMT_GLOBALHEADER) {
         global_header_ = true;
         st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-        AACWriteExtra(channels, sample_rate, audio_object_type, out_codecpar);
+        AACWriteExtra(channels, sample_rate, profile, out_codecpar);
     }
 
     av_dump_format(fmt_ctx_, 0, url_.c_str(), 1);

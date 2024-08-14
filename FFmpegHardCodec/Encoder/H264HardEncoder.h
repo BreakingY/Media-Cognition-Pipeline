@@ -35,10 +35,10 @@ private:
     static void *VideoEncThread(void *arg);
 
 private:
-    EncDataCallListner *callback_;
-    AVCodecContext *h264_codec_ctx_;
-    AVCodec *h264_codec_;
-    SwsContext *sws_context_;
+    EncDataCallListner *callback_ = NULL;
+    AVCodecContext *h264_codec_ctx_ = NULL;
+    AVCodec *h264_codec_ = NULL;
+    SwsContext *sws_context_ = NULL;
     enum AVPixelFormat sw_pix_format_ = AV_PIX_FMT_YUV420P;
     // hard enc
     enum AVHWDeviceType type_ = AV_HWDEVICE_TYPE_NONE;

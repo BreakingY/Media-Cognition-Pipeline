@@ -41,7 +41,7 @@ public:
     void DeInit();
 
     int AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height, int fps); // H264 h265
-    int AddAudio(int channels, int sample_rate, int audio_object_type, AudioType type);            // AAC
+    int AddAudio(int channels, int sample_rate, int profile, AudioType type);            // AAC
     int Open();
 
     int SendHeader();
@@ -55,7 +55,7 @@ private:
     void H264WriteExtra(unsigned char *extra_data, int &extra_data_size);
     void H265WriteExtra(unsigned char *extra_data, int &extra_data_size);
     void RewriteVideoExtraData();
-    void AACWriteExtra(int channels, int sample_rate, int audio_object_type, AVCodecParameters *params);
+    void AACWriteExtra(int channels, int sample_rate, int profile, AVCodecParameters *params);
     bool ParametersChange(unsigned char *vps, int vps_len, unsigned char *sps, int sps_len, unsigned char *pps, int pps_len);
 
 public:

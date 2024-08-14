@@ -60,12 +60,12 @@ private:
     void ScaleAudio(AVFrame *frame);
 
 public:
-    AVCodecContext *audio_codec_ctx_;
-    AVCodec *audio_codec_;
+    AVCodecContext *audio_codec_ctx_ = NULL;
+    AVCodec *audio_codec_ = NULL;
     AVPacket packet_;
-    AVFrame *frame_;
+    AVFrame *frame_ = NULL;
 
-    SwrContext *swr_ctx_;
+    SwrContext *swr_ctx_ = NULL;
     // 解码重采样
     enum AVSampleFormat src_sample_fmt_;
     enum AVSampleFormat dst_sample_fmt_ = AV_SAMPLE_FMT_S16;

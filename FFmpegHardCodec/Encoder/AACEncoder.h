@@ -33,7 +33,7 @@ typedef struct AACPCMNodeSt {
         free(pcm_data);
     }
 } AACPCMNode;
-
+// 单通道样本输入数量必须是1024(LC-AAC)或者2048(HE-AAC)
 class AACEncoder
 {
 public:
@@ -42,13 +42,14 @@ public:
     int AddPCMFrame(unsigned char *data, int data_len);
     int Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_samples);
     void SetCallback(EncDataCallListner *call_func);
+    void GetAudioCon(int &channels, int &sample_rate, int &profile);
 
 private:
     static void *AACScaleThread(void *arg);
     static void *AACEncThread(void *arg);
 
 private:
-    EncDataCallListner *callback_;
+    EncDataCallListner *callback_ = NULL;
     enum AVSampleFormat src_sample_fmt_;
     enum AVSampleFormat dst_sample_fmt_ = AV_SAMPLE_FMT_S16;
     int src_nb_channels_;
@@ -58,9 +59,9 @@ private:
     // 单个通道的一帧采样点个数
     int src_nb_samples_;
     int dst_nb_samples_;
-    SwrContext *encode_swr_ctx_;
-    AVCodecContext *c_ctx_;
-    AVCodec *codec_;
+    SwrContext *encode_swr_ctx_ = NULL;
+    AVCodecContext *c_ctx_ = NULL;
+    AVCodec *codec_ = NULL;
     AVPacket pkt_enc_;
 
     pthread_mutex_t pcm_mutex_;

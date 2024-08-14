@@ -1,5 +1,6 @@
 #include "MediaReader.h"
 
+
 static inline int StartCode3(unsigned char *buf)
 {
     if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1)
@@ -214,6 +215,15 @@ bool MediaReader::HaveAudio()
         return true;
     }
     return false;
+}
+void MediaReader::GetVideoCon(int &width, int &height, int &fps){
+    if (video_index_ < 0) {
+        width = height = fps = -1;
+        return;
+    }
+    width = format_ctx_->streams[video_index_]->codecpar->width;
+    height = format_ctx_->streams[video_index_]->codecpar->height;
+    fps = av_q2d(format_ctx_->streams[video_index_]->avg_frame_rate);
 }
 void MediaReader::GetAudioCon(int &channels, int &sample_rate, int &audio_object_type, int &bit_per_sample)
 {
@@ -456,6 +466,66 @@ void *MediaReader::VideoSyncThread(void *arg)
     DEBUGPRINT("%s:%d VideoSyncThread over\n", __FILE__, __LINE__);
     return NULL;
 }
+/*
+#define FF_PROFILE_AAC_MAIN 0
+#define FF_PROFILE_AAC_LOW  1
+#define FF_PROFILE_AAC_SSR  2
+#define FF_PROFILE_AAC_LTP  3
+#define FF_PROFILE_AAC_HE   4
+#define FF_PROFILE_AAC_HE_V2 28
+#define FF_PROFILE_AAC_LD   22
+#define FF_PROFILE_AAC_ELD  38
+#define FF_PROFILE_MPEG2_AAC_LOW 128
+#define FF_PROFILE_MPEG2_AAC_HE  131
+*/
+static int get_audio_obj_type(int aactype){
+    //AAC HE V2 = AAC LC + SBR + PS
+    //AAV HE = AAC LC + SBR
+    //所以无论是 AAC_HEv2 还是 AAC_HE 都是 AAC_LC
+    switch(aactype){
+        case 0:
+        case 2:
+        case 3:
+            return aactype+1;
+        case 1:
+        case 4:
+        case 28:
+            return 2;
+        default:
+            return 2;
+
+    }
+    return 2;
+}
+
+static int get_sample_rate_index(int freq, int aactype){
+
+    int i = 0;
+    int freq_arr[13] = {
+        96000, 88200, 64000, 48000, 44100, 32000,
+        24000, 22050, 16000, 12000, 11025, 8000, 7350
+    };
+
+    //如果是 AAC HEv2 或 AAC HE, 则频率减半
+    if(aactype == 28 || aactype == 4){
+        freq /= 2;
+    }
+
+    for(i=0; i< 13; i++){
+        if(freq == freq_arr[i]){
+            return i;
+        }
+    }
+    return 4;//默认是44100
+}
+
+static int get_channel_config(int channels, int aactype){
+    //如果是 AAC HEv2 通道数减半
+    if(aactype == 28){
+        return (channels / 2);
+    }
+    return channels;
+}
 void *MediaReader::AudioSyncThread(void *arg)
 {
     MediaReader *self = (MediaReader *)arg;
@@ -505,6 +575,22 @@ void *MediaReader::AudioSyncThread(void *arg)
             audiodata.profile = self->format_ctx_->streams[self->audio_index_]->codecpar->profile;
             audiodata.samplerate = self->format_ctx_->streams[self->audio_index_]->codecpar->sample_rate;
             if (self->data_listner_) {
+                // 添加adts
+                int profile = get_audio_obj_type(audiodata.profile) - 1;
+                int sampling_frequency_index = get_sample_rate_index(audiodata.samplerate, audiodata.profile);
+                int channel_config = get_channel_config(audiodata.channels, audiodata.profile);
+
+                char adts_header_buf[7] = {0};
+                GenerateAdtsHeader(adts_header_buf, audiodata.data_len,
+                                profile,    // AAC编码级别
+                                sampling_frequency_index, // 采样率 Hz
+                                channel_config);
+                unsigned char buffer[4 * 1024] = {0};
+                memcpy(buffer, adts_header_buf, 7);
+                memcpy(buffer + 7, audiodata.data,  audiodata.data_len);
+
+                audiodata.data = buffer;
+                audiodata.data_len += 7;
                 self->data_listner_->OnAudioData(audiodata);
             }
             av_packet_unref(&audio_packet);

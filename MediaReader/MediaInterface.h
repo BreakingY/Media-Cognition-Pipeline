@@ -22,8 +22,8 @@ typedef struct VideoDataSt {
 class MediaDataListner
 {
 public:
-    virtual void OnVideoData(VideoData data) = 0;
-    virtual void OnAudioData(AudioData data) = 0;
+    virtual void OnVideoData(VideoData data) = 0; // with startcode
+    virtual void OnAudioData(AudioData data) = 0; // widthout adts
 };
 using CloseCallbackFunc = std::function<void(void)>;
 

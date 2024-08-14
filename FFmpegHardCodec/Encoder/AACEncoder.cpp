@@ -97,7 +97,13 @@ int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_sa
         c_ctx_->channels = dst_nb_channels_;          // 输入音频的声道数
         c_ctx_->sample_rate = dst_ratio_;             // 输入音频的采样率
         c_ctx_->bit_rate = 0;                         // AAC : 128K   AAV_HE: 64K  AAC_HE_V2: 32K. bit_rate为0时才会查找profile属性值
-        c_ctx_->profile = FF_PROFILE_AAC_LOW;         // FF_PROFILE_AAC_LOW FF_PROFILE_AAC_HE_V2
+        // FF_PROFILE_AAC_LOW == 1 FF_PROFILE_AAC_HE == 4 FF_PROFILE_AAC_HE_V2 == 28
+        if(src_nb_samples_ == 2048){
+            c_ctx_->profile = FF_PROFILE_AAC_HE;
+        }
+        else{
+            c_ctx_->profile = FF_PROFILE_AAC_LOW; // 1024 
+        }
         if (avcodec_open2(c_ctx_, codec_, NULL) < 0) {
             log_error("audio_encode_init error");
             exit(1);
@@ -105,6 +111,12 @@ int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_sa
         log_info("audio_encode_init ok");
     }
     return 0;
+}
+void AACEncoder::GetAudioCon(int &channels, int &sample_rate, int &profile){
+    channels = 2;
+    sample_rate = 44100;
+    profile = c_ctx_->profile;
+    return;
 }
 int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)
 {

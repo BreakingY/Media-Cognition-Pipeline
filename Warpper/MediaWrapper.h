@@ -10,6 +10,7 @@
 #include "MediaMuxer.h"
 #include "MediaReader.h"
 #include "log_helpers.h"
+#include "rtsp_client_proxy.h"
 #include <opencv2/opencv.hpp>
 class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner
 {
@@ -30,7 +31,7 @@ public:
     void OnVideoEncData(unsigned char *data, int data_len, int64_t pts);
     void OnAudioEncData(unsigned char *data, int data_len);
 
-    bool OverHandel() { return over_flag_; }
+    bool OverHandle() { return over_flag_; }
     int WriteVideo2File(uint8_t *data, int len);
     int WriteAudio2File(uint8_t *data, int len);
 
@@ -48,16 +49,13 @@ public:
     uint64_t time_ts_accum_1_ = 0;
 
     MediaReader *reader_ = NULL;
+    RtspClientProxy *rtsp_client_proxy_ = NULL;
+    bool rtsp_flag_ = false;
     int width_;
     int height_;
     int fps_ = 25;
     enum VideoType video_type_;
     enum AudioType audio_type_;
-    unsigned char *buffer_audio_ = NULL;
-    int buffer_audio_len_ = 0;
-    int samplerate_;
-    int channels_;
-    int profile_;
     unsigned char *buffer_pcm_ = NULL;
     int buffer_pcm_len_ = 0;
 
