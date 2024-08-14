@@ -1,11 +1,11 @@
 # FFmpeg-Media-Codec-Pipeline
 ffmpeg实现音视频封装、编解码pipeline
 
-* 用ffmpeg实现对音视频解封装、重采样、编解码、封装(MP4)，并采用模块化和接口化管理
+* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4)，采用模块化和接口化管理
 * 实现了视频的硬编解码，仅支持英伟达显卡。支持软硬编解码自动切换(优先使用硬编解码、不支持则自动切换到软编解码，ffmpeg需要在编译的时候添加Nvidia硬编解码功能)。 博客地址：https://blog.csdn.net/weixin_43147845/article/details/136812735
 * 支持格式，视频：H264/H265，音频：AAC
 * 不适用jetson。
-* 支持从MP4、RTSP获取音视频。RTSP客户端地址：https://github.com/BreakingY/simple-rtsp-client，C++实现，不依赖任何库。
+* 支持从MP4、RTSP获取音视频。MP4解封装由FFMPEG完成；RTSP客户端纯C++实现，不依赖任何库，地址：https://github.com/BreakingY/simple-rtsp-client
 * 代码包含四个模块，如下图所示：
 
   ![未命名绘图](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/fbde5819-4527-4eec-8b7b-508264efc995)
@@ -20,7 +20,9 @@ ffmpeg实现音视频封装、编解码pipeline
 * mkdir build
 * cmake ..
 * make -j
-* 测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4 && ./MediaCodec your_rtsp_url out.mp4
+* 测试：
+  1. 文件测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4
+  2. rtsp测试：./MediaCodec your_rtsp_url out.mp4
 
 
 # 技术交流
