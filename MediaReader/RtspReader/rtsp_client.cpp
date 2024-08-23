@@ -631,7 +631,7 @@ int RtspClient::ReadPacketTcp(){
                 stat_ = EMPTY_STATE;
             }
         }
-        else if(stat_ == RTSP_MESSAGE_STATE){
+        if(stat_ == RTSP_MESSAGE_STATE){
             // skip rtsp message
             ptr++;
         }
