@@ -23,7 +23,7 @@ class MediaDataListner
 {
 public:
     virtual void OnVideoData(VideoData data) = 0; // with startcode
-    virtual void OnAudioData(AudioData data) = 0; // widthout adts
+    virtual void OnAudioData(AudioData data) = 0; // with adts
 };
 using CloseCallbackFunc = std::function<void(void)>;
 

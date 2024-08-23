@@ -43,6 +43,7 @@ int RtspClientProxy::ProbeVideoFps(){
     while(fps_ == -1){
         usleep(1000 * 50);
     }
+    video_ready_ = false;
     return fps_;
 }
 void RtspClientProxy::GetVideoCon(int &width, int &height, int &fps){
@@ -81,6 +82,7 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
         // std::cout << "video type:" << (data[4] & 0x1f) << std::endl;
         type = data[4] & 0x1f;
         if(type == 7){
+            video_ready_ = true;
             struct h264_sps_t sps;
             h264_sps_parse(data + 4, size - 4, &sps);
             int x, y;
@@ -97,7 +99,7 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
             h265_display_rect(&sps, &x, &y, &width_, &height_);
         }
         if((width_ != -1) && (type == 32)){
-            h265_ready_ = true;
+            video_ready_ = true;
         }  
     }
     // probe fps
@@ -116,7 +118,7 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
             }
         }
     }
-    if((client_->GetVideoType() == MediaEnum::H265) && (!h265_ready_)){
+    if(!video_ready_){
         return;
     }
     VideoData video_data;
@@ -126,6 +128,9 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
     video_data.dts = 0;
     if (data_listner_) {
         data_listner_->OnVideoData(video_data);
+    }
+    else{
+        video_ready_ = false;
     }
     return;
 }

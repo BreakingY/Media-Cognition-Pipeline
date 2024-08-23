@@ -30,7 +30,7 @@ private:
     int width_ = -1;
     int height_ = -1;
     int fps_ = -1;
-    bool h265_ready_ = false;
+    bool video_ready_ = false;
 
     MediaDataListner *data_listner_ = NULL;
     CloseCallbackFunc colse_cb_ = NULL;
