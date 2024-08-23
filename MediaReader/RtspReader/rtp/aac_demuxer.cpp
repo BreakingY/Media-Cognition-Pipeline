@@ -17,7 +17,7 @@ void AACDemuxer::InputData(const uint8_t* data, size_t size){
         payload_len = payload_len - payload_offset;
     }
     if(call_back_){
-        call_back_->OnAudioData(ntohl(header->timestamp),  payload + 4, payload_len); // 4 for AU Header 一个rtp数据包一般只封装一帧aac
+        call_back_->OnAudioData(ntohl(header->timestamp),  payload + 4, payload_len - 4); // 4 for AU Header 一个rtp数据包一般只封装一帧aac
     }
     return;
 }
