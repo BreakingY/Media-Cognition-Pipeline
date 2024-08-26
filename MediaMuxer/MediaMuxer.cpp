@@ -298,9 +298,19 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
     if (channelConfig < 1 || channelConfig > 7) {
         return NULL;
     }
-
-    data[0] = (audioObjectType << 3) | ((samplingFrequency >> 1) & 0x7);
-    data[1] = ((samplingFrequency & 0x1) << 7) | (channelConfig << 3);
+    int freq_arr[13] = {
+        96000, 88200, 64000, 48000, 44100, 32000,
+        24000, 22050, 16000, 12000, 11025, 8000, 7350
+    };
+    int sample_index = 4;
+    for(int i = 0; i < 13; i++){
+        if(freq_arr[i] == samplingFrequency){
+            sample_index = i;
+            break;
+        }
+    }
+    data[0] = (audioObjectType << 3) | ((sample_index >> 1) & 0x7);
+    data[1] = ((sample_index & 0x1) << 7) | (channelConfig << 3);
 
     return data;
 }
