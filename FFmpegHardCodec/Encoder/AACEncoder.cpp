@@ -113,9 +113,17 @@ int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_sa
     return 0;
 }
 void AACEncoder::GetAudioCon(int &channels, int &sample_rate, int &profile){
-    channels = 2;
-    sample_rate = 44100;
-    profile = c_ctx_->profile;
+    if(c_ctx_->profile == FF_PROFILE_AAC_LOW){
+        channels = 2;
+        sample_rate = 44100;
+        profile = 1;
+    }
+    else if(c_ctx_->profile == FF_PROFILE_AAC_HE){
+        channels = 2;
+        sample_rate = 44100 / 2;
+        profile = 2;
+    }
+    
     return;
 }
 int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)

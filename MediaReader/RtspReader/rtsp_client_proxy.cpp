@@ -71,7 +71,7 @@ enum AudioType RtspClientProxy::GetAudioType(){
         return AudioType::AUDIO_AAC;
     }
     else if(client_->GetAudioType() == MediaEnum::PCMA){
-        return AudioType::AUDIO_NONE;
+        return AudioType::AUDIO_PCMA;
     }
     return AudioType::AUDIO_NONE;
 

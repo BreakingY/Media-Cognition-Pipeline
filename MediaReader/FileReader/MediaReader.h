@@ -55,7 +55,7 @@ public:
     void SetDataListner(MediaDataListner *lisnter, CloseCallbackFunc cb);
     bool HaveAudio();
     void GetVideoCon(int &width, int &height, int &fps);
-    void GetAudioCon(int &channels, int &sample_rate, int &audio_object_type, int &bit_per_sample);
+    void GetAudioCon(int &channels, int &sample_rate, int &profile, int &bit_per_sample);
     void Reset();
     
 private:

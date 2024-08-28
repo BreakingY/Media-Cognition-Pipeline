@@ -8,4 +8,5 @@ enum VideoType {
 enum AudioType {
     AUDIO_NONE,
     AUDIO_AAC,
+    AUDIO_PCMA,
 };

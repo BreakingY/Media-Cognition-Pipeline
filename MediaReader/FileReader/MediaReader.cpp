@@ -225,16 +225,15 @@ void MediaReader::GetVideoCon(int &width, int &height, int &fps){
     height = format_ctx_->streams[video_index_]->codecpar->height;
     fps = av_q2d(format_ctx_->streams[video_index_]->avg_frame_rate);
 }
-void MediaReader::GetAudioCon(int &channels, int &sample_rate, int &audio_object_type, int &bit_per_sample)
+void MediaReader::GetAudioCon(int &channels, int &sample_rate, int &profile, int &bit_per_sample)
 {
     if (audio_index_ < 0) {
-        channels = sample_rate = audio_object_type = bit_per_sample = -1;
+        channels = sample_rate = profile = bit_per_sample = -1;
         return;
     }
     sample_rate = format_ctx_->streams[audio_index_]->codecpar->sample_rate;
     channels = format_ctx_->streams[audio_index_]->codecpar->channels;
-    // profile = MPEG-4 Audio Object Type - 1
-    audio_object_type = format_ctx_->streams[audio_index_]->codecpar->profile + 1;
+    profile = format_ctx_->streams[audio_index_]->codecpar->profile;
     bit_per_sample = format_ctx_->streams[audio_index_]->codecpar->bits_per_coded_sample;
     return;
 }

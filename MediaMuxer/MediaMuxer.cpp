@@ -273,7 +273,7 @@ int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, 
 
     return 0;
 }
-static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFrequency, int audioObjectType, int *length)
+static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFrequency, int profile, int *length)
 {
     uint8_t *data = NULL;
     *length = 2;
@@ -282,7 +282,7 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
         log_error("malloc error");
         return NULL;
     }
-    if (audioObjectType < 1 || audioObjectType > 4) {
+    if (profile < 1 || profile > 4) {
         return NULL;
     }
 
@@ -309,7 +309,7 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
             break;
         }
     }
-    data[0] = (audioObjectType << 3) | ((sample_index >> 1) & 0x7);
+    data[0] = (profile << 3) | ((sample_index >> 1) & 0x7);
     data[1] = ((sample_index & 0x1) << 7) | (channelConfig << 3);
 
     return data;
