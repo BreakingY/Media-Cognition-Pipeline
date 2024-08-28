@@ -27,10 +27,13 @@ set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g  -fpermissive -std=c++17) 
 set(CMAKE_BUILD_TYPE Release)
 
+#如果定义则使用ffmpeg-nvidia代码(ffmpeg编译安装的时候增加nvidia选项)，否则使用ffmpeg纯编解码代码(ffmpeg编译安装的时候不需要指定额外参数)
+#add_definitions(-DUSE_FFMPEG_NVIDIA)
+
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(NX SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${COMMON} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265})
-target_link_libraries(NX pthread lzma avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
+target_link_libraries(NX pthread avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
 
 add_executable(MediaCodec ${TEST})
 target_link_libraries(MediaCodec NX)

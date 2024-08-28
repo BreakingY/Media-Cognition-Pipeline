@@ -17,7 +17,6 @@ extern "C" {
 #include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
-#include <libavutil/hwcontext.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
@@ -25,7 +24,7 @@ extern "C" {
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 }
-
+// #define USE_FFMPEG_NVIDIA
 typedef struct HardDataNodeSt {
     unsigned char *es_data;
     int es_data_len;
@@ -42,6 +41,10 @@ typedef struct HardDataNodeSt {
         }
     }
 } HardDataNode;
+#ifdef USE_FFMPEG_NVIDIA
+extern "C" {
+#include <libavutil/hwcontext.h>
+}
 typedef enum AVPixelFormat (*get_format)(struct AVCodecContext *s, const enum AVPixelFormat *fmt);
 // 支持cuda硬解码加速，如果ffmpeg或者显卡不支持自动切换软解码
 class HardVideoDecoder
@@ -50,19 +53,19 @@ class HardVideoDecoder
 public:
     HardVideoDecoder(bool is_h265 = false);
     virtual ~HardVideoDecoder();
-    int HardDecInit(bool is_h265 = false);
-    int SoftDecInit(bool is_h265 = false);
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
 
 private:
+    int HardDecInit(bool is_h265 = false);
+    int SoftDecInit(bool is_h265 = false);
     int hwDecoderInit(AVCodecContext *ctx, const enum AVHWDeviceType type);
     static void *DecodeThread(void *arg);
     void DecodeVideo(HardDataNode *data);
     static void *ScaleThread(void *arg);
     void ScaleVideo(AVFrame *frame);
 
-public:
+private:
     bool is_hard_ = false;
     enum AVCodecID decodec_id_;
     DecDataCallListner *callback_ = NULL;
@@ -95,5 +98,50 @@ public:
     struct timeval time_pre_;
     int time_inited_;
 };
+#else
+class HardVideoDecoder
+{
+
+public:
+    HardVideoDecoder(bool is_h265 = false);
+    virtual ~HardVideoDecoder();
+    void SetFrameFetchCallback(DecDataCallListner *call_func);
+    void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+
+private:
+    int SoftDecInit(bool is_h265 = false);
+    static void *DecodeThread(void *arg);
+    void DecodeVideo(HardDataNode *data);
+    static void *ScaleThread(void *arg);
+    void ScaleVideo(AVFrame *frame);
+
+private:
+    enum AVCodecID decodec_id_;
+    DecDataCallListner *callback_ = NULL;
+    AVCodecContext *codec_ctx_ = NULL;
+    AVCodec *codec_ = NULL;
+
+    AVPacket packet_;
+    AVFrame *frame_ = NULL;
+    struct SwsContext *img_convert_ctx_ = NULL;
+    enum AVPixelFormat out_pix_fmt_ = AV_PIX_FMT_NONE;
+
+    pthread_mutex_t packet_mutex_;
+    pthread_cond_t packet_cond_;
+    pthread_cond_t frame_cond_;
+    pthread_mutex_t frame_mutex_;
+    std::list<HardDataNode *> es_packets_;
+    std::list<AVFrame *> yuv_frames_;
+    pthread_t dec_thread_id_;
+    pthread_t sws_thread_id_;
+    bool abort_;
+
+    int now_frames_;
+    int pre_frames_;
+    struct timeval time_now_;
+    struct timeval time_pre_;
+    int time_inited_;
+};
+#endif
 
 #endif

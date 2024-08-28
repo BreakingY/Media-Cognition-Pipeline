@@ -1,4 +1,4 @@
-#ifdef USE_FFMPEG_NVIDIA
+#ifndef USE_FFMPEG_NVIDIA
 #include "H264HardEncoder.h"
 #include "log_helpers.h"
 #include <iostream>
@@ -73,79 +73,6 @@ HardVideoEncoder::~HardVideoEncoder()
 
     log_info("~HardVideoEncoder");
 }
-/**
- * ffmpeg -codecs | grep 264
- *         (decoders: h264 h264_v4l2m2m h264_cuvid ) (encoders: libx264 libx264rgb h264_nvenc h264_v4l2m2m h264_vaapi nvenc nvenc_h264 )
- */
-int HardVideoEncoder::HardEncInit(int width, int height, int fps)
-{
-    if (h264_codec_) {
-        log_warn("has been init Encoder...");
-        return -1;
-    }
-    char *codec_name = "h264_nvenc";
-    decodec_id_ = AV_CODEC_ID_H264;
-    // try to open hard encodec
-    log_info("Available device types:");
-    while ((type_ = av_hwdevice_iterate_types(type_)) != AV_HWDEVICE_TYPE_NONE) {
-        log_info("{}", av_hwdevice_get_type_name(type_));
-    }
-    type_ = av_hwdevice_find_type_by_name("cuda");
-    if (type_ == AV_HWDEVICE_TYPE_NONE) {
-        h264_codec_ctx_ = NULL;
-        h264_codec_ = NULL;
-        return -1;
-    }
-    h264_codec_ = avcodec_find_encoder_by_name(codec_name);
-    if (!h264_codec_) {
-        h264_codec_ctx_ = NULL;
-        h264_codec_ = NULL;
-        return -1;
-    }
-    // 解码不用设置这些，因为解码时按照h264数据进行解码，h264里面会包含关于解码的信息
-    h264_codec_ctx_ = avcodec_alloc_context3(h264_codec_);
-    if (!h264_codec_ctx_) {
-        h264_codec_ctx_ = NULL;
-        h264_codec_ = NULL;
-        return -1;
-    }
-    h264_codec_ctx_->codec_type = AVMEDIA_TYPE_VIDEO;
-    h264_codec_ctx_->pix_fmt = sw_pix_format_;
-    h264_codec_ctx_->width = width;
-    h264_codec_ctx_->height = height;
-    h264_codec_ctx_->time_base.num = 1;
-    h264_codec_ctx_->time_base.den = fps;
-    h264_codec_ctx_->bit_rate = 4000000;
-    h264_codec_ctx_->gop_size = 2 * fps;
-    h264_codec_ctx_->thread_count = 1;
-    h264_codec_ctx_->slices = 1; // int slice_count; // slice数 int slices; // 切片数量。 表示图片细分的数量。 用于并行解码。
-    /**
-     * 遇到问题：编码得到的h264文件播放时提示"non-existing PPS 0 referenced"
-     * 分析原因：未将pps sps 等信息写入
-     * 解决方案：加入标记AV_CODEC_FLAG2_LOCAL_HEADER
-     */
-    h264_codec_ctx_->flags |= AV_CODEC_FLAG2_LOCAL_HEADER;
-    h264_codec_ctx_->flags |= AV_CODEC_FLAG_LOW_DELAY;
-
-    // 不能使用下面的参数，否则硬编码器打不开
-    // AVDictionary *param = 0;
-    // priv_data  属于每个编码器特有的设置域，用av_opt_set 设置
-    // av_opt_set(h264_codec_ctx_->priv_data, "preset", "ultrafast", 0);
-    // av_opt_set(h264_codec_ctx_->priv_data, "tune", "zerolatency", 0);
-    // av_dict_set(&param, "preset", "ultrafast", 0);
-    // av_dict_set(&param, "profile", "baseline", 0);
-
-    if (avcodec_open2(h264_codec_ctx_, h264_codec_, NULL) < 0) {
-        avcodec_close(h264_codec_ctx_);
-        avcodec_free_context(&h264_codec_ctx_);
-        h264_codec_ = NULL;
-        h264_codec_ctx_ = NULL;
-        return -1;
-    }
-    is_hard_enc_ = true;
-    log_info("using hard enc");
-    return 1;
-}
 int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
 {
     if (h264_codec_) {
@@ -154,7 +81,6 @@ int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
     }
     decodec_id_ = AV_CODEC_ID_H264;
     h264_codec_ = avcodec_find_encoder(decodec_id_);
-    // 解码不用设置这些，因为解码时按照h264数据进行解码，h264里面会包含关于解码的信息
     h264_codec_ctx_ = avcodec_alloc_context3(h264_codec_);
     h264_codec_ctx_->codec_type = AVMEDIA_TYPE_VIDEO;
     h264_codec_ctx_->pix_fmt = sw_pix_format_;
@@ -194,9 +120,7 @@ int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
 int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
 {
     if (!h264_codec_) {
-        if (HardEncInit(bgr_frame.cols, bgr_frame.rows, fps) < 0) {
-            SoftEncInit(bgr_frame.cols, bgr_frame.rows, fps);
-        }
+        SoftEncInit(bgr_frame.cols, bgr_frame.rows, fps); 
     }
     if (!sws_context_) {
         sws_context_ = sws_getContext(h264_codec_ctx_->width, h264_codec_ctx_->height, AV_PIX_FMT_BGR24, h264_codec_ctx_->width, h264_codec_ctx_->height, sw_pix_format_,
