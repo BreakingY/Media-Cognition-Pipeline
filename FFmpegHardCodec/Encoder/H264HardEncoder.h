@@ -11,6 +11,7 @@ extern "C" {
 #include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
@@ -18,9 +19,6 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 #ifdef USE_FFMPEG_NVIDIA
-extern "C" {
-#include <libavutil/hwcontext.h>
-}
 class HardVideoEncoder
 {
 public:

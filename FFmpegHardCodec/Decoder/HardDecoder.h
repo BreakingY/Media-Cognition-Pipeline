@@ -17,6 +17,7 @@ extern "C" {
 #include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
@@ -42,9 +43,6 @@ typedef struct HardDataNodeSt {
     }
 } HardDataNode;
 #ifdef USE_FFMPEG_NVIDIA
-extern "C" {
-#include <libavutil/hwcontext.h>
-}
 typedef enum AVPixelFormat (*get_format)(struct AVCodecContext *s, const enum AVPixelFormat *fmt);
 // 支持cuda硬解码加速，如果ffmpeg或者显卡不支持自动切换软解码
 class HardVideoDecoder
