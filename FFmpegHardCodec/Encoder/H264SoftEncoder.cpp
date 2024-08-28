@@ -1,4 +1,4 @@
-#ifndef USE_FFMPEG_NVIDIA
+#ifdef USE_FFMPEG_SOFT
 #include "H264HardEncoder.h"
 #include "log_helpers.h"
 #include <iostream>

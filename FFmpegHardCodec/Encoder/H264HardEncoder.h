@@ -66,7 +66,8 @@ private:
     int now_frames_;
     int pre_frames_;
 };
-#else
+#endif
+#ifdef USE_FFMPEG_SOFT
 class HardVideoEncoder
 {
 public:

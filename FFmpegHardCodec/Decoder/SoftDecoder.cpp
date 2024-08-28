@@ -1,4 +1,4 @@
-#ifndef USE_FFMPEG_NVIDIA
+#ifdef USE_FFMPEG_SOFT
 #include "HardDecoder.h"
 static const uint64_t NANO_SECOND = UINT64_C(1000000000);
 int HardVideoDecoder::SoftDecInit(bool is_h265)

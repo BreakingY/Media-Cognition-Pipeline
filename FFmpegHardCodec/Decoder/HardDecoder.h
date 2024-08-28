@@ -96,7 +96,8 @@ private:
     struct timeval time_pre_;
     int time_inited_;
 };
-#else
+#endif
+#ifdef USE_FFMPEG_SOFT
 class HardVideoDecoder
 {
 
