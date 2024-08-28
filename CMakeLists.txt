@@ -27,7 +27,7 @@ set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g  -fpermissive -std=c++14) 
 set(CMAKE_BUILD_TYPE Release)
 
-#如果定义则使用ffmpeg-nvidia代码(ffmpeg编译安装的时候增加nvidia选项)，否则使用ffmpeg纯编解码代码(ffmpeg编译安装的时候不需要指定额外参数)
+#如果定义则使用ffmpeg-nvidia代码(ffmpeg编译安装的时候增加nvidia选项)，否则使用ffmpeg纯软件编解码代码(ffmpeg编译安装的时候不需要指定额外参数)
 #add_definitions(-DUSE_FFMPEG_NVIDIA)
 
 
