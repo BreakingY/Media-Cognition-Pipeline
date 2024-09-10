@@ -23,7 +23,6 @@ AACDecoder::AACDecoder()
     frame_ = NULL;
     swr_ctx_ = NULL;
     aborted_ = false;
-    dst_nb_samples_ = NULL;
     time_inited_ = 0;
     pthread_cond_init(&packet_cond_, NULL);
     pthread_mutex_init(&packet_mutex_, NULL);

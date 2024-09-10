@@ -411,7 +411,7 @@ int Muxer::SendHeader()
 void Muxer::RewriteVideoExtraData()
 {
     AVCodecParameters *out_codecpar = vid_stream_->codecpar;
-    int alloc_size = out_codecpar->extradata + 1024;
+    int alloc_size = out_codecpar->extradata_size + 1024;
     out_codecpar->extradata = (uint8_t *)av_realloc(out_codecpar->extradata, alloc_size);
     out_codecpar->extradata_size = 0;
     memset(out_codecpar->extradata, 0, alloc_size);
