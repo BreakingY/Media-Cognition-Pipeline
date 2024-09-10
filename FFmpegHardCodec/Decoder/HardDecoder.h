@@ -38,7 +38,7 @@ typedef struct HardDataNodeSt {
     {
         if (es_data) {
             free(es_data);
-            es_data_len = NULL;
+            es_data = NULL;
         }
     }
 } HardDataNode;

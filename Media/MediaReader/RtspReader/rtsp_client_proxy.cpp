@@ -19,7 +19,7 @@ RtspClientProxy::~RtspClientProxy(){
     delete client_;
     std::cout << "~RtspClientProxy" << std::endl;
 }
-static void *RtspClientProxy::ReconnectThread(void *arg){
+void *RtspClientProxy::ReconnectThread(void *arg){
     RtspClientProxy *self = (RtspClientProxy*)arg;
     while(self->run_flag_){
         bool stat = self->client_->GetOpenStat();

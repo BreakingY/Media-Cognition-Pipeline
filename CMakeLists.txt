@@ -4,23 +4,28 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 set(CMAKE_CXX_STANDARD 14)
 include_directories(/usr/local/include)
-include_directories(Warpper MediaCommon Log Log/spdlog FFmpegHardCodec FFmpegHardCodec/Decoder FFmpegHardCodec/Encoder MediaMuxer 
-                    MediaReader Bitstream/h264/include Bitstream/h265/include
-                    MediaReader/FileReader MediaReader/RtspReader MediaReader/RtspReader/3rdparty MediaReader/RtspReader/rtp)
+include_directories(Warpper Log Log/spdlog 
+                    FFmpegHardCodec FFmpegHardCodec/Decoder FFmpegHardCodec/Encoder 
+                    Media/MediaCommon
+                    Media/MediaMuxer
+                    Media/Bitstream/h264/include Media/Bitstream/h265/include
+                    Media/MediaReader Media/MediaReader/FileReader Media/MediaReader/RtspReader Media/MediaReader/RtspReader/3rdparty Media/MediaReader/RtspReader/rtp)
 
 aux_source_directory(Test TEST)
 aux_source_directory(Warpper WRAPPER)
-aux_source_directory(MediaCommon MEDIACOMMON)
+# codec
 aux_source_directory(FFmpegHardCodec/Decoder HARDDEC)
 aux_source_directory(FFmpegHardCodec/Encoder HARDENC)
-aux_source_directory(MediaMuxer MUXER)
-aux_source_directory(MediaReader/FileReader FILEREADER)
-aux_source_directory(MediaReader/RtspReader RTSPREADER)
-aux_source_directory(MediaReader/RtspReader/3rdparty RTSP3Rd)
-aux_source_directory(MediaReader/RtspReader/rtp RTP)
+# Media
+aux_source_directory(Media/MediaCommon MEDIACOMMON)
+aux_source_directory(Media/MediaMuxer MUXER)
+aux_source_directory(Media/MediaReader/FileReader FILEREADER)
+aux_source_directory(Media/MediaReader/RtspReader RTSPREADER)
+aux_source_directory(Media/MediaReader/RtspReader/3rdparty RTSP3Rd)
+aux_source_directory(Media/MediaReader/RtspReader/rtp RTP)
 
-aux_source_directory(Bitstream/h264/source BH264)
-aux_source_directory(Bitstream/h265/source BH265)
+aux_source_directory(Media/Bitstream/h264/source BH264)
+aux_source_directory(Media/Bitstream/h265/source BH265)
 
 link_directories(/usr/local/lib /usr/lib)
 set(EXECUTABLE_OUTPUT_PATH ./)
