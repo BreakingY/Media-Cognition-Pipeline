@@ -37,7 +37,7 @@ add_definitions(-DUSE_FFMPEG_SOFT)  # 使用ffmpeg纯软件编解码代码(ffmpe
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
-add_library(NX SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${COMMON} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265})
+add_library(NX SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265})
 target_link_libraries(NX pthread avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
 
 add_executable(MediaCodec ${TEST})
