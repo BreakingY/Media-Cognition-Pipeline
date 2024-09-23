@@ -4,6 +4,9 @@
 #include "DecEncInterface.h"
 #include <opencv2/opencv.hpp>
 #include <sys/time.h>
+#include <string.h>
+#include <pthread.h>
+#include <list>
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>

@@ -386,7 +386,7 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
     // fwrite(buffer_pcm_, 1, buf_len, fp_file); // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
     return;
 }
-char *enc_h264_filename = "out.h264";
+const char *enc_h264_filename = "out.h264";
 FILE *enc_h264_fd = NULL;
 void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
 {
@@ -399,7 +399,7 @@ void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
 #endif
     return;
 }
-char *enc_aac_filename = "out.aac";
+const char *enc_aac_filename = "out.aac";
 FILE *enc_aac_fd = NULL;
 void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len)
 {

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -95,6 +96,8 @@ private:
     struct timeval time_now_;
     struct timeval time_pre_;
     int time_inited_;
+
+    unsigned char *image_ptr_ = NULL;
 };
 #endif
 #ifdef USE_FFMPEG_SOFT
@@ -140,7 +143,8 @@ private:
     struct timeval time_now_;
     struct timeval time_pre_;
     int time_inited_;
+
+    unsigned char *image_ptr_ = NULL;
 };
 #endif
-
 #endif

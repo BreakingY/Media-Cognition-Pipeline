@@ -250,6 +250,10 @@ HardVideoDecoder::~HardVideoDecoder()
         av_buffer_unref(&hw_device_ctx_);
     }
     av_free_packet(&packet_);
+    if(image_ptr_){
+        free(image_ptr_);
+        image_ptr_ = NULL;
+    }
     log_debug("~HardVideoDecoder");
 }
 void HardVideoDecoder::SetFrameFetchCallback(DecDataCallListner *call_func)
@@ -421,7 +425,9 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
         img_convert_ctx_ = sws_getContext(frame->width, frame->height, out_pix_fmt_, frame->width, frame->height, AV_PIX_FMT_BGR24, SWS_FAST_BILINEAR, NULL, NULL, NULL); // YUV(NV12)-->RGB
     }
     int size = frame->width * frame->height * 3;
-    unsigned char *image_ptr = new unsigned char[size];
+    if(!image_ptr_){
+        image_ptr_ = (unsigned char *)malloc(size);
+    }
     /**
      * linesize[]数组中保存的是对应通道的数据宽度 ， 输出BGR为packed格式，所以指定linesize[0]既可，如果是planar格式，例如YUV420P
      * linesize[0]——-Y分量的宽度
@@ -431,8 +437,8 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
      */
     int linesize[4] = {3 * frame->width, 0, 0, 0};
 
-    sws_scale(img_convert_ctx_, frame->data, frame->linesize, 0, frame->height, (uint8_t **)&image_ptr, linesize); // 处理后的数据放到image_ptr中
-    cv::Mat frame_mat(frame->height, frame->width, CV_8UC3, image_ptr);
+    sws_scale(img_convert_ctx_, frame->data, frame->linesize, 0, frame->height, (uint8_t **)&image_ptr_, linesize); // 处理后的数据放到image_ptr_中
+    cv::Mat frame_mat(frame->height, frame->width, CV_8UC3, image_ptr_);
     cv::Mat frame_ret = frame_mat.clone();
     if (callback_ != NULL) {
         now_frames_++;
@@ -452,7 +458,6 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
         }
         callback_->OnRGBData(frame_ret);
     }
-    delete[] image_ptr;
     uint8_t *p = frame->data[0];
     av_freep(&p);
     av_frame_free(&frame);
