@@ -293,6 +293,9 @@ void MiedaWrapper::OnVideoData(VideoData data)
         log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
         hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
+#ifdef USE_DVPP_MPI
+        hard_decoder_->Init(device_id_, width_, height_); // dvpp
+#endif
     }
     // int type;
     // if(video_type_ == VIDEO_H264){
@@ -340,6 +343,9 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
     // 之后再把处理后的图像进行编码
     if (!hard_encoder_) {
         hard_encoder_ = new HardVideoEncoder();
+#ifdef USE_DVPP_MPI
+        hard_encoder_->SetDevice(device_id_); // dvpp
+#endif
         hard_encoder_->Init(frame, fps_);
         hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
     }
@@ -386,8 +392,8 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
     // fwrite(buffer_pcm_, 1, buf_len, fp_file); // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
     return;
 }
-const char *enc_h264_filename = "out.h264";
-FILE *enc_h264_fd = NULL;
+static const char *enc_h264_filename = "out.h264";
+static FILE *enc_h264_fd = NULL;
 void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
 {
     if (enc_h264_fd == NULL) {
@@ -399,8 +405,8 @@ void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
 #endif
     return;
 }
-const char *enc_aac_filename = "out.aac";
-FILE *enc_aac_fd = NULL;
+static const char *enc_aac_filename = "out.aac";
+static FILE *enc_aac_fd = NULL;
 void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len)
 {
     if (enc_aac_fd == NULL) {

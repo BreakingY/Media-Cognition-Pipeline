@@ -14,6 +14,10 @@ int main(int argc, char **argv)
     }
     av_register_all();
     av_log_set_level(AV_LOG_FATAL);
+#ifdef USE_DVPP_MPI
+    aclInit(NULL);
+    hi_mpi_sys_init();
+#endif
     struct rlimit core_limits;
     core_limits.rlim_cur = core_limits.rlim_max = RLIM_INFINITY;
     setrlimit(RLIMIT_CORE, &core_limits);
@@ -22,6 +26,10 @@ int main(int argc, char **argv)
         usleep(1000 * 100);
     }
     delete test;
+#ifdef USE_DVPP_MPI
+    hi_mpi_sys_exit();
+    aclFinalize();
+#endif
     log_info("over");
     return 0;
 }

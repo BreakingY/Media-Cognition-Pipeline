@@ -26,7 +26,6 @@ extern "C" {
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 }
-// #define USE_FFMPEG_NVIDIA
 typedef struct HardDataNodeSt {
     unsigned char *es_data;
     int es_data_len;
@@ -145,6 +144,74 @@ private:
     int time_inited_;
 
     unsigned char *image_ptr_ = NULL;
+};
+#endif
+#ifdef USE_DVPP_MPI
+#include <acl.h>
+#include <acl_rt.h>
+#include <hi_dvpp.h>
+// w-Integer multiples of 16 
+// h-Integer multiples of 2
+class HardVideoDecoder
+{
+
+public:
+    HardVideoDecoder(bool is_h265 = false);
+    virtual ~HardVideoDecoder();
+    void Init(int32_t device_id, int width, int height);
+    void SetFrameFetchCallback(DecDataCallListner *call_func);
+    void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+
+private:
+    void VdecResetChn();
+    static void *SendStream(void *arg);
+    void DecodeVideo(HardDataNode *data);
+    static void *GetPic(void *arg);
+    void Stop();
+    void *GetOutAddr();
+    void PutOutAddr(void *addr);
+private:
+    int32_t device_id_ = 0;
+    int width_;
+    int height_;
+    int32_t channel_id_;
+    hi_vdec_chn_attr chn_attr_;
+    hi_data_bit_width bit_width_ = HI_DATA_BIT_WIDTH_8;// HI_DATA_BIT_WIDTH_8、HI_DATA_BIT_WIDTH_10， 默认是HI_DATA_BIT_WIDTH_8
+    hi_pixel_format out_format_ = HI_PIXEL_FORMAT_YUV_SEMIPLANAR_420;
+
+    void * in_es_buffer_ = NULL;
+    uint32_t in_es_buffer_size_ = 1024 * 1024 * 4;
+
+    uint32_t pool_num_ = 10;
+    uint32_t out_buffer_size_ = 0;
+    std::list<void*> out_buffer_pool_;
+    pthread_mutex_t out_buffer_pool_mutex_;
+    pthread_cond_t out_buffer_pool_cond_;
+
+    // color convert
+    hi_vpc_chn channel_id_color_;
+    hi_pixel_format out_format_color_ = HI_PIXEL_FORMAT_BGR_888;
+    hi_vpc_pic_info input_pic_;
+    hi_vpc_pic_info output_pic_;
+    unsigned char *image_ptr_ = NULL;
+
+
+    pthread_t send_stream_thread_id_;
+    pthread_t get_pic_thread_id_;
+
+
+    DecDataCallListner *callback_ = NULL;
+    pthread_mutex_t packet_mutex_;
+    pthread_cond_t packet_cond_;
+    std::list<HardDataNode *> es_packets_;
+    bool abort_ = false;
+
+    int now_frames_;
+    int pre_frames_;
+    struct timeval time_now_;
+    struct timeval time_pre_;
+    int time_inited_;
+    
 };
 #endif
 #endif

@@ -32,13 +32,29 @@ set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g  -fpermissive -std=c++14) 
 set(CMAKE_BUILD_TYPE Release)
 
-# add_definitions(-DUSE_FFMPEG_NVIDIA) # 使用ffmpeg-nvidia代码(ffmpeg编译安装的时候增加nvidia选项)
-add_definitions(-DUSE_FFMPEG_SOFT)  # 使用ffmpeg纯软件编解码代码(ffmpeg编译安装的时候不需要指定额外参数)
+########################################ffmpeg nvidia###################################################
+# add_definitions(-DUSE_FFMPEG_NVIDIA)
+########################################################################################################
+
+########################################ffmpeg soft#####################################################
+add_definitions(-DUSE_FFMPEG_SOFT)
+########################################################################################################
+
+########################################Ascend DVPP V2##################################################
+# add_definitions(-DUSE_DVPP_MPI -DHMEV_PLATFORM_SDK)
+# include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp
+#                     FFmpegHardCodec/Encoder/dvpp_enc)
+# link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64/stub)
+# aux_source_directory(FFmpegHardCodec/Encoder/dvpp_enc DVPP_ENC)
+########################################################################################################
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
-add_library(NX SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265})
+add_library(NX SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC})
 target_link_libraries(NX pthread avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
+########################################Ascend DVPP V2##################################################
+# target_link_libraries(NX ascendcl acl_dvpp_mpi)
+########################################################################################################
 
 add_executable(MediaCodec ${TEST})
 target_link_libraries(MediaCodec NX)

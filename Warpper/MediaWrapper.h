@@ -79,5 +79,8 @@ public:
     int video_stream_ = -1;
     int audio_stream_ = -1;
 
+    // GPU
+    int32_t device_id_ = 0;
+
 };
 #endif

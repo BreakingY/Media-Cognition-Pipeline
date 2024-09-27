@@ -249,7 +249,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             sws_scale(self->sws_context_, mat_frame.data, mat_frame.linesize, 0, mat_frame.height,
                       yuv_frame->data, yuv_frame->linesize);
             pthread_mutex_lock(&self->yuv_mutex_);
-#if 0
+#ifdef DROP_FRAME
 			// 丢帧处理
             if (self->yuv_frames_.size() > 5) {
                 for (std::list<AVFrame *>::iterator it = self->yuv_frames_.begin();
@@ -388,7 +388,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
 int HardVideoEncoder::AddVideoFrame(cv::Mat bgr_frame)
 {
     pthread_mutex_lock(&bgr_mutex_);
-#if 0
+#ifdef DROP_FRAME
 	// 丢帧处理
     if (bgr_frames_.size() > 5) {
         bgr_frames_.clear();
