@@ -5,7 +5,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 set(CMAKE_CXX_STANDARD 14)
 include_directories(/usr/local/include)
 include_directories(Warpper Log Log/spdlog 
-                    FFmpegHardCodec FFmpegHardCodec/Decoder FFmpegHardCodec/Encoder 
+                    HardCodec HardCodec/Decoder HardCodec/Encoder 
                     Media/MediaCommon
                     Media/MediaMuxer
                     Media/Bitstream/h264/include Media/Bitstream/h265/include
@@ -14,8 +14,8 @@ include_directories(Warpper Log Log/spdlog
 aux_source_directory(Test TEST)
 aux_source_directory(Warpper WRAPPER)
 # codec
-aux_source_directory(FFmpegHardCodec/Decoder HARDDEC)
-aux_source_directory(FFmpegHardCodec/Encoder HARDENC)
+aux_source_directory(HardCodec/Decoder HARDDEC)
+aux_source_directory(HardCodec/Encoder HARDENC)
 # Media
 aux_source_directory(Media/MediaCommon MEDIACOMMON)
 aux_source_directory(Media/MediaMuxer MUXER)
@@ -43,9 +43,9 @@ add_definitions(-DUSE_FFMPEG_SOFT)
 ########################################Ascend DVPP V2##################################################
 # add_definitions(-DUSE_DVPP_MPI -DHMEV_PLATFORM_SDK)
 # include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp
-#                     FFmpegHardCodec/Encoder/dvpp_enc)
+#                     HardCodec/Encoder/dvpp_enc)
 # link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64/stub)
-# aux_source_directory(FFmpegHardCodec/Encoder/dvpp_enc DVPP_ENC)
+# aux_source_directory(HardCodec/Encoder/dvpp_enc DVPP_ENC)
 ########################################################################################################
 
 
