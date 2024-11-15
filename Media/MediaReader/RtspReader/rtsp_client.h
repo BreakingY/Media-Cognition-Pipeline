@@ -11,6 +11,17 @@ enum TRANSPORT{
     RTP_OVER_TCP = 0,
     RTP_OVER_UDP,
 };
+enum RTSPCMDSTAT{
+    RTSP_NONE = 0,
+    RTSP_OPTIONS,
+    RTSP_DESCRIBE,
+    RTSP_STEUP,
+    RTSP_STEUP_VIDEO,
+    RTSP_STEUP_ADUIO,
+    RTSP_PLAY,
+    RTSP_PLAYING,
+    RTSP_COMPLETE,
+};
 class RtspMediaInterface {
 public:
   virtual void RtspVideoData(int64_t pts, const uint8_t* data, size_t size) = 0;
@@ -67,10 +78,16 @@ private:
     SDPParse *sdp_ = NULL;
     std::string video_url_ = "";
     std::string audio_url_ = "";
+    bool video_setup_ = false;
+    bool audio_setup_ = false;
     enum TRANSPORT rtp_transport_;
     std::string session_ = "" ;
     int timeout_ = 60; // 秒
     bool connected_ = false;
+    enum RTSPCMDSTAT rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_NONE;
+    char buffer_cmd_[4096] = {0};
+    int buffer_cmd_used_ = 0;
+    int buffer_cmd_size_ = 0;
     // udp 
     int rtp_port_video_ = -1;
     int rtcp_port_video_ = -1;

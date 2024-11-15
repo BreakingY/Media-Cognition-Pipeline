@@ -52,13 +52,12 @@ RtspClient::~RtspClient(){
 }
 int RtspClient::Connect(char *url){
     int ret;
-    char buffer[1024] = {0};
     enum MediaEnum video_type;
     enum MediaEnum audio_type;
     rtsp_url_ = url;
     bool reslut = ParseRTSPUrl(rtsp_url_, url_info_);
     if(!reslut){
-        printf("parseRTSPUrl error\n");
+        std::cout << "parseRTSPUrl error" << std::endl;
         return -1;
     }
 #ifdef RTSP_DEBUG
@@ -70,97 +69,107 @@ int RtspClient::Connect(char *url){
 #endif
     rtsp_sd_ = CreateTcpSocket();
     if(rtsp_sd_ < 0){
-        printf("createTcpSocket error ret:%d\n",rtsp_sd_);
+        std::cout << "createTcpSocket error ret:" << rtsp_sd_ << std::endl;
         return -1;
     }
     ret = ConnectToServer(rtsp_sd_, url_info_.host.c_str(), url_info_.port,5000); // 5s
     if(ret < 0){
         connected_ = false;
-        printf("ConnectToServer ret:%d\n",ret);
+        std::cout << "ConnectToServer ret:" << ret << std::endl;
         return -1;
     }
-    /*SendOPTIONS*/
-    if(SendOPTIONS(url_info_.url.c_str()) <= 0){
-        goto faild;
-    }
-    ret = recv(rtsp_sd_, buffer, sizeof(buffer) , 0);
-    if(ret <= 0){
-        goto end;
-    }
-    buffer[ret] = '\0';
+    while(rtsp_cmd_stat_ != RTSPCMDSTAT::RTSP_PLAYING){
+        switch (rtsp_cmd_stat_)
+        {
+            case RTSPCMDSTAT::RTSP_NONE:
+                if(SendOPTIONS(url_info_.url.c_str()) <= 0){
+                    goto faild;
+                }
+                rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_OPTIONS;
+                break;
+            case RTSPCMDSTAT::RTSP_OPTIONS:
+                if(DecodeOPTIONS(buffer_cmd_, buffer_cmd_size_) < 0){
+                    goto faild;
+                }
+                if(rtsp_cmd_stat_ == RTSPCMDSTAT::RTSP_DESCRIBE){
+                    if(SendDESCRIBE(url_info_.url.c_str(), NULL) <= 0){
+                        goto faild;
+                    }
+                }
+                break;
+            case RTSPCMDSTAT::RTSP_DESCRIBE:            
+                if(DecodeDESCRIBE(url_info_.url.c_str(), buffer_cmd_, buffer_cmd_size_) < 0){
+                    goto faild;
+                }
+                if(rtsp_cmd_stat_ == RTSPCMDSTAT::RTSP_STEUP){
+                    if(!video_url_.empty()){
+                        video_setup_ = true;
+                        if(SendSTEUP(video_url_.c_str()) <= 0){
+                            goto faild;
+                        }
+                        rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_STEUP_VIDEO;
+                    }
+                    else if(!audio_url_.empty()){
+                        audio_setup_ = true;
+                        if(SendSTEUP(audio_url_.c_str()) <= 0){
+                            goto faild;
+                        }
+                        rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_STEUP_ADUIO;
+                    }
+                    else{
+                        goto faild;
+                    }
+                }
+                break;
+            case RTSPCMDSTAT::RTSP_STEUP_VIDEO:
+                if(DecodeSTEUP(video_url_.c_str(), buffer_cmd_, buffer_cmd_size_) < 0){
+                    goto faild;
+                }
+                if(rtsp_cmd_stat_ == RTSPCMDSTAT::RTSP_PLAY){
+                    if(SendPLAY(url_info_.url.c_str()) <= 0){
+                        goto faild;
+                    }
+                }
+                break;
+            case RTSPCMDSTAT::RTSP_STEUP_ADUIO:
+                if(DecodeSTEUP(audio_url_.c_str(), buffer_cmd_, buffer_cmd_size_) < 0){
+                    goto faild;
+                }
+                if(rtsp_cmd_stat_ == RTSPCMDSTAT::RTSP_PLAY){
+                    if(SendPLAY(url_info_.url.c_str()) <= 0){
+                        goto faild;
+                    }
+                }
+                break;
+            case RTSPCMDSTAT::RTSP_PLAY:
+                if(DecodePLAY(url_info_.url.c_str(),buffer_cmd_, buffer_cmd_size_) < 0){
+                    goto faild;
+                }
+                break;
+            default:
+                break;
+        }
+        if(rtsp_cmd_stat_ != RTSPCMDSTAT::RTSP_PLAYING){
+            if(buffer_cmd_used_ < buffer_cmd_size_){
+                memmove(buffer_cmd_, buffer_cmd_ + buffer_cmd_used_, buffer_cmd_size_ - buffer_cmd_used_);
+                buffer_cmd_size_ -= buffer_cmd_used_;
+            }
+            else{
+                buffer_cmd_size_ = 0;
+                
+            }
+            buffer_cmd_used_ = 0;
+            ret= recv(rtsp_sd_, buffer_cmd_ + buffer_cmd_size_, sizeof(buffer_cmd_) - buffer_cmd_size_, 0);
+            if(ret <= 0){
+                goto end;
+            }
+            buffer_cmd_size_ += ret;
+            buffer_cmd_[buffer_cmd_size_] = '\0';
 #ifdef RTSP_DEBUG
-    std::cout <<  __FILE__ << __LINE__ << std::endl;
-    std::cout <<  buffer << std::endl;
+            std::cout <<  __FILE__ << __LINE__ << std::endl;
+            std::cout <<  buffer_cmd_ << std::endl;
 #endif
-    if(DecodeOPTIONS(buffer, ret) < 0){
-        goto faild;
-    }
-    /*DESCRIBE*/
-    if(SendDESCRIBE(url_info_.url.c_str(), NULL) <= 0){
-        goto faild;
-    }
-    ret = recv(rtsp_sd_, buffer, sizeof(buffer) , 0);
-    if(ret <= 0){
-        goto end;
-    }
-    buffer[ret] = '\0';
-#ifdef RTSP_DEBUG
-    std::cout <<  __FILE__ << __LINE__ << std::endl;
-    std::cout <<  buffer << std::endl;
-#endif
-    if(DecodeDESCRIBE(url_info_.url.c_str(),buffer, ret) < 0){
-        goto faild;
-    }
-    /*STEUP*/
-    if(!video_url_.empty()){
-        if(SendSTEUP(video_url_.c_str()) <= 0){
-            goto faild;
         }
-        ret = recv(rtsp_sd_, buffer, sizeof(buffer) , 0);
-        if(ret <= 0){
-            goto end;
-        }
-        buffer[ret] = '\0';
-#ifdef RTSP_DEBUG
-        std::cout <<  __FILE__ << __LINE__ << std::endl;
-        std::cout <<  buffer << std::endl;
-#endif
-        if(DecodeSTEUP(video_url_.c_str(), buffer, ret) < 0){
-            goto faild;
-        }
-    }
-    if(!audio_url_.empty()){
-        if(SendSTEUP(audio_url_.c_str()) <= 0){
-            goto faild;
-        }
-        ret = recv(rtsp_sd_, buffer, sizeof(buffer) , 0);
-        if(ret <= 0){
-            goto end;
-        }
-        buffer[ret] = '\0';
-#ifdef RTSP_DEBUG
-        std::cout <<  __FILE__ << __LINE__ << std::endl;
-        std::cout <<  buffer << std::endl;
-#endif
-        if(DecodeSTEUP(audio_url_.c_str(), buffer, ret) < 0){
-            goto faild;
-        }
-    }
-    /*PLAY*/
-    if(SendPLAY(url_info_.url.c_str()) <= 0){
-        goto faild;
-    }
-    ret = recv(rtsp_sd_, buffer, sizeof(buffer) , 0);
-    if(ret <= 0){
-        goto end;
-    }
-    buffer[ret] = '\0';
-#ifdef RTSP_DEBUG
-    std::cout <<  __FILE__ << __LINE__ << std::endl;
-    std::cout <<  buffer << std::endl;
-#endif
-    if(DecodePLAY(url_info_.url.c_str(),buffer, ret) < 0){
-        goto faild;
     }
     video_type = sdp_->GetVideoType();
     audio_type = sdp_->GetAudioType();
@@ -187,13 +196,14 @@ int RtspClient::Connect(char *url){
     /*create recv rtp packet pthread*/
     pthread_create(&tid_, NULL, &RtspClient::RecvPacketThd, this);
     connected_ = true;
+    std::cout << "Connect ok url:" << url << std::endl;
     return 0;
 end:
-    printf("recv data error ret:%d\n",ret);
+    std::cout << "recv data error ret:" << ret << std::endl;
     connected_ = false;
     return -1;
 faild:
-    printf("CMD error\n");
+    std::cout << "CMD error" << std::endl;
     connected_ = false;
     return -1;
 }
@@ -235,15 +245,22 @@ int RtspClient::SendOPTIONS(const char *url){
             cseq,
             USER_AGENT);
     int ret = send(rtsp_sd_, result, strlen(result), 0);
+#ifdef RTSP_DEBUG
+    std::cout <<  __FILE__ << __LINE__ << std::endl;
+    std::cout <<  result << std::endl;
+#endif
     cseq++;
     return ret;
 }
 int RtspClient::DecodeOPTIONS(const char *buffer, int len){
     std::string str = buffer;
-    struct ResponseMessage parsed_message = ParseRTSPMessage(str);
-    if(parsed_message.code < 0){ // // internal error
+    struct ResponseMessage parsed_message;
+    int used_bytes = ParseRTSPMessage(str, parsed_message);
+    buffer_cmd_used_ += used_bytes;
+    if(parsed_message.code < 0){ // internal error
         return -1;
     }
+    rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_DESCRIBE;
     // printf("code:%d\n",parsed_message.code);
     // printf("stat:%s\n",parsed_message.message.c_str());
     // for (const auto& kvp : parsed_message.result) {
@@ -266,6 +283,10 @@ int RtspClient::SendDESCRIBE(const char *url, const char *authorization){
     sprintf(result+strlen(result),"\r\n");
     cseq++;
     int ret = send(rtsp_sd_, result, strlen(result), 0);
+#ifdef RTSP_DEBUG
+    std::cout <<  __FILE__ << __LINE__ << std::endl;
+    std::cout <<  result << std::endl;
+#endif
     return ret;
 }
 static void ExtractRealmAndNonce(const std::string& digest, std::string& realm, std::string& nonce) {
@@ -298,24 +319,23 @@ std::string RtspClient::GenerateAuthHeader(std::string url, std::string response
 }
 int RtspClient::DecodeDESCRIBE(const char *url, const char *buffer, int len){
     std::string str = buffer;
-    struct ResponseMessage parsed_message = ParseRTSPMessage(str);
-    if(parsed_message.code < 0){ // // internal error
+    struct ResponseMessage parsed_message;
+    int used_bytes = ParseRTSPMessage(str, parsed_message);
+    buffer_cmd_used_ += used_bytes;
+    if(parsed_message.code < 0){ // internal error
         return -1;
     }
     if(parsed_message.code == 401){ // Unauthorized
         std::string authenticate = GetValueByKey(parsed_message.result, "WWW-Authenticate");
+        if(authenticate.empty()){
+            buffer_cmd_used_ -= used_bytes;
+            return 0;
+        }
         ExtractRealmAndNonce(authenticate, realm_, nonce_);
         std::string response = GenerateAuthResponse(url_info_.username.c_str(), url_info_.password.c_str(), realm_.c_str(), nonce_.c_str(), url, "DESCRIBE");
         std::string res = GenerateAuthHeader(url, response);
-        char buffer_recv[1024] = {0};
         SendDESCRIBE(url, res.c_str());
-        int ret = recv(rtsp_sd_, buffer_recv, sizeof(buffer_recv) , 0);
-        buffer_recv[ret] = '\0';
-#ifdef RTSP_DEBUG
-        std::cout <<  __FILE__ << __LINE__ << std::endl;
-        std::cout <<  buffer_recv << std::endl;
-#endif
-        DecodeDESCRIBE(url, buffer_recv, ret);
+        return 0;
     }
     else{ // 解析SDP
         // printf("code:%d\n",parsed_message.code);
@@ -324,7 +344,22 @@ int RtspClient::DecodeDESCRIBE(const char *url, const char *buffer, int len){
         // for (const auto& kvp : parsed_message.result) {
         //     std::cout << "Key: " << kvp.first << ", Value: " << kvp.second << std::endl;
         // }
+        std::string content_len_str = GetValueByKey(parsed_message.result, "Content-Length");
+        if(content_len_str.empty() || !parsed_message.find_payload){
+            buffer_cmd_used_ -= used_bytes;
+            return 0;
+        }
+        int content_len = std::stoi(content_len_str);
+        if((len - used_bytes) < content_len){ // payload不完整
+            buffer_cmd_used_ -= used_bytes;
+            return 0;
+        }
+        parsed_message.sdp = str.substr(used_bytes, content_len);
+        buffer_cmd_used_ += content_len;
         content_base_ = GetValueByKey(parsed_message.result, "Content-Base");
+        if(content_base_.empty()){
+            content_base_ = url;
+        }
         if(sdp_ == NULL){
             sdp_ = new SDPParse(parsed_message.sdp, content_base_);
             sdp_->Parse();
@@ -332,6 +367,7 @@ int RtspClient::DecodeDESCRIBE(const char *url, const char *buffer, int len){
             audio_url_ = sdp_->GetAudioUrl();
         }
     }
+    rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_STEUP;
     return 0;
 }
 int RtspClient::SendSTEUP(const char *url){
@@ -384,16 +420,26 @@ int RtspClient::SendSTEUP(const char *url){
     sprintf(result+strlen(result),"\r\n");
     cseq++;
     int ret = send(rtsp_sd_, result, strlen(result), 0);
+#ifdef RTSP_DEBUG
+    std::cout <<  __FILE__ << __LINE__ << std::endl;
+    std::cout <<  result << std::endl;
+#endif
     return ret;
 }
 int RtspClient::DecodeSTEUP(const char *url, const char *buffer, int len){
     std::string str = buffer;
-    struct ResponseMessage parsed_message = ParseRTSPMessage(str);
-    if(parsed_message.code < 0){ // // internal error
+    struct ResponseMessage parsed_message;
+    int used_bytes = ParseRTSPMessage(str, parsed_message);
+    buffer_cmd_used_ += used_bytes;
+    if(parsed_message.code < 0){ // internal error
         return -1;
     }
     std::string session = GetValueByKey(parsed_message.result, "Session");
-    if(!session.empty() && session_.empty()){
+    if(session.empty()){
+        buffer_cmd_used_ -= used_bytes;
+        return 0;
+    }
+    if(session_.empty()){
         int pos = session.find(';');
         if(pos != std::string::npos)
             session_ = session.substr(0, pos);
@@ -413,54 +459,55 @@ int RtspClient::DecodeSTEUP(const char *url, const char *buffer, int len){
             std::cout << "timeout_:" << timeout_ << std::endl;
         }
     }
-    if(std::string(url) == video_url_){
-        if(rtp_transport_ == TRANSPORT::RTP_OVER_UDP){
-            std::string transport = GetValueByKey(parsed_message.result, "Transport");
-            int pos = transport.find("server_port=");
-            if(pos == std::string::npos){
-                std::cout << "server Transport error:" << transport << std::endl;
-                return -1;
-            }
-            int pos1 = transport.find(';',pos);
-            std::string port_rtp;
-            if(pos1 == std::string::npos)
-                port_rtp = transport.substr(pos + strlen("server_port="));
-            else
-                port_rtp = transport.substr(pos + strlen("server_port="), pos1 - pos - strlen("server_port="));
+    if(rtp_transport_ == TRANSPORT::RTP_OVER_UDP){
+        std::string transport = GetValueByKey(parsed_message.result, "Transport");
+        if(transport.empty()){
+            buffer_cmd_used_ -= used_bytes;
+            return 0;
+        }
+        int pos = transport.find("server_port=");
+        if(pos == std::string::npos){
+            std::cout << "server Transport error:" << transport << std::endl;
+            return -1;
+        }
+        int pos1 = transport.find(';',pos);
+        std::string port_rtp;
+        if(pos1 == std::string::npos)
+            port_rtp = transport.substr(pos + strlen("server_port="));
+        else
+            port_rtp = transport.substr(pos + strlen("server_port="), pos1 - pos - strlen("server_port="));
+        if(std::string(url) == video_url_){
             sscanf(port_rtp.c_str(), "%d-%d", &rtp_port_video_server_, &rtcp_port_video_server_);
         }
         else{
-            // tcp donothing
-        }
-    }
-    else if(std::string(url) == audio_url_){
-        if(rtp_transport_ == TRANSPORT::RTP_OVER_UDP){
-            std::string transport = GetValueByKey(parsed_message.result, "Transport");
-            int pos = transport.find("server_port=");
-            if(pos == std::string::npos){
-                std::cout << "server Transport error:" << transport << std::endl;
-               return -1;
-            }
-            int pos1 = transport.find(';',pos);
-            std::string port_rtp;
-            if(pos1 == std::string::npos)
-                port_rtp = transport.substr(pos + strlen("server_port="));
-            else
-                port_rtp = transport.substr(pos + strlen("server_port="), pos1 - pos - strlen("server_port="));
             sscanf(port_rtp.c_str(), "%d-%d", &rtp_port_audio_server_, &rtcp_port_audio_server_);
-        }
-        else{
-            // tcp donothing
         }
     }
     else{
-        return -1;
+        // tcp donothing
     }
     // printf("code:%d\n",parsed_message.code);
     // printf("stat:%s\n",parsed_message.message.c_str());
     // for (const auto& kvp : parsed_message.result) {
     //     std::cout << "Key: " << kvp.first << ", Value: " << kvp.second << std::endl;
     // }
+    if(!audio_url_.empty() && !audio_setup_){
+        audio_setup_ = true;
+        if(SendSTEUP(audio_url_.c_str()) <= 0){
+            return -1;
+        }
+        rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_STEUP_ADUIO;
+        return 0;
+    }
+    if(!video_url_.empty() && !video_setup_){
+        video_setup_ = true;
+        if(SendSTEUP(video_url_.c_str()) <= 0){
+            return -1;
+        }
+        rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_STEUP_VIDEO;
+        return 0;
+    }
+    rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_PLAY;
     return 0;
 }
 int RtspClient::SendPLAY(const char *url){
@@ -486,15 +533,25 @@ int RtspClient::SendPLAY(const char *url){
     sprintf(result+strlen(result),"\r\n");
     cseq++;
     int ret = send(rtsp_sd_, result, strlen(result), 0);
+#ifdef RTSP_DEBUG
+    std::cout <<  __FILE__ << __LINE__ << std::endl;
+    std::cout <<  result << std::endl;
+#endif
     return ret;
 }
 int RtspClient::DecodePLAY(const char *url, const char *buffer, int len){
     std::string str = buffer;
-    struct ResponseMessage parsed_message = ParseRTSPMessage(str);
+    struct ResponseMessage parsed_message;
+    int used_bytes = ParseRTSPMessage(str, parsed_message);
+    buffer_cmd_used_ += used_bytes;
     if(parsed_message.code < 0){ // internal error
         return -1;
     }
     std::string session = GetValueByKey(parsed_message.result, "Session");
+    if(session.empty()){
+        buffer_cmd_used_ -= used_bytes;
+        return 0;
+    }
     int pos = session.find("timeout=");
     if(pos != std::string::npos){
         int pos1 = session.find(';', pos);
@@ -507,6 +564,7 @@ int RtspClient::DecodePLAY(const char *url, const char *buffer, int len){
         }
         timeout_ = atoi(timeout_str.c_str());
     }
+    rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_PLAYING;
     return 0;
 }
 int RtspClient::ReadPacketUdp(){

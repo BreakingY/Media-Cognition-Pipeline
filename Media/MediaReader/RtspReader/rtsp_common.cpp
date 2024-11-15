@@ -169,38 +169,45 @@ static bool ParseRTSPLine(const std::string& line, std::string& key, std::string
 
     return true;
 }
-char *GetLineFromBuf(char *buf, char *line)
+char *GetLineFromBuf(char *buf, char *line, int buf_len)
 {
-    while (*buf != '\n')
+    while ((buf_len > 0) && (*buf != '\n'))
     {
         *line = *buf;
         line++;
         buf++;
+        buf_len--;
     }
 
     *line = '\n';
     ++line;
     *line = '\0';
-
-    ++buf;
+    if(buf_len > 0){
+        ++buf;
+    }
     return buf;
 }
-struct ResponseMessage ParseRTSPMessage(const std::string& rtsp_message) {
-    struct ResponseMessage message;
+int ParseRTSPMessage(const std::string& rtsp_message, struct ResponseMessage &response) {
+    int used = 0; 
     std::vector<std::pair<std::string, std::string>> result;
     char line[1024];
     char *buffer_end = const_cast<char*>(rtsp_message.c_str()) + rtsp_message.size() -1;
-    char *buffer_ptr = GetLineFromBuf(const_cast<char*>(rtsp_message.c_str()), line);
+    char *buffer_ptr = const_cast<char*>(rtsp_message.c_str());
     char state_buffer[512] = {0};
-    if (sscanf(line, "RTSP/1.0 %d %s\r\n", &message.code, state_buffer) != 2) {
-        std::cout << "rtsp message error:" << rtsp_message << std::endl;
-        message.code = -1; // internal error
-        return message;
+    response.code = -1;
+    response.find_payload = false;
+    while(buffer_ptr < buffer_end){ // 跳过上一个消息数据
+        buffer_ptr = GetLineFromBuf(buffer_ptr, line, buffer_end - buffer_ptr);
+        used += strlen(line);
+        if (sscanf(line, "RTSP/1.0 %d %s\r\n", &response.code, state_buffer) == 2) {
+            break;
+        }        
     }
-    buffer_ptr = GetLineFromBuf(buffer_ptr, line);
     while(buffer_ptr < buffer_end){
-        if(line[0] == '\r' && line[1] == '\n'){
-            message.sdp = buffer_ptr;
+        buffer_ptr = GetLineFromBuf(buffer_ptr, line, buffer_end - buffer_ptr);
+        used += strlen(line);
+        if(line[0] == '\r' && line[1] == '\n'){ // have payload
+            response.find_payload = true;
             break;
         }
         std::string key;
@@ -209,16 +216,20 @@ struct ResponseMessage ParseRTSPMessage(const std::string& rtsp_message) {
         line[line_len-2] = '\0';
         ParseRTSPLine(line, key, value);
         result.emplace_back(key, value);
-        buffer_ptr = GetLineFromBuf(buffer_ptr, line);
-        
     }
-    message.result = result;
-    message.message = state_buffer;
-    return message;
+    response.result = result;
+    response.message = state_buffer;
+    return used;
 }
-std::string GetValueByKey(const std::vector<std::pair<std::string, std::string>>& headers, std::string key){
+std::string GetValueByKey(const std::vector<std::pair<std::string, std::string>>& headers, std::string key) {
+    std::string lower_key = key;
+    // 转换 key 为小写
+    std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), ::tolower);
     for (const auto& header : headers) {
-        if (header.first == key) {
+        std::string lower_header = header.first;
+        // 转换 header.first 为小写
+        std::transform(lower_header.begin(), lower_header.end(), lower_header.begin(), ::tolower);
+        if (lower_header == lower_key) {
             return header.second;
         }
     }

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cctype>
 
 #define RTP_VESION 2 // 版本
 #define RTP_HEADER_SIZE 12 // 头部大小
@@ -99,6 +101,7 @@ struct ResponseMessage {
     std::string message;  // 状态描述
     std::vector<std::pair<std::string, std::string>> result; //头部
     std::string sdp; // describe响应
+    bool find_payload;
 };
 enum MediaEnum{
     H264 = 0,   //H264
@@ -112,8 +115,8 @@ int CreateUdpSocket();
 int ConnectToServer(int sockfd, const char* ip, int port, int timeout); // timeout:ms
 int BindSocketAddr(int sockfd, const char *ip, int port);
 bool ParseRTSPUrl(const std::string& rtsp_url, RTSPUrlInfo& url_info);
-char *GetLineFromBuf(char *buf, char *line);
-struct ResponseMessage ParseRTSPMessage(const std::string& rtsp_message);
+char *GetLineFromBuf(char *buf, char *line, int buf_len);
+int ParseRTSPMessage(const std::string& rtsp_message, struct ResponseMessage &response);
 std::string GetValueByKey(const std::vector<std::pair<std::string, std::string>>& headers, std::string key);
 std::string GenerateAuthResponse(const char *username, const char *password, const char *realm, const char *nonce, const char *uri, const char * method);
 int CreateRtpSockets(int *fd1, int *fd2, int *port1, int *port2);
