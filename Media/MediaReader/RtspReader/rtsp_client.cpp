@@ -20,9 +20,12 @@ RtspClient::RtspClient(enum TRANSPORT transport){
 }
 RtspClient::~RtspClient(){
     run_flag_ = false;
-    int ret = pthread_join(tid_, NULL);
-    if(ret < 0){
-        std::cout << "pthread_join RecvPacketThd error:" << tid_ << std::endl;
+    if(run_tid_){
+        int ret = pthread_join(tid_, NULL);
+        if(ret < 0){
+            std::cout << "pthread_join RecvPacketThd error:" << tid_ << std::endl;
+        }
+        run_tid_ = false;
     }
     if(rtsp_sd_ == -1){
         close(rtsp_sd_);
@@ -698,6 +701,7 @@ int RtspClient::ReadPacketTcp(){
 }
 static void * RtspClient::RecvPacketThd(void *arg){
     RtspClient *self = (RtspClient*)arg;
+    self->run_tid_ = true;
     struct timeval pre_time;
     struct timeval now_time;
     gettimeofday(&now_time, 0);
@@ -714,7 +718,6 @@ static void * RtspClient::RecvPacketThd(void *arg){
             if(ret <= 0 ){
                 std::cout << "send heartbeat failure" << std::endl;
                 self->connected_ = false;
-                return NULL;
             }
             pre_time = now_time;
         }
@@ -729,5 +732,6 @@ static void * RtspClient::RecvPacketThd(void *arg){
             }
         }
     }
+    self->run_tid_ = false;
     return NULL;
 }

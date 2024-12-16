@@ -2,6 +2,7 @@
 #define RTSP_CLIENT
 #include <iostream>
 #include <string>
+#include <atomic>
 #include "rtsp_common.h"
 #include "sdp.h"
 #include "rtp_demuxer.h"
@@ -109,6 +110,7 @@ private:
     pthread_t tid_;
     bool run_flag_ = true;
     int recv_rtp_packet_timeout_ = 2; // 秒
+    std::atomic<bool> run_tid_ = {false};
 
     RTPDemuxer *rtp_video_demuxer_ = NULL;
     RTPDemuxer *rtp_audio_demuxer_ = NULL;
