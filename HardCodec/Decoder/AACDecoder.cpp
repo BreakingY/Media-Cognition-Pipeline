@@ -19,7 +19,8 @@ AACDecoder::AACDecoder()
         fprintf(stderr, "Could not open codec\n");
         exit(1);
     }
-    av_init_packet(&packet_);
+    // av_init_packet(&packet_);
+    memset(&packet_, 0, sizeof(packet_));
     frame_ = NULL;
     swr_ctx_ = NULL;
     aborted_ = false;
@@ -124,7 +125,7 @@ void AACDecoder::DecodeAudio(AACDataNode *data)
             av_packet_unref(&packet_);
             return;
         }
-        src_sample_fmt_ = frame_->format;
+        src_sample_fmt_ = (enum AVSampleFormat)frame_->format;
         src_nb_channels_ = frame_->channels;
         src_ratio_ = frame_->sample_rate;
         src_nb_samples_ = frame_->nb_samples;
@@ -227,7 +228,7 @@ void AACDecoder::ScaleAudio(AVFrame *frame)
     frame_dec->channels = dst_nb_channels_;
     frame_dec->channel_layout = av_get_default_channel_layout(dst_nb_channels_);
     av_frame_get_buffer(frame_dec, 1);
-    int ret = swr_convert(swr_ctx_, frame_dec->data, frame_dec->nb_samples, (uint8_t **)frame->data, frame->nb_samples);
+    int ret = swr_convert(swr_ctx_, frame_dec->data, frame_dec->nb_samples, (const uint8_t **)frame->data, frame->nb_samples);
     if (callback_) {
         now_frames_++;
         if (!time_inited_) {

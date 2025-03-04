@@ -60,7 +60,7 @@ int HardVideoDecoder::HardDecInit(bool is_h265)
         log_warn("has been init Decoder...");
         return -1;
     }
-    char *codec_name = NULL;
+    std::string codec_name;
     if (is_h265) {
         codec_name = "hevc_cuvid";
     } else {
@@ -78,7 +78,7 @@ int HardVideoDecoder::HardDecInit(bool is_h265)
         codec_ = NULL;
         return -1;
     }
-    codec_ = avcodec_find_decoder_by_name(codec_name);
+    codec_ = avcodec_find_decoder_by_name(codec_name.c_str());
     if (!codec_) {
         codec_ctx_ = NULL;
         codec_ = NULL;
@@ -175,7 +175,8 @@ HardVideoDecoder::HardVideoDecoder(bool is_h265)
         SoftDecInit(is_h265);
     }
     abort_ = false;
-    av_init_packet(&packet_);
+    // av_init_packet(&packet_);
+    memset(&packet_, 0, sizeof(packet_));
     frame_ = NULL;
     sw_frame_ = NULL;
     img_convert_ctx_ = NULL;
@@ -249,7 +250,7 @@ HardVideoDecoder::~HardVideoDecoder()
     if (hw_device_ctx_) {
         av_buffer_unref(&hw_device_ctx_);
     }
-    av_free_packet(&packet_);
+    av_packet_unref(&packet_);
     if(image_ptr_){
         free(image_ptr_);
         image_ptr_ = NULL;
@@ -359,9 +360,12 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
             return;
         }
         AVFrame *frame_nv12 = av_frame_alloc();
-        ret = avpicture_fill((AVPicture *)frame_nv12, buffer, out_pix_fmt_, codec_ctx_->width, codec_ctx_->height);
+        // ret = avpicture_fill((AVPicture *)frame_nv12, buffer, out_pix_fmt_, codec_ctx_->width, codec_ctx_->height);
         frame_nv12->width = codec_ctx_->width;
         frame_nv12->height = codec_ctx_->height;
+        frame_nv12->format = out_pix_fmt_;
+        av_image_fill_arrays(frame_nv12->data, frame_nv12->linesize, buffer, 
+                            (AVPixelFormat)frame_nv12->format, frame_nv12->width, frame_nv12->height, 1);
         pthread_mutex_lock(&frame_mutex_);
         yuv_frames_.push_back(frame_nv12);
         pthread_mutex_unlock(&frame_mutex_);

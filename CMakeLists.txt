@@ -29,7 +29,7 @@ aux_source_directory(Media/Bitstream/h265/source BH265)
 
 link_directories(/usr/local/lib /usr/lib)
 set(EXECUTABLE_OUTPUT_PATH ./)
-add_compile_options(-g  -fpermissive -std=c++14) 
+add_compile_options(-g -fpermissive -std=c++14) 
 set(CMAKE_BUILD_TYPE Release)
 
 ######ffmpeg nvidia######
@@ -61,21 +61,21 @@ endif()
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
-add_library(NX SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC})
-target_link_libraries(NX pthread avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
+add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC})
+target_link_libraries(mcp pthread avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
 if(DEFINED  DVPP_MPI)
-    target_link_libraries(NX ascendcl acl_dvpp_mpi)
+    target_link_libraries(mcp ascendcl acl_dvpp_mpi)
 endif()
 # for rtsp socket_io
 if(WIN32)
     # Set the function stack size to 6MB
     add_compile_options(-Wl,--stack,6000000)
-    target_link_libraries(NX ws2_32)
+    target_link_libraries(mcp ws2_32)
 elseif(UNIX)
-    target_link_libraries(NX pthread)
+    target_link_libraries(mcp pthread)
 endif()
 
 
 add_executable(MediaCodec ${TEST})
-target_link_libraries(MediaCodec NX)
+target_link_libraries(MediaCodec mcp)
 

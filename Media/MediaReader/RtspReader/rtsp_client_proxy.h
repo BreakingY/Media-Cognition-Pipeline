@@ -22,7 +22,7 @@ public:
 private:
     void RtspVideoData(int64_t pts, const uint8_t* data, size_t size);
     void RtspAudioData(int64_t pts,  const uint8_t* data, size_t size);
-    static void *RtspClientProxy::ReconnectThread(void *arg);
+    static void *ReconnectThread(void *arg);
 private:
     std::string rtsp_url_;
     enum TRANSPORT transport_ = TRANSPORT::RTP_OVER_TCP;

@@ -7,9 +7,8 @@ AACEncoder::AACEncoder()
     codec_ = NULL;
     time_inited_ = 0;
     abort_ = false;
-    av_init_packet(&pkt_enc_);
-    pkt_enc_.data = NULL;
-    pkt_enc_.size = 0;
+    // av_init_packet(&pkt_enc_);
+    memset(&pkt_enc_, 0, sizeof(pkt_enc_));
     pthread_cond_init(&pcm_cond_, NULL);
     pthread_mutex_init(&pcm_mutex_, NULL);
     pthread_cond_init(&frame_cond_, NULL);
@@ -189,7 +188,7 @@ void *AACEncoder::AACScaleThread(void *arg)
             frame_enc->channels = self->dst_nb_channels_;
             frame_enc->channel_layout = av_get_default_channel_layout(self->dst_nb_channels_);
             av_frame_get_buffer(frame_enc, 1);
-            int ret = swr_convert(self->encode_swr_ctx_, frame_enc->data, frame_enc->nb_samples, (uint8_t **)&pcm_node->pcm_data, self->src_nb_samples_);
+            int ret = swr_convert(self->encode_swr_ctx_, frame_enc->data, frame_enc->nb_samples, (const uint8_t **)&pcm_node->pcm_data, self->src_nb_samples_);
 
             pthread_mutex_lock(&self->frame_mutex_);
             self->dec_frames_.push_back(frame_enc);
