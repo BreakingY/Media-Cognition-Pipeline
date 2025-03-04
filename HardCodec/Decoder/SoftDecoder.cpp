@@ -38,7 +38,8 @@ HardVideoDecoder::HardVideoDecoder(bool is_h265)
     codec_ = NULL;
     SoftDecInit(is_h265);
     abort_ = false;
-    av_init_packet(&packet_);
+    // av_init_packet(&packet_);
+    memset(&packet_, 0, sizeof(packet_));
     frame_ = NULL;
     img_convert_ctx_ = NULL;
     callback_ = NULL;
@@ -104,7 +105,7 @@ HardVideoDecoder::~HardVideoDecoder()
         sws_freeContext(img_convert_ctx_);
         img_convert_ctx_ = NULL;
     }
-    av_free_packet(&packet_);
+    av_packet_unref(&packet_);
     if(image_ptr_){
         free(image_ptr_);
         image_ptr_ = NULL;

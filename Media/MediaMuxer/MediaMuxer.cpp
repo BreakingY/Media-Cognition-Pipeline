@@ -250,9 +250,9 @@ int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, 
     out_codecpar->format = AV_PIX_FMT_YUV420P;
     out_codecpar->width = width;
     out_codecpar->height = height;
-    st->codec->codec_tag = 0;
+    // st->codec_ctx->codec_tag = 0;
     if (fmt_ctx_->oformat->flags & AVFMT_GLOBALHEADER) {
-        st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        // st->codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
         global_header_ = true;
         out_codecpar->extradata = (uint8_t *)av_malloc(1024);
         out_codecpar->extradata_size = 0;
@@ -333,7 +333,7 @@ void Muxer::AACWriteExtra(int channels, int sample_rate, int profile, AVCodecPar
     log_debug("profile_dec:{} profile:{}", profile_dec, profile);
     log_debug("sampling_frequency_fndex:{},sample_rate:{}", sampling_frequency_fndex, sample_rate);
 
-    params->extradata = av_mallocz(aac_extradata_size);
+    params->extradata = (uint8_t *)av_mallocz(aac_extradata_size);
     if (!params->extradata) {
         log_error("malloc error");
         return;
@@ -383,7 +383,7 @@ int Muxer::AddAudio(int channels, int sample_rate, int profile, AudioType type)
     out_codecpar->profile = profile;
     if (fmt_ctx_->oformat->flags & AVFMT_GLOBALHEADER) {
         global_header_ = true;
-        st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        // st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
         AACWriteExtra(channels, sample_rate, profile, out_codecpar);
     }
 

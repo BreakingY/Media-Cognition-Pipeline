@@ -147,9 +147,8 @@ void MediaReader::VideoInit(char *filename)
         av_bsf_init(bsf_ctx_);
         DEBUGPRINT("AV_CODEC_ID_H265\n");
     }
-    av_init_packet(&packet_);
-    packet_.data = NULL;
-    packet_.size = 0;
+    // av_init_packet(&packet_);
+    memset(&packet_, 0, sizeof(packet_));
     AVStream *as = format_ctx_->streams[video_index_];
     fps_ = R2d(as->avg_frame_rate);
     printf("%s:%d fps_:%d\n", __FILE__, __LINE__, fps_);
@@ -200,8 +199,8 @@ MediaReader::MediaReader(char *file_path)
     th_video_ = std::thread(VideoSyncThread, this);
     if (audio_index_ > 0) {
         int video_time = 1000 * 1000 / fps_;
-        AVCodecContext *audio_codec_ctx = format_ctx_->streams[audio_index_]->codec;
-        int audio_time = 1000 * 1000 / (audio_codec_ctx->sample_rate / audio_codec_ctx->frame_size);
+        AVCodecParameters *codecpar = format_ctx_->streams[audio_index_]->codecpar;
+        int audio_time = 1000 * 1000 / (codecpar->sample_rate / codecpar->frame_size);
         sync_threshold_ = std::max(video_time, audio_time);
         th_audio_ = std::thread(AudioSyncThread, this);
     } else {
@@ -252,9 +251,9 @@ void *MediaReader::MediaReaderThread(void *arg)
     int video_time = 1000 * 1000 / self->fps_;
     int audio_time = 1000 * 1000;
     if (self->HaveAudio()) {
-        AVCodecContext *audio_codec_ctx = self->format_ctx_->streams[self->audio_index_]->codec;
-        audio_time = 1000 * 1000 / (audio_codec_ctx->sample_rate / audio_codec_ctx->frame_size);
-        printf("%s:%d sample_rate:%d frame_size:%d audio_time:%d video_time:%d\n", __FILE__, __LINE__, audio_codec_ctx->sample_rate, audio_codec_ctx->frame_size, audio_time, video_time);
+        AVCodecParameters *codecpar = self->format_ctx_->streams[self->audio_index_]->codecpar;
+        audio_time = 1000 * 1000 / (codecpar->sample_rate / codecpar->frame_size);
+        printf("%s:%d sample_rate:%d frame_size:%d audio_time:%d video_time:%d\n", __FILE__, __LINE__, codecpar->sample_rate, codecpar->frame_size, audio_time, video_time);
     }
     int min_sleep_time = (video_time < audio_time) ? video_time : audio_time; // 微妙
     int last_idx = -1;
@@ -274,7 +273,7 @@ void *MediaReader::MediaReaderThread(void *arg)
         ret = av_read_frame(self->format_ctx_, &self->packet_);
         if (ret < 0) {
             self->file_finish_ = true;
-            DEBUGPRINT("%s:%d %s file over\n", __FILE__, __LINE__, self->format_ctx_->filename);
+            DEBUGPRINT("%s:%d %s file over\n", __FILE__, __LINE__, self->format_ctx_->url);
             av_packet_unref(&self->packet_); // av_read_frame返回小于0得时候也对packet_分配了缓冲区，所以要释放
             av_usleep(min_sleep_time / 2);
             continue;
@@ -533,8 +532,8 @@ void *MediaReader::AudioSyncThread(void *arg)
     AVRational time_base = self->format_ctx_->streams[self->audio_index_]->time_base;
     AVRational time_base_q = {1, AV_TIME_BASE};
     int64_t start_time = av_gettime();
-    AVCodecContext *audio_codec_ctx = self->format_ctx_->streams[self->audio_index_]->codec;
-    int audio_time = 1000 * 1000 / (audio_codec_ctx->sample_rate / audio_codec_ctx->frame_size);
+    AVCodecParameters *codecpar = self->format_ctx_->streams[self->audio_index_]->codecpar;
+    int audio_time = 1000 * 1000 / (codecpar->sample_rate / codecpar->frame_size);
     while (!self->abort_) {
         std::unique_lock<std::mutex> guard(self->audio_mtx_);
         if (self->file_finish_ && self->audio_list_.empty()) {

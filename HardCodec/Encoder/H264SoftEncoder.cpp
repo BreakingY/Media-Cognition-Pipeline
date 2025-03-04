@@ -156,9 +156,13 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             last_width = bgr_frame.cols;
             AVFrame mat_frame;
 
-            avpicture_fill((AVPicture *)&mat_frame, bgr_frame.data, AV_PIX_FMT_BGR24, bgr_frame.cols, bgr_frame.rows);
+            // avpicture_fill((AVPicture *)&mat_frame, bgr_frame.data, AV_PIX_FMT_BGR24, bgr_frame.cols, bgr_frame.rows);
             mat_frame.width = bgr_frame.cols;
             mat_frame.height = bgr_frame.rows;
+            mat_frame.format = AV_PIX_FMT_BGR24;
+            av_image_fill_arrays(mat_frame.data, mat_frame.linesize, bgr_frame.data, 
+                                (AVPixelFormat)mat_frame.format, mat_frame.width, mat_frame.height, 1);
+
 
             AVFrame *yuv_frame = av_frame_alloc();
             yuv_frame->width = self->h264_codec_ctx_->width;
@@ -224,7 +228,6 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
                 continue;
             }
             AVPacket *packet = av_packet_alloc();
-            av_init_packet(packet);
             packet->data = NULL;
             packet->size = 0;
             yuv_frame->pts = self->nframe_counter_;
@@ -276,7 +279,6 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
     // 清空缓冲区 TODO 代码优化，这部分代码有点重复了
     ret = avcodec_send_frame(self->h264_codec_ctx_, NULL);
     AVPacket *packet = av_packet_alloc();
-    av_init_packet(packet);
     packet->data = NULL;
     packet->size = 0;
     while (ret >= 0) {

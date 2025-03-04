@@ -1,6 +1,7 @@
 #include "h265-sps.h"
 #include "h265-parser.h"
 #include <assert.h>
+#include <stdio.h>
 
 int h265_sps_parse(const void* h265, uint32_t bytes, struct h265_sps_t* sps)
 {
@@ -49,17 +50,17 @@ int h265_sps(bitstream_t* stream, struct h265_sps_t* sps)
 }
 void h265_sps_print(const struct h265_sps_t* sps)
 {
-	int x, y, w, h;
-	printf("H.265 Sequence parameter set:\n");
-	printf(" sps_video_parameter_set_id: %hhu\n", sps->sps_video_parameter_set_id);
-	printf(" sps_max_sub_layers_minus1: %hhu\n", sps->sps_max_sub_layers_minus1);
-	printf(" sps_temporal_id_nesting_flag: %hhu\n", sps->sps_temporal_id_nesting_flag ? "true" : "false");
-	printf(" sps_seq_parameter_set_id: %hhu\n", sps->sps_seq_parameter_set_id);
-	printf(" ......\n");
-	h265_codec_rect(sps, &x, &y, &w, &h);
-	printf(" codec rect: %d/%d/%d/%d", x, y, w, h);
-	h265_display_rect(sps, &x, &y, &w, &h);
-	printf(" display rect: %d/%d/%d/%d\n", x, y, w, h);
+	// int x, y, w, h;
+	// printf("H.265 Sequence parameter set:\n");
+	// printf(" sps_video_parameter_set_id: %hhu\n", sps->sps_video_parameter_set_id);
+	// printf(" sps_max_sub_layers_minus1: %hhu\n", sps->sps_max_sub_layers_minus1);
+	// printf(" sps_temporal_id_nesting_flag: %hhu\n", sps->sps_temporal_id_nesting_flag ? "true" : "false");
+	// printf(" sps_seq_parameter_set_id: %hhu\n", sps->sps_seq_parameter_set_id);
+	// printf(" ......\n");
+	// h265_codec_rect(sps, &x, &y, &w, &h);
+	// printf(" codec rect: %d/%d/%d/%d", x, y, w, h);
+	// h265_display_rect(sps, &x, &y, &w, &h);
+	// printf(" display rect: %d/%d/%d/%d\n", x, y, w, h);
 }
 //h265 video data size
 int h265_display_rect(const struct h265_sps_t* sps, int *x, int *y, int *w, int* h)
