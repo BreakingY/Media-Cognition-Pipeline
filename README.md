@@ -4,10 +4,10 @@
 * 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4)，采用模块化和接口化管理。
 * 音频编解码使用纯软方案。
 * 视频编解码有三种实现：
-  1. FFmpeg硬编解码(HardDecoder.cpp、H264HardEncoder.cpp)，仅支持英伟达显卡，CMakeLists.txt中打开add_definitions(-DUSE_FFMPEG_NVIDIA)。支持软硬编解码自动切换(优先使用硬编解码-不是所有nvidia显卡都支持编解码、不支持则自动切换到软编解码，ffmpeg需要在编译安装的时候添加Nvidia硬编解码功能)。 博客地址：https://blog.csdn.net/weixin_43147845/article/details/136812735
-  2. FFmpeg纯软编解码(SoftDecoder.cpp、H264SoftEncoder.cpp)，CMakeLists.txt中打开add_definitions(-DUSE_FFMPEG_SOFT)，此时代码可以在任何Linux环境下运行。
-  3. 昇腾显卡DVPP V2版本编解码(DVPPDecoder.cpp、H264DVPPEncoder.cpp、dvpp_enc)，CMakeLists.txt中打开昇腾相关的配置。
-* 默认是USE_FFMPEG_SOFT，通过设置宏的方式，使用者可以添加适配任意显卡的代码，只要保证类名和被调用的类方法一致即可，平台扩展性好。
+  1. FFmpeg硬编解码(HardDecoder.cpp、H264HardEncoder.cpp)，仅支持英伟达显卡，CMakeLists.txt中打开set(FFMPEG_NVIDIA FORCE)。支持软硬编解码自动切换(优先使用硬编解码-不是所有nvidia显卡都支持编解码、不支持则自动切换到软编解码，ffmpeg需要在编译安装的时候添加Nvidia硬编解码功能)。 博客地址：https://blog.csdn.net/weixin_43147845/article/details/136812735
+  2. FFmpeg纯软编解码(SoftDecoder.cpp、H264SoftEncoder.cpp)，CMakeLists.txt中打开set(FFMPEG_SOFT FORCE)，此时代码可以在任何Linux环境下运行,只需要安装ffmpeg即可。
+  3. 昇腾显卡DVPP V2版本编解码(DVPPDecoder.cpp、H264DVPPEncoder.cpp、dvpp_enc)，CMakeLists.txt中打开set(DVPP_MPI FORCE)。
+* 默认是打开set(FFMPEG_SOFT FORCE)，通过设置宏的方式，使用者可以添加适配任意显卡的代码，只要保证类名和被调用的类方法一致即可，平台扩展性好。
 * 支持格式，视频：H264/H265，音频：AAC。
 * ffmpeg-nvidia不适用jetson，jetson的编解码库和x86不一样。jetson编解码参考：https://github.com/BreakingY/jetpack-dec-enc
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。DVPP视频输入的宽必须是16的整数倍，高必须是2的整数倍，并且DVPP不是所有格式的视频都支持。
