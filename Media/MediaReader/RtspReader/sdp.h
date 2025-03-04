@@ -22,7 +22,7 @@ a=control:track1
 */
 struct MediaInfo{
     std::string media_name; // video audio
-    MediaEnum media_type;   // 媒体类型
+    MediaEnum media_type;
     std::string contorl;    // track0 track1 or url/track0 url/track1
 
     int payload;            // rtp payload

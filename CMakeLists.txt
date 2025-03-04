@@ -66,6 +66,14 @@ target_link_libraries(NX pthread avutil avformat avcodec swscale swresample ${Op
 if(DEFINED  DVPP_MPI)
     target_link_libraries(NX ascendcl acl_dvpp_mpi)
 endif()
+# for rtsp socket_io
+if(WIN32)
+    # Set the function stack size to 6MB
+    add_compile_options(-Wl,--stack,6000000)
+    target_link_libraries(NX ws2_32)
+elseif(UNIX)
+    target_link_libraries(NX pthread)
+endif()
 
 
 add_executable(MediaCodec ${TEST})

@@ -8,7 +8,7 @@ void H265Demuxer::InputData(const uint8_t* data, size_t size){
     }
     const uint8_t* payload = data + sizeof(struct RtpHeader);
     size_t payload_len = size - sizeof(struct RtpHeader);
-    // rtp扩展头
+    // RTP extension head
     if (header->extension){
         const uint8_t *extension_data = payload;
         size_t extension_length = 4 * (extension_data[2] << 8 | extension_data[3]);
@@ -17,9 +17,9 @@ void H265Demuxer::InputData(const uint8_t* data, size_t size){
         payload_len = payload_len - payload_offset;
     }
     struct H265NaluHeader *h265_header = (struct H265NaluHeader *)payload;
-    if(h265_header->type == 49){ // 分片
+    if(h265_header->type == 49){ // Fragmentation
         struct H265FUHeader *fu_header = (struct H265FUHeader *)&payload[2];
-        if(fu_header->s == 1){ //start
+        if(fu_header->s == 1){ // start
             find_start_ = true;
             if(pos_buffer_ == 0){
                 struct H265NaluHeader header = *h265_header;
@@ -46,7 +46,7 @@ void H265Demuxer::InputData(const uint8_t* data, size_t size){
             find_start_ = false;
             pos_buffer_ = 0;
         }
-        else { // 中间分片
+        else { // Middle partition
             if (!find_start_) {
                 return;
             }
@@ -54,7 +54,7 @@ void H265Demuxer::InputData(const uint8_t* data, size_t size){
             pos_buffer_ += payload_len - 3;
         }
     }
-    else{ // 单一封包
+    else{ // Single packet
         buffer_[0] = 0;
         buffer_[1] = 0;
         buffer_[2] = 0;

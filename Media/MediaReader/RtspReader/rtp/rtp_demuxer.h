@@ -2,7 +2,7 @@
 #define RTP_DEMUXER_
 #include <iostream>
 #include <stdint.h>
-#include <arpa/inet.h>
+#include <socket_io.h>
 #include "rtsp_common.h"
 
 class RTPDemuxerInterface {

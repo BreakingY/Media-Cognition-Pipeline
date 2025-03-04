@@ -2,9 +2,11 @@
 #define RTSP_CLIENT_PROXY
 
 #include <unistd.h>
+#include <pthread.h>
 #include "rtsp_client.h"
 #include "MediaInterface.h"
 #include "TypeDef.h"
+#include "AAC.h"
 #define PROBEFRAME 50 // 探测帧数，用于计算视频fps
 class RtspClientProxy:public RtspMediaInterface{
 public:
