@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "sdp.h"
-
 #define SDP_DEBUG
 SDPParse::SDPParse(std::string sdp, std::string base_url){
     sdp_ = sdp;
@@ -169,7 +168,7 @@ int SDPParse::ParseVideo(){
     int end = sdp_video_.find("\r\n");
     std::string m_line = sdp_video_.substr(start + strlen("m=video "), end - start - strlen("m=video "));
     std::vector<std::string> res = SplitString(m_line);
-    sdp_info_.media_info[0].payload = atoi(res[2].c_str()); // 选取第一个payload
+    sdp_info_.media_info[0].payload = atoi(res[2].c_str()); // Select the first payload
 
     start = sdp_video_.find("a=control:");
     end = sdp_video_.find("\r\n", start);
@@ -218,7 +217,7 @@ int SDPParse::ParseAudio(){
     int end = sdp_audio_.find("\r\n");
     std::string m_line = sdp_audio_.substr(start + strlen("m=audio "), end - start - strlen("m=audio "));
     std::vector<std::string> res = SplitString(m_line);
-    sdp_info_.media_info[1].payload = atoi(res[2].c_str()); // 选取第一个payload
+    sdp_info_.media_info[1].payload = atoi(res[2].c_str()); // Select the first payload
 
     start = sdp_audio_.find("a=control:");
     end = sdp_audio_.find("\r\n", start);
@@ -263,13 +262,13 @@ int SDPParse::ParseAudio(){
         else{
             config_value = fmtp_line.substr(pos1 + strlen("config="));
         }
-        // config_value - 16进制
+        // config_value - Hex
         long int  config = (uint16_t)strtol(config_value.c_str(), NULL, 16);
         int profile_config = (config >> 11) & 0x1f;
         int sample_rate_index_config = (config >> 7) & 0x0f;
         int channels_config = (config >> 3) & 0x0f;
         // std::cout << "profile_config:" << profile_config << "sample_rate_index_config:" << sample_rate_index_config << "channels_config:" << channels_config << std::endl;
-        // 如果有config，则以config中的配置为准
+        // If there is a config, the one in config shall prevail
         sdp_info_.media_info[1].profile = profile_config;
         sdp_info_.media_info[1].sample_rate_index = sample_rate_index_config;
         sdp_info_.media_info[1].channels = channels_config;

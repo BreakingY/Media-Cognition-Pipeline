@@ -86,7 +86,7 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
             struct h264_sps_t sps;
             h264_sps_parse(data + 4, size - 4, &sps);
             int x, y;
-            h264_display_rect(&sps, &x, &y, &width_, &height_);
+            h264_codec_rect(&sps, &x, &y, &width_, &height_);
         }
     }
     else if(client_->GetVideoType() == MediaEnum::H265){
@@ -96,7 +96,7 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
             struct h265_sps_t sps;
             h265_sps_parse(data + 4, size - 4, &sps);
             int x, y;
-            h265_display_rect(&sps, &x, &y, &width_, &height_);
+            h265_codec_rect(&sps, &x, &y, &width_, &height_);
         }
         if((width_ != -1) && (type == 32)){
             video_ready_ = true;
@@ -122,7 +122,7 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
         return;
     }
     VideoData video_data;
-    video_data.data = data;
+    video_data.data = (unsigned char *)data;
     video_data.data_len = size;
     video_data.pts = 0;
     video_data.dts = 0;

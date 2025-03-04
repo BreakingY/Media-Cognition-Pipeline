@@ -3,7 +3,9 @@
 #include <iostream>
 #include <string>
 #include <atomic>
+#include <thread>
 #include "rtsp_common.h"
+#include "socket_io.h"
 #include "sdp.h"
 #include "rtp_demuxer.h"
 #define USER_AGENT "simple-rtsp-client"
@@ -40,7 +42,7 @@ class RtspClient : public RTPDemuxerInterface {
 public:
     RtspClient(enum TRANSPORT transport = TRANSPORT::RTP_OVER_UDP);
     ~RtspClient();
-    int Connect(char *url);
+    int Connect(const char *url);
     enum MediaEnum GetVideoType() {return sdp_->GetVideoType();}
     enum MediaEnum GetAudioType() {return sdp_->GetAudioType();}
     void SetCallBack(RtspMediaInterface *call_back){call_back_ = call_back; return;}
@@ -70,7 +72,7 @@ private:
     
 private:
     std::string rtsp_url_ = "";
-    int rtsp_sd_ = -1;
+    socket_t rtsp_sd_ = -1;
     int cseq = 1;
     struct RTSPUrlInfo url_info_;
     std::string realm_ = "";
@@ -83,7 +85,7 @@ private:
     bool audio_setup_ = false;
     enum TRANSPORT rtp_transport_;
     std::string session_ = "" ;
-    int timeout_ = 60; // 秒
+    int timeout_ = 60; // second
     bool connected_ = false;
     enum RTSPCMDSTAT rtsp_cmd_stat_ = RTSPCMDSTAT::RTSP_NONE;
     char buffer_cmd_[4096] = {0};
@@ -92,24 +94,24 @@ private:
     // udp 
     int rtp_port_video_ = -1;
     int rtcp_port_video_ = -1;
-    int rtp_sd_video_ = -1;
-    int rtcp_sd_video_ = -1;
+    socket_t rtp_sd_video_ = -1;
+    socket_t rtcp_sd_video_ = -1;
     int rtp_port_video_server_ = -1;
     int rtcp_port_video_server_ = -1;
 
     int rtp_port_audio_ = -1;
     int rtcp_port_audio_ = -1;
-    int rtp_sd_audio_ = -1;
-    int rtcp_sd_audio_ = -1;
+    socket_t rtp_sd_audio_ = -1;
+    socket_t rtcp_sd_audio_ = -1;
     int rtp_port_audio_server_ = -1;
     int rtcp_port_audio_server_ = -1;
     // tcp 
     int sig0_video_ = 0;
     int sig0_audio_ = 2;
 
-    pthread_t tid_;
+    std::thread tid_;
     bool run_flag_ = true;
-    int recv_rtp_packet_timeout_ = 2; // 秒
+    int recv_rtp_packet_timeout_ = 2; // second
     std::atomic<bool> run_tid_ = {false};
 
     RTPDemuxer *rtp_video_demuxer_ = NULL;
@@ -119,10 +121,10 @@ private:
     bool video_frame_ready_ = false;
 
     struct rtp_tcp_header header_;
-    // 缓存rtp over tcp头部
+    // Cache RTP over TCP header
     uint8_t buffer_header_[4];
     int pos_buffer_header_ = 0;
-    // 缓存rtp数据包
+    // Cache RTP packets
     uint8_t buffer_[4 * 1024 * 1024];
     int pos_buffer_ = 0;
     enum ParseState stat_ = EMPTY_STATE;

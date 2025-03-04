@@ -1,14 +1,9 @@
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/time.h>
 #include <vector>
 #include <string.h>
 #include <sstream>
 #include <algorithm>
-#include <poll.h>
+#include <chrono>
+#include <mutex>
 #include "rtsp_client.h"
 #include "h264_demuxer.h"
 #include "h265_demuxer.h"
@@ -16,34 +11,36 @@
 #include "pcma_demuxer.h"
 #define RTSP_DEBUG
 RtspClient::RtspClient(enum TRANSPORT transport){
+    static std::once_flag flag;
+    std::call_once(flag, [this] {
+        socketInit();
+    });
     rtp_transport_ = transport;
 }
 RtspClient::~RtspClient(){
     run_flag_ = false;
     if(run_tid_){
-        int ret = pthread_join(tid_, NULL);
-        if(ret < 0){
-            std::cout << "pthread_join RecvPacketThd error:" << tid_ << std::endl;
-        }
+        tid_.join();
         run_tid_ = false;
+        
     }
     if(rtsp_sd_ == -1){
-        close(rtsp_sd_);
+        closeSocket(rtsp_sd_);
     }
     if(sdp_){
         delete sdp_;
     }
     if(rtp_sd_video_ >= 0 ){
-        close(rtp_sd_video_);
+        closeSocket(rtp_sd_video_);
     }
     if(rtcp_sd_video_ >= 0 ){
-        close(rtcp_sd_video_);
+        closeSocket(rtcp_sd_video_);
     }
     if(rtp_sd_audio_ >= 0){
-        close(rtp_sd_audio_);
+        closeSocket(rtp_sd_audio_);
     }
     if(rtcp_sd_audio_ >= 0){
-        close(rtcp_sd_audio_);
+        closeSocket(rtcp_sd_audio_);
     }
     if(rtp_video_demuxer_){
         delete rtp_video_demuxer_;
@@ -53,7 +50,7 @@ RtspClient::~RtspClient(){
     }
     std::cout << "~RtspClient" << std::endl;
 }
-int RtspClient::Connect(char *url){
+int RtspClient::Connect(const char *url){
     int ret;
     enum MediaEnum video_type;
     enum MediaEnum audio_type;
@@ -70,12 +67,12 @@ int RtspClient::Connect(char *url){
     printf("host:%s\n",url_info_.host.c_str());
     printf("port:%d\n",url_info_.port);
 #endif
-    rtsp_sd_ = CreateTcpSocket();
-    if(rtsp_sd_ < 0){
+    rtsp_sd_ = createTcpSocket();
+    if(rtsp_sd_ == INVALID_SOCKET){
         std::cout << "createTcpSocket error ret:" << rtsp_sd_ << std::endl;
         return -1;
     }
-    ret = ConnectToServer(rtsp_sd_, url_info_.host.c_str(), url_info_.port,5000); // 5s
+    ret = connectToServer(rtsp_sd_, url_info_.host.c_str(), url_info_.port,5000); // 5s
     if(ret < 0){
         connected_ = false;
         std::cout << "ConnectToServer ret:" << ret << std::endl;
@@ -162,7 +159,7 @@ int RtspClient::Connect(char *url){
                 
             }
             buffer_cmd_used_ = 0;
-            ret= recv(rtsp_sd_, buffer_cmd_ + buffer_cmd_size_, sizeof(buffer_cmd_) - buffer_cmd_size_, 0);
+            ret= recvWithTimeout(rtsp_sd_, buffer_cmd_ + buffer_cmd_size_, sizeof(buffer_cmd_) - buffer_cmd_size_, 0);
             if(ret <= 0){
                 goto end;
             }
@@ -196,8 +193,8 @@ int RtspClient::Connect(char *url){
         rtp_audio_demuxer_->SetCallBack(this);
         rtp_audio_demuxer_->SetPayloadType(sdp_->GetAudioPayload());
     }
-    /*create recv rtp packet pthread*/
-    pthread_create(&tid_, NULL, &RtspClient::RecvPacketThd, this);
+    /*create recv rtp packet pthread*/    
+	tid_=std::thread(RecvPacketThd,this);
     connected_ = true;
     std::cout << "Connect ok url:" << url << std::endl;
     return 0;
@@ -285,7 +282,7 @@ int RtspClient::SendDESCRIBE(const char *url, const char *authorization){
     }
     sprintf(result+strlen(result),"\r\n");
     cseq++;
-    int ret = send(rtsp_sd_, result, strlen(result), 0);
+    int ret = sendWithTimeout(rtsp_sd_, result, strlen(result), 0);
 #ifdef RTSP_DEBUG
     std::cout <<  __FILE__ << __LINE__ << std::endl;
     std::cout <<  result << std::endl;
@@ -294,19 +291,19 @@ int RtspClient::SendDESCRIBE(const char *url, const char *authorization){
 }
 static void ExtractRealmAndNonce(const std::string& digest, std::string& realm, std::string& nonce) {
     size_t pos;
-    // 提取realm
+    // Extract realm
     pos = digest.find("realm=\"");
     if (pos != std::string::npos) {
-        pos += 7; // 跳过 "realm=\""
+        pos += 7; // Skip "realm=\""
         size_t end_pos = digest.find("\"", pos);
         if (end_pos != std::string::npos) {
             realm = digest.substr(pos, end_pos - pos);
         }
     }
-    // 提取nonce
+    // Extract nonce
     pos = digest.find("nonce=\"");
     if (pos != std::string::npos) {
-        pos += 7; // 跳过 "nonce=\""
+        pos += 7; // Skip "nonce=\""
         size_t end_pos = digest.find("\"", pos);
         if (end_pos != std::string::npos) {
             nonce = digest.substr(pos, end_pos - pos);
@@ -340,7 +337,7 @@ int RtspClient::DecodeDESCRIBE(const char *url, const char *buffer, int len){
         SendDESCRIBE(url, res.c_str());
         return 0;
     }
-    else{ // 解析SDP
+    else{ // parse SDP
         // printf("code:%d\n",parsed_message.code);
         // printf("stat:%s\n",parsed_message.message.c_str());
         // printf("sdp:%s\n",parsed_message.sdp.c_str());
@@ -353,7 +350,7 @@ int RtspClient::DecodeDESCRIBE(const char *url, const char *buffer, int len){
             return 0;
         }
         int content_len = std::stoi(content_len_str);
-        if((len - used_bytes) < content_len){ // payload不完整
+        if((len - used_bytes) < content_len){ // The payload is incomplete
             buffer_cmd_used_ -= used_bytes;
             return 0;
         }
@@ -395,14 +392,14 @@ int RtspClient::SendSTEUP(const char *url){
     }
     if(rtp_transport_ == TRANSPORT::RTP_OVER_UDP){
         if(std::string(url) == video_url_){
-            if(CreateRtpSockets(&rtp_sd_video_, &rtcp_sd_video_, &rtp_port_video_, &rtcp_port_video_) < 0){
+            if(createRtpSockets(&rtp_sd_video_, &rtcp_sd_video_, &rtp_port_video_, &rtcp_port_video_) < 0){
                 std::cout << "video CreateRtpSockets error" << std::endl;
                 return -1;
             }
             sprintf(result+strlen(result),"Transport: RTP/AVP;unicast;client_port=%d-%d\r\n",rtp_port_video_, rtcp_port_video_);
         }
         else if(std::string(url) == audio_url_){
-            if(CreateRtpSockets(&rtp_sd_audio_, &rtcp_sd_audio_, &rtp_port_audio_, &rtcp_port_audio_) < 0){
+            if(createRtpSockets(&rtp_sd_audio_, &rtcp_sd_audio_, &rtp_port_audio_, &rtcp_port_audio_) < 0){
                 std::cout << "audio CreateRtpSockets error" << std::endl;
                 return -1;
             }
@@ -422,7 +419,7 @@ int RtspClient::SendSTEUP(const char *url){
     }
     sprintf(result+strlen(result),"\r\n");
     cseq++;
-    int ret = send(rtsp_sd_, result, strlen(result), 0);
+    int ret = sendWithTimeout(rtsp_sd_, result, strlen(result), 0);
 #ifdef RTSP_DEBUG
     std::cout <<  __FILE__ << __LINE__ << std::endl;
     std::cout <<  result << std::endl;
@@ -535,7 +532,7 @@ int RtspClient::SendPLAY(const char *url){
     sprintf(result+strlen(result),"Range: npt=0.000-\r\n");
     sprintf(result+strlen(result),"\r\n");
     cseq++;
-    int ret = send(rtsp_sd_, result, strlen(result), 0);
+    int ret = sendWithTimeout(rtsp_sd_, result, strlen(result), 0);
 #ifdef RTSP_DEBUG
     std::cout <<  __FILE__ << __LINE__ << std::endl;
     std::cout <<  result << std::endl;
@@ -576,6 +573,10 @@ int RtspClient::ReadPacketUdp(){
     fd_set read_fds;
     FD_ZERO(&read_fds);
     std::vector<int> array_fd;
+    // rtsp message(heartbeat response)
+    FD_SET(rtsp_sd_, &read_fds);
+    array_fd.push_back(rtsp_sd_);
+
     if(rtp_port_video_server_ != -1){ // video
         FD_SET(rtp_sd_video_, &read_fds);
         FD_SET(rtcp_sd_video_, &read_fds);
@@ -606,10 +607,25 @@ int RtspClient::ReadPacketUdp(){
         return -1;
     }
     for(int i = 0; i < array_fd.size(); i++){
-        if(FD_ISSET(array_fd[i], &read_fds)){
-            struct sockaddr_in sender_addr;
-            socklen_t sender_addr_len = sizeof(sender_addr);
-            bytes = recvfrom(array_fd[i], buffer, READ_SOCK_DATA_LEN, 0, (struct sockaddr*)&sender_addr, &sender_addr_len);
+        if(i == 0){ // tcp
+            if(FD_ISSET(rtsp_sd_, &read_fds)){
+                char buffer_recv[4096] = {0};
+                int recv_len = 0;
+                recv_len = recvWithTimeout(rtsp_sd_, buffer_recv, sizeof(buffer_recv), recv_rtp_packet_timeout_ * 1000);
+                if(recv_len <= 0){
+                    return -1;
+                }
+                // skip heartbeat response
+#ifdef RTSP_DEBUG
+                std::cout << "heartbeat response:" << std::endl;
+                std::cout << buffer_recv << std::endl;
+#endif
+            }
+        }
+        else if(FD_ISSET(array_fd[i], &read_fds)){
+            char ip[512];
+            int port;
+            bytes = recvUDP(array_fd[i], (char *)buffer, READ_SOCK_DATA_LEN, ip, &port, recv_rtp_packet_timeout_ * 1000);
             if (bytes <= 0) {
                 std::cout << rtsp_url_ << ":recvfrom error" << std::endl;
                 return -1;
@@ -629,21 +645,7 @@ int RtspClient::ReadPacketUdp(){
 int RtspClient::ReadPacketTcp(){
     int bytes = 0;
     unsigned char buffer[READ_SOCK_DATA_LEN] = {0};
-    struct pollfd poll_event;
-    poll_event.fd = rtsp_sd_;
-    poll_event.events = POLLIN | POLLPRI;
-    poll_event.revents = 0;
-    int ret = poll(&poll_event, 1, recv_rtp_packet_timeout_ * 1000);
-    if(ret < 0){
-        std::cout << rtsp_url_ << ":network error" << std::endl;
-        return -1;
-	}
-    else if(ret == 0)
-    {
-        std::cout << rtsp_url_ << ":poll time out" << std::endl;
-        return -1;
-    }
-    bytes = recv(rtsp_sd_, buffer, READ_SOCK_DATA_LEN, 0);
+    bytes = recvWithTimeout(rtsp_sd_, (char *)buffer, READ_SOCK_DATA_LEN, recv_rtp_packet_timeout_ * 1000);
     if (bytes <= 0) {
         std::cout << rtsp_url_ << ":recv error" << std::endl;
         return -1;
@@ -699,20 +701,17 @@ int RtspClient::ReadPacketTcp(){
     }
     return pos_buffer_end;
 }
-static void * RtspClient::RecvPacketThd(void *arg){
+void *RtspClient::RecvPacketThd(void *arg){
     RtspClient *self = (RtspClient*)arg;
     self->run_tid_ = true;
-    struct timeval pre_time;
-    struct timeval now_time;
-    gettimeofday(&now_time, 0);
-    pre_time = now_time;
+    auto pre_time = std::chrono::system_clock::now();
     int ret;
     self->header_.channel = 0;
     self->header_.rtp_len16 = 0;
     while(self->run_flag_){
-        //心跳
-        gettimeofday(&now_time, 0);
-        int64_t time_gap = now_time.tv_sec - pre_time.tv_sec;
+        // heartbeat
+        auto now_time = std::chrono::system_clock::now();
+        auto time_gap = std::chrono::duration_cast<std::chrono::seconds>(now_time - pre_time).count();
         if(time_gap >= self->timeout_){
             ret = self->SendOPTIONS(self->url_info_.url.c_str());
             if(ret <= 0 ){
