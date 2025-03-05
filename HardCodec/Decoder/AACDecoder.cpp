@@ -25,31 +25,14 @@ AACDecoder::AACDecoder()
     swr_ctx_ = NULL;
     aborted_ = false;
     time_inited_ = 0;
-    pthread_cond_init(&packet_cond_, NULL);
-    pthread_mutex_init(&packet_mutex_, NULL);
-    pthread_cond_init(&frame_cond_, NULL);
-    pthread_mutex_init(&frame_mutex_, NULL);
-    pthread_create(&dec_thread_id_, NULL, &AACDecoder::AACDecodeThread, this);
-    pthread_create(&sws_thread_id_, NULL, &AACDecoder::AACScaleThread, this);
+    dec_thread_id_ = std::thread(AACDecoder::AACDecodeThread, this);
+    sws_thread_id_ = std::thread(AACDecoder::AACScaleThread, this);
 }
 AACDecoder::~AACDecoder()
 {
     aborted_ = true;
-
-    int ret = pthread_join(dec_thread_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion dec_thread_id_ Error!");
-    }
-
-    ret = pthread_join(sws_thread_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion sws_thread_id_ Error!");
-    }
-
-    pthread_mutex_destroy(&frame_mutex_);
-    pthread_cond_destroy(&frame_cond_);
-    pthread_mutex_destroy(&packet_mutex_);
-    pthread_cond_destroy(&packet_cond_);
+    dec_thread_id_.join();
+    sws_thread_id_.join();
 
     for (std::list<AVFrame *>::iterator it = yuv_frames_.begin(); it != yuv_frames_.end(); ++it) {
         AVFrame *frame = *it;
@@ -95,10 +78,10 @@ void AACDecoder::InputAACData(unsigned char *data, int data_len)
     node->es_data = (unsigned char *)malloc(data_len);
     memcpy(node->es_data, data, data_len);
     node->es_data_len = data_len;
-    pthread_mutex_lock(&packet_mutex_);
+    std::unique_lock<std::mutex> guard(packet_mutex_);
     es_packets_.push_back(node);
-    pthread_mutex_unlock(&packet_mutex_);
-    pthread_cond_signal(&packet_cond_);
+    guard.unlock();
+    packet_cond_.notify_one();
     return;
 }
 void AACDecoder::SetCallback(DecDataCallListner *call_func)
@@ -130,11 +113,11 @@ void AACDecoder::DecodeAudio(AACDataNode *data)
         src_ratio_ = frame_->sample_rate;
         src_nb_samples_ = frame_->nb_samples;
 
-        pthread_mutex_lock(&frame_mutex_);
+        std::unique_lock<std::mutex> guard(frame_mutex_);
         yuv_frames_.push_back(frame_);
         frame_ = NULL;
-        pthread_mutex_unlock(&frame_mutex_);
-        pthread_cond_signal(&frame_cond_);
+        guard.unlock();
+        frame_cond_.notify_one();
     }
     av_packet_unref(&packet_);
     return;
@@ -143,26 +126,18 @@ void *AACDecoder::AACDecodeThread(void *arg)
 {
     AACDecoder *self = (AACDecoder *)arg;
     while (!self->aborted_) {
-        pthread_mutex_lock(&self->packet_mutex_);
+        std::unique_lock<std::mutex> guard(self->packet_mutex_);
         if (!self->es_packets_.empty()) {
             AACDataNode *packet = self->es_packets_.front();
             self->es_packets_.pop_front();
-            pthread_mutex_unlock(&self->packet_mutex_);
+            guard.unlock();
             self->DecodeAudio(packet);
 
             delete packet;
         } else {
-
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->packet_cond_, &self->packet_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->packet_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->packet_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }
@@ -231,13 +206,15 @@ void AACDecoder::ScaleAudio(AVFrame *frame)
     int ret = swr_convert(swr_ctx_, frame_dec->data, frame_dec->nb_samples, (const uint8_t **)frame->data, frame->nb_samples);
     if (callback_) {
         now_frames_++;
+    
         if (!time_inited_) {
             time_inited_ = 1;
-            gettimeofday(&time_now_, NULL);
-            gettimeofday(&time_pre_, NULL);
+            time_now_ = std::chrono::steady_clock::now();
+            time_pre_ = time_now_;
         } else {
-            gettimeofday(&time_now_, NULL);
-            long tmp_time = 1000 * (time_now_.tv_sec - time_pre_.tv_sec) + (time_now_.tv_usec - time_pre_.tv_usec) / 1000;
+            time_now_ = std::chrono::steady_clock::now();
+            long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_ - time_pre_).count();
+    
             if (tmp_time > 1000) { // 1s
                 int tmp_frame_rate = (now_frames_ - pre_frames_ + 1) * 1000 / tmp_time;
                 log_debug("AAC input frame rate {} src_sample_fmt_:{} src_nb_channels_:{} src_ratio_:{} src_nb_samples_:{} ",
@@ -258,24 +235,16 @@ void *AACDecoder::AACScaleThread(void *arg)
 {
     AACDecoder *self = (AACDecoder *)arg;
     while (!self->aborted_) {
-        pthread_mutex_lock(&self->frame_mutex_);
+        std::unique_lock<std::mutex> guard(self->frame_mutex_);
         if (!self->yuv_frames_.empty()) {
             AVFrame *frame = self->yuv_frames_.front();
             self->yuv_frames_.pop_front();
-            pthread_mutex_unlock(&self->frame_mutex_);
+            guard.unlock();
             self->ScaleAudio(frame);
         } else {
-
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->frame_cond_, &self->frame_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->frame_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->frame_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }

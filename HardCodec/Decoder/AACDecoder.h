@@ -8,8 +8,10 @@
 #include <opencv2/opencv.hpp>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
-#include <pthread.h>
+#include <thread>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -82,18 +84,18 @@ public:
 
     std::list<AACDataNode *> es_packets_;
     std::list<AVFrame *> yuv_frames_;
-    pthread_mutex_t packet_mutex_;
-    pthread_cond_t packet_cond_;
-    pthread_cond_t frame_cond_;
-    pthread_mutex_t frame_mutex_;
+    std::mutex packet_mutex_;
+    std::condition_variable packet_cond_;
+    std::condition_variable frame_cond_;
+    std::mutex frame_mutex_;
 
-    pthread_t dec_thread_id_;
-    pthread_t sws_thread_id_;
+    std::thread dec_thread_id_;
+    std::thread sws_thread_id_;
     bool aborted_;
     int now_frames_;
     int pre_frames_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
 };
 

@@ -1,7 +1,6 @@
 #ifdef USE_DVPP_MPI
 #include "H264HardEncoder.h"
 #include "log_helpers.h"
-#include <iostream>
 
 static const uint64 NANO_SECOND = UINT64_C(1000000000);
 static std::atomic<int32_t> channel_id = {-1};
@@ -32,12 +31,6 @@ HardVideoEncoder::HardVideoEncoder()
 {
     abort_ = false;
     callback_ = NULL;
-    pthread_cond_init(&bgr_cond_, NULL);
-    pthread_mutex_init(&bgr_mutex_, NULL);
-    pthread_cond_init(&yuv_cond_, NULL);
-    pthread_mutex_init(&yuv_mutex_, NULL);
-    pthread_cond_init(&out_buffer_pool_cond_, NULL);
-    pthread_mutex_init(&out_buffer_pool_mutex_, NULL);
     nframe_counter_ = 0;
     nframe_counter_recv_ = 0;
     time_ts_accum_ = 0;
@@ -50,25 +43,11 @@ void HardVideoEncoder::SetDataCallback(EncDataCallListner *call_func)
 }
 HardVideoEncoder::~HardVideoEncoder()
 {
-    int ret;
     abort_ = true;
-    ret = pthread_join(encode_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion encode_id Error!");
-    }
-
-    ret = pthread_join(scale_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion video_scale_id Error!");
-    }
+    encode_id_.join();
+    scale_id_.join();
     bgr_frames_.clear();
     yuv_frames_.clear();
-    pthread_mutex_destroy(&bgr_mutex_);
-    pthread_cond_destroy(&bgr_cond_);
-    pthread_mutex_destroy(&yuv_mutex_);
-    pthread_cond_destroy(&yuv_cond_);
-    pthread_mutex_destroy(&out_buffer_pool_mutex_);
-    pthread_cond_destroy(&out_buffer_pool_cond_);
     while (!out_buffer_pool_.empty()) {
         void* out_buffer = out_buffer_pool_.front();
         out_buffer_pool_.pop_front();
@@ -131,12 +110,12 @@ void vencStreamOut(uint32_t channelId, void* buffer, void *arg){
             return;
         }
         self->nframe_counter_recv_++;
-        gettimeofday(&self->time_now_, NULL);
+        self->time_now_ = std::chrono::steady_clock::now();
         if (self->nframe_counter_recv_ - 1 == 0) {
             self->time_pre_ = self->time_now_;
             self->time_ts_accum_ = 0;
         }
-        uint64_t duration = 1000 * (self->time_now_.tv_sec - self->time_pre_.tv_sec) + (self->time_now_.tv_usec - self->time_pre_.tv_usec) / 1000;
+        uint64_t duration = = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
         self->time_ts_accum_ += duration;
         if (self->callback_) {
             self->callback_->OnVideoEncData(self->image_ptr_, data_len, self->time_ts_accum_);
@@ -215,37 +194,22 @@ int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
     int32_t ret = venc_mng_create(&enc_handle_, &enc_param_, device_id_);
     HMEV_HISDK_CHECK_RET_EXPRESS(ret != HMEV_SUCCESS, "venc_mng_create fail!");
 
-    int s = pthread_create(&scale_id_, NULL, &HardVideoEncoder::VideoScaleThread, this);
-    if (s != 0) {
-        log_error("Video Scale Thread Create Error!");
-    }
-
-    s = pthread_create(&encode_id_, NULL, &HardVideoEncoder::VideoEncThread, this);
-    if (s != 0) {
-        log_error("Video Encode Thread Create Error!");
-    }
+    scale_id_ = std::thread(HardVideoEncoder::VideoScaleThread, this);
+    encode_id_ = std::thread(HardVideoEncoder::VideoEncThread, this);
     return 1;
 }
 void *HardVideoEncoder::GetColorAddr(){
     while(!abort_){
-        pthread_mutex_lock(&out_buffer_pool_mutex_);
+        std::unique_lock<std::mutex> guard(out_buffer_pool_mutex_);
         if (!out_buffer_pool_.empty()) {
             void *addr = out_buffer_pool_.front();
             out_buffer_pool_.pop_front();
-            pthread_mutex_unlock(&out_buffer_pool_mutex_);
+            guard.unlock();
             return addr;
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&out_buffer_pool_cond_, &out_buffer_pool_mutex_, &n_ts);
-            pthread_mutex_unlock(&out_buffer_pool_mutex_);
-
+            auto now = std::chrono::system_clock::now();
+            out_buffer_pool_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }
@@ -255,15 +219,15 @@ void HardVideoEncoder::PutColorAddr(void *addr){
     if(!addr){
         return;
     }
-    pthread_mutex_lock(&out_buffer_pool_mutex_);
+    std::unique_lock<std::mutex> guard(out_buffer_pool_mutex_);
     out_buffer_pool_.push_back(addr);
-    pthread_mutex_unlock(&out_buffer_pool_mutex_);
-    pthread_cond_signal(&out_buffer_pool_cond_);
+    guard.unlock();
+    out_buffer_pool_cond_.notify_one();
     return;
 }
 int HardVideoEncoder::AddVideoFrame(cv::Mat bgr_frame)
 {
-    pthread_mutex_lock(&bgr_mutex_);
+    std::unique_lock<std::mutex> guard(bgr_mutex_);
 #ifdef DROP_FRAME
 	// 丢帧处理
     if (bgr_frames_.size() > 5) {
@@ -271,16 +235,16 @@ int HardVideoEncoder::AddVideoFrame(cv::Mat bgr_frame)
     }
 #endif
     bgr_frames_.push_back(bgr_frame);
-    pthread_mutex_unlock(&bgr_mutex_);
-    pthread_cond_signal(&bgr_cond_);
+    guard.unlock();
+    bgr_cond_.notify_one();
     if (!time_inited_) {
         time_inited_ = 1;
-        gettimeofday(&time_now_1_, NULL);
-        gettimeofday(&time_pre_1_, NULL);
+        time_now_1_ = std::chrono::steady_clock::now();
+        time_pre_1_ = time_now_1_;
         now_frames_ = pre_frames_ = 0;
     } else {
-        gettimeofday(&time_now_1_, NULL);
-        long tmp_time = 1000 * (time_now_1_.tv_sec - time_pre_1_.tv_sec) + (time_now_1_.tv_usec - time_pre_1_.tv_usec) / 1000;
+        time_now_1_ = std::chrono::steady_clock::now();
+        long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_1_ - time_pre_1_).count();
         if (tmp_time > 1000) {
             log_debug(" output frame rate {} ", (now_frames_ - pre_frames_ + 1) * 1000 / tmp_time);
             time_pre_1_ = time_now_1_;
@@ -296,11 +260,11 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
     HardVideoEncoder *self = (HardVideoEncoder *)arg;
     CHECK_ACL(aclrtSetDevice(self->device_id_));
     while (!self->abort_) {
-        pthread_mutex_lock(&self->bgr_mutex_);
+        std::unique_lock<std::mutex> guard(self->bgr_mutex_);
         if (!self->bgr_frames_.empty()) {
             cv::Mat bgr_frame = self->bgr_frames_.front();
             self->bgr_frames_.pop_front();
-            pthread_mutex_unlock(&self->bgr_mutex_);
+            guard.unlock();
             void *addr = self->GetColorAddr();
             CHECK_ACL(aclrtMemcpy(self->in_img_buffer_ , self->in_img_buffer_size_, bgr_frame.data, self->in_img_buffer_size_, ACL_MEMCPY_HOST_TO_DEVICE));
             self->input_pic_.picture_address = self->in_img_buffer_;
@@ -309,7 +273,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             CHECK_DVPP_MPI(hi_mpi_vpc_convert_color(self->channel_id_color_, &self->input_pic_, &self->output_pic_, &task_id, -1));
             CHECK_DVPP_MPI(hi_mpi_vpc_get_process_result(self->channel_id_color_, task_id, -1));
 
-            pthread_mutex_lock(&self->yuv_mutex_);
+            std::unique_lock<std::mutex> guard(self->yuv_mutex_);
 #ifdef DROP_FRAME
 			// 丢帧处理
             if (self->yuv_frames_.size() > 5) {
@@ -322,19 +286,12 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             }
 #endif
             self->yuv_frames_.push_back(addr);
-            pthread_mutex_unlock(&self->yuv_mutex_);
-            pthread_cond_signal(&self->yuv_cond_);
+            guard.unlock();
+            self->yuv_cond_.notify_one();
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->bgr_cond_, &self->bgr_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->bgr_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->bgr_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
         }
     }
     log_info("VideoScaleThread exit");
@@ -357,15 +314,15 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
     hi_video_frame_info* video_frame_info = NULL;
 
     while (!self->abort_) {
-        pthread_mutex_lock(&self->yuv_mutex_);
+        std::unique_lock<std::mutex> guard(self->yuv_mutex_);
         if (!self->yuv_frames_.empty()) {
             void *yuv_frame = self->yuv_frames_.front();
             self->yuv_frames_.pop_front();
-            pthread_mutex_unlock(&self->yuv_mutex_);
+            guard.unlock();
             int ret = enc->dequeue_input_buffer(self->width_, self->height_, pixel_format, bit_width, cmp_mode, align, &video_frame_info);
             if (ret != HMEV_SUCCESS) {
                 HMEV_HISDK_PRT(DEBUG, "dequeue_input_buffer fail");
-                usleep(2000); // sleep 2000 us
+                std::this_thread::sleep_for(std::chrono::microseconds(2000)); // sleep 2000 us
                 continue;
             }
             CHECK_ACL(aclrtMemcpy(video_frame_info->v_frame.virt_addr[0] , self->out_buffer_size_, yuv_frame, self->out_buffer_size_, ACL_MEMCPY_DEVICE_TO_DEVICE));
@@ -380,16 +337,10 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             self->PutColorAddr(yuv_frame);
 
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->yuv_cond_, &self->yuv_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->yuv_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->yuv_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
+            continue;
         }
     }
     log_info("VideoEncThread exit");

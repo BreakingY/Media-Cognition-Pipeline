@@ -9,29 +9,14 @@ AACEncoder::AACEncoder()
     abort_ = false;
     // av_init_packet(&pkt_enc_);
     memset(&pkt_enc_, 0, sizeof(pkt_enc_));
-    pthread_cond_init(&pcm_cond_, NULL);
-    pthread_mutex_init(&pcm_mutex_, NULL);
-    pthread_cond_init(&frame_cond_, NULL);
-    pthread_mutex_init(&frame_mutex_, NULL);
-    pthread_create(&encode_id_, NULL, &AACEncoder::AACEncThread, this);
-    pthread_create(&scale_id_, NULL, &AACEncoder::AACScaleThread, this);
+    encode_id_ = std::thread(AACEncoder::AACEncThread, this);
+    scale_id_ = std::thread(AACEncoder::AACScaleThread, this);
 }
 AACEncoder::~AACEncoder()
 {
     abort_ = true;
-
-    int ret = pthread_join(encode_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion encode_id Error!");
-    }
-    ret = pthread_join(scale_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion encode_id Error!");
-    }
-    pthread_mutex_destroy(&frame_mutex_);
-    pthread_cond_destroy(&frame_cond_);
-    pthread_mutex_destroy(&pcm_mutex_);
-    pthread_cond_destroy(&pcm_cond_);
+    encode_id_.join();
+    scale_id_.join();
     if (encode_swr_ctx_) {
         swr_free(&encode_swr_ctx_);
         encode_swr_ctx_ = NULL;
@@ -83,7 +68,7 @@ int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_sa
         dst_nb_samples_ = av_rescale_rnd(src_nb_samples_, dst_ratio_, src_ratio_, AV_ROUND_UP); // 1024
     }
     if (!codec_) {
-        // codec = avcodec_find_encoder(AV_CODEC_ID_AAC);//libfdk_aac和aac的参数不一样
+        // codec_ = avcodec_find_encoder(AV_CODEC_ID_AAC);//libfdk_aac和aac的参数不一样
         codec_ = avcodec_find_encoder_by_name("libfdk_aac");
         if (!codec_) {
             log_error("EnCodec not found");
@@ -127,7 +112,7 @@ void AACEncoder::GetAudioCon(int &channels, int &sample_rate, int &profile){
 }
 int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)
 {
-    pthread_mutex_lock(&pcm_mutex_);
+    std::unique_lock<std::mutex> guard(pcm_mutex_);
 #if 0
     // 丢帧处理
     while (pcm_frames_.size() > 5) {
@@ -138,17 +123,17 @@ int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)
 #endif
     AACPCMNode *pcm_data = new AACPCMNode(data, data_len);
     pcm_frames_.push_back(pcm_data);
-    pthread_mutex_unlock(&pcm_mutex_);
-    pthread_cond_signal(&pcm_cond_);
+    guard.unlock();
+    pcm_cond_.notify_one();
 
     if (!time_inited_) {
         time_inited_ = 1;
-        gettimeofday(&time_now_, NULL);
-        gettimeofday(&time_pre_, NULL);
+        time_now_ = std::chrono::steady_clock::now();
+        time_pre_ = time_now_;
         now_frames_ = pre_frames_ = 0;
     } else {
-        gettimeofday(&time_now_, NULL);
-        long tmp_time = 1000 * (time_now_.tv_sec - time_pre_.tv_sec) + (time_now_.tv_usec - time_pre_.tv_usec) / 1000;
+        time_now_ = std::chrono::steady_clock::now();
+        long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_ - time_pre_).count();
         if (tmp_time > 1000) {
             log_debug(" aac output frame rate {} ", (now_frames_ - pre_frames_ + 1) * 1000 / tmp_time);
             time_pre_ = time_now_;
@@ -156,18 +141,17 @@ int AACEncoder::AddPCMFrame(unsigned char *data, int data_len)
         }
         now_frames_++;
     }
-
     return 1;
 }
 void *AACEncoder::AACScaleThread(void *arg)
 {
     AACEncoder *self = (AACEncoder *)arg;
     while (!self->abort_) {
-        pthread_mutex_lock(&self->pcm_mutex_);
+        std::unique_lock<std::mutex> guard(self->pcm_mutex_);
         if (!self->pcm_frames_.empty()) {
             AACPCMNode *pcm_node = self->pcm_frames_.front();
             self->pcm_frames_.pop_front();
-            pthread_mutex_unlock(&self->pcm_mutex_);
+            guard.unlock();
 #if 1
             /**
              * FFmpeg真正进行重采样的函数是swr_convert。它的返回值就是重采样输出的点数。
@@ -190,23 +174,17 @@ void *AACEncoder::AACScaleThread(void *arg)
             av_frame_get_buffer(frame_enc, 1);
             int ret = swr_convert(self->encode_swr_ctx_, frame_enc->data, frame_enc->nb_samples, (const uint8_t **)&pcm_node->pcm_data, self->src_nb_samples_);
 
-            pthread_mutex_lock(&self->frame_mutex_);
+            std::unique_lock<std::mutex> guard(self->frame_mutex_);
             self->dec_frames_.push_back(frame_enc);
-            pthread_mutex_unlock(&self->frame_mutex_);
-            pthread_cond_signal(&self->frame_cond_);
+            guard.unlock();
+            self->frame_cond_.notify_one();
             delete pcm_node;
 
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->pcm_cond_, &self->pcm_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->pcm_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->pcm_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
+            continue;
         }
     }
     log_info("AACScaleThread exit");
@@ -216,11 +194,11 @@ void *AACEncoder::AACEncThread(void *arg)
 {
     AACEncoder *self = (AACEncoder *)arg;
     while (!self->abort_) {
-        pthread_mutex_lock(&self->frame_mutex_);
+        std::unique_lock<std::mutex> guard(self->frame_mutex_);
         if (!self->dec_frames_.empty()) {
             AVFrame *frame = self->dec_frames_.front();
             self->dec_frames_.pop_front();
-            pthread_mutex_unlock(&self->frame_mutex_);
+            guard.unlock();
 
             int ret;
             ret = avcodec_send_frame(self->c_ctx_, frame);
@@ -254,16 +232,10 @@ void *AACEncoder::AACEncThread(void *arg)
             av_frame_free(&frame);
 
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->frame_cond_, &self->frame_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->frame_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->frame_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
+            continue;
         }
     }
     // 清空缓冲区

@@ -38,13 +38,13 @@ public:
 public:
     bool over_flag_ = false;
     // video
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     uint64_t nframe_counter_ = 0;
     uint64_t time_ts_accum_ = 0;
     // audio
-    struct timeval time_now_1_;
-    struct timeval time_pre_1_;
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
     uint64_t nframe_counter_1_ = 0;
     uint64_t time_ts_accum_1_ = 0;
 

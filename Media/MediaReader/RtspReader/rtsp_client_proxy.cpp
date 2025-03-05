@@ -8,14 +8,11 @@ RtspClientProxy::RtspClientProxy(char *rtsp_url){
     client_ =  new RtspClient(transport_); 
     client_->Connect(rtsp_url); 
     client_->SetCallBack(this);
-    pthread_create(&tid_, NULL, &RtspClientProxy::ReconnectThread, this);
+    tid_ = std::thread(RtspClientProxy::ReconnectThread, this);
 }
 RtspClientProxy::~RtspClientProxy(){
     run_flag_ = false;
-    int ret = pthread_join(tid_, NULL);
-    if(ret < 0){
-        std::cout << "pthread_join ReconnectThread error:" << tid_ << std::endl;
-    }
+    tid_.join();
     delete client_;
     std::cout << "~RtspClientProxy" << std::endl;
 }
@@ -35,13 +32,13 @@ void *RtspClientProxy::ReconnectThread(void *arg){
             self->client_->SetCallBack(self);
 
         }
-        usleep(1000 * 1000);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     return NULL;
 }
 int RtspClientProxy::ProbeVideoFps(){
     while(fps_ == -1){
-        usleep(1000 * 50);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     video_ready_ = false;
     return fps_;

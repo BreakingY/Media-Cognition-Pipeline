@@ -183,31 +183,15 @@ HardVideoDecoder::HardVideoDecoder(bool is_h265)
     callback_ = NULL;
     time_inited_ = 0;
     now_frames_ = pre_frames_ = 0;
-    pthread_cond_init(&packet_cond_, NULL);
-    pthread_mutex_init(&packet_mutex_, NULL);
-    pthread_cond_init(&frame_cond_, NULL);
-    pthread_mutex_init(&frame_mutex_, NULL);
-    pthread_create(&dec_thread_id_, NULL, &HardVideoDecoder::DecodeThread, this);
-    pthread_create(&sws_thread_id_, NULL, &HardVideoDecoder::ScaleThread, this);
+    dec_thread_id_ = std::thread(HardVideoDecoder::DecodeThread, this);
+    sws_thread_id_ = std::thread(HardVideoDecoder::ScaleThread, this);
 }
 HardVideoDecoder::~HardVideoDecoder()
 {
     abort_ = true;
 
-    int ret = pthread_join(dec_thread_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion dec_thread_id_ Error!");
-    }
-
-    ret = pthread_join(sws_thread_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion sws_thread_id_ Error!");
-    }
-
-    pthread_mutex_destroy(&frame_mutex_);
-    pthread_cond_destroy(&frame_cond_);
-    pthread_mutex_destroy(&packet_mutex_);
-    pthread_cond_destroy(&packet_cond_);
+    dec_thread_id_.join();
+    sws_thread_id_.join();
 
     for (std::list<AVFrame *>::iterator it = yuv_frames_.begin(); it != yuv_frames_.end(); ++it) {
         AVFrame *frame = *it;
@@ -271,10 +255,10 @@ void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t
     memcpy(node->es_data, data, data_len);
     node->es_data_len = data_len;
 
-    pthread_mutex_lock(&packet_mutex_);
+    std::unique_lock<std::mutex> guard(packet_mutex_);
     es_packets_.push_back(node);
-    pthread_mutex_unlock(&packet_mutex_);
-    pthread_cond_signal(&packet_cond_);
+    guard.unlock();
+    packet_cond_.notify_one();
     return;
 }
 void HardVideoDecoder::DecodeVideo(HardDataNode *data)
@@ -366,10 +350,10 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
         frame_nv12->format = out_pix_fmt_;
         av_image_fill_arrays(frame_nv12->data, frame_nv12->linesize, buffer, 
                             (AVPixelFormat)frame_nv12->format, frame_nv12->width, frame_nv12->height, 1);
-        pthread_mutex_lock(&frame_mutex_);
+        std::unique_lock<std::mutex> guard(frame_mutex_);
         yuv_frames_.push_back(frame_nv12);
-        pthread_mutex_unlock(&frame_mutex_);
-        pthread_cond_signal(&frame_cond_);
+        guard.unlock();
+        frame_cond_.notify_one();
 
         if (frame_) {
             av_frame_free(&frame_);
@@ -389,27 +373,18 @@ void *HardVideoDecoder::DecodeThread(void *arg)
 
     HardVideoDecoder *self = (HardVideoDecoder *)arg;
     while (!self->abort_) {
-        pthread_mutex_lock(&self->packet_mutex_);
+        std::unique_lock<std::mutex> guard(self->packet_mutex_);
         if (!self->es_packets_.empty()) {
             HardDataNode *pVideoPacket = self->es_packets_.front();
             self->es_packets_.pop_front();
-            pthread_mutex_unlock(&self->packet_mutex_);
+            guard.unlock();
             self->DecodeVideo(pVideoPacket);
 
             delete pVideoPacket;
         } else {
-
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->packet_cond_, &self->packet_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->packet_mutex_);
-
+            auto now = std::chrono::system_clock::now();
+            self->packet_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }
@@ -448,11 +423,11 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
         now_frames_++;
         if (!time_inited_) {
             time_inited_ = 1;
-            gettimeofday(&time_now_, NULL);
-            gettimeofday(&time_pre_, NULL);
+            time_now_ = std::chrono::steady_clock::now();
+            time_pre_ = time_now_;
         } else {
-            gettimeofday(&time_now_, NULL);
-            long tmp_time = 1000 * (time_now_.tv_sec - time_pre_.tv_sec) + (time_now_.tv_usec - time_pre_.tv_usec) / 1000;
+            time_now_ = std::chrono::steady_clock::now();
+            long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_ - time_pre_).count();
             if (tmp_time > 1000) { // 1s
                 int tmp_frame_rate = (now_frames_ - pre_frames_ + 1) * 1000 / tmp_time;
                 log_debug("input frame rate {} ", tmp_frame_rate);
@@ -472,25 +447,16 @@ void *HardVideoDecoder::ScaleThread(void *arg)
 {
     HardVideoDecoder *self = (HardVideoDecoder *)arg;
     while (!self->abort_) {
-        pthread_mutex_lock(&self->frame_mutex_);
+        std::unique_lock<std::mutex> guard(self->frame_mutex_);
         if (!self->yuv_frames_.empty()) {
             AVFrame *frame = self->yuv_frames_.front();
             self->yuv_frames_.pop_front();
-            pthread_mutex_unlock(&self->frame_mutex_);
+            guard.unlock();
             self->ScaleVideo(frame);
         } else {
-
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->frame_cond_, &self->frame_mutex_, &n_ts);
-
-            pthread_mutex_unlock(&self->frame_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->frame_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }

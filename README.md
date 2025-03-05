@@ -5,7 +5,7 @@
 * 音频编解码使用纯软方案。
 * 视频编解码有三种实现：
   1. FFmpeg硬编解码(HardDecoder.cpp、H264HardEncoder.cpp)，仅支持英伟达显卡，CMakeLists.txt中打开set(FFMPEG_NVIDIA FORCE)。支持软硬编解码自动切换(优先使用硬编解码-不是所有nvidia显卡都支持编解码、不支持则自动切换到软编解码，ffmpeg需要在编译安装的时候添加Nvidia硬编解码功能)。 博客地址：https://blog.csdn.net/weixin_43147845/article/details/136812735
-  2. FFmpeg纯软编解码(SoftDecoder.cpp、H264SoftEncoder.cpp)，CMakeLists.txt中打开set(FFMPEG_SOFT FORCE)，此时代码可以在任何Linux环境下运行,只需要安装ffmpeg即可。
+  2. FFmpeg纯软编解码(SoftDecoder.cpp、H264SoftEncoder.cpp)，CMakeLists.txt中打开set(FFMPEG_SOFT FORCE)，此时代码可以在任何Linux/Windows环境下运行,只需要安装ffmpeg即可。
   3. 昇腾显卡DVPP V2版本编解码(DVPPDecoder.cpp、H264DVPPEncoder.cpp、dvpp_enc)，CMakeLists.txt中打开set(DVPP_MPI FORCE)。
 * 默认是打开set(FFMPEG_SOFT FORCE)，通过设置宏的方式，使用者可以添加适配任意显卡的代码，只要保证类名和被调用的类方法一致即可，平台扩展性好。
 * 支持格式，视频：H264/H265，音频：AAC。
@@ -22,19 +22,31 @@
 * Bitstream：https://github.com/ireader/avcodec
 
 # 准备
-* 安装ffmpeg到/usr/local下，版本>=4.x 如果没有安装在/usr/local下面请修改CMakeLists.txt，把头文件和库路径添加进去。
-* 安装opencv，需要cmake能找到，如果不能请修改CMakeLists.txt，手动指定opencv头文件、库路径及链接的库。
-* 昇腾测试时，根据SDK的实际安装路径更改CMakeLists.txt中的配置
+* ffmpeg版本>=4.x 请根据安装位置修改CMakeLists.txt，把头文件和库路径添加进去。
+* 音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac。
 * 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0(昇腾SDK)。
+* Windows 软件安装参考：
+  * MinGW: https://blog.csdn.net/weixin_43352606/article/details/142333338
+  * Cmake: https://blog.csdn.net/didi_ya/article/details/123029415
+  * OpenCV(可以在网上下载用MinGW编译好的Opencv, 自己编译很容易出错。或者把项目添加到Visual Studio中): 
+    * https://blog.csdn.net/sunhuansheng/article/details/125966995
+    * https://blog.csdn.net/wuxulong123/article/details/134343003
 
-# Linux编译
-* mkdir build
-* cmake ..
-* make -j
-* 测试：
-  1. 文件测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4
-  2. rtsp测试：./MediaCodec your_rtsp_url out.mp4
-  3. 昇腾测试：./MediaCodec ../Test/dvpp_venc.mp4 out.mp4
+# 编译
+1. Linux
+   * mkdir build
+   * cd build
+   * cmake ..
+   * make -j
+2. Windows(MinGW + cmake)
+   * mkdir build
+   * cd build
+   * cmake -G "MinGW Makefiles" ..
+   * mingw32-make -j
+# 测试：
+1. 文件测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4
+2. rtsp测试：./MediaCodec your_rtsp_url out.mp4
+3. 昇腾测试：./MediaCodec ../Test/dvpp_venc.mp4 out.mp4
 
 # TODO
 * 解除DVPP视频宽高的限制

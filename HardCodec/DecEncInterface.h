@@ -1,5 +1,9 @@
 #ifndef DEC_ENC_INTERFACE_H
 #define DEC_ENC_INTERFACE_H
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <opencv2/opencv.hpp>
 // 解码后数据接口
 class DecDataCallListner

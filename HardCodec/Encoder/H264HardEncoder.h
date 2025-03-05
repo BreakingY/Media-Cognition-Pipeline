@@ -3,10 +3,12 @@
 
 #include "DecEncInterface.h"
 #include <opencv2/opencv.hpp>
-#include <sys/time.h>
 #include <string.h>
-#include <pthread.h>
+#include <thread>
+#include <mutex>
+#include <chrono>
 #include <list>
+#include <condition_variable>
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>
@@ -51,21 +53,21 @@ private:
 
     std::list<cv::Mat> bgr_frames_;
     std::list<AVFrame *> yuv_frames_;
-    pthread_mutex_t bgr_mutex_;
-    pthread_cond_t bgr_cond_;
-    pthread_mutex_t yuv_mutex_;
-    pthread_cond_t yuv_cond_;
-    pthread_t scale_id_;
-    pthread_t encode_id_;
+    std::mutex bgr_mutex_;
+    std::condition_variable bgr_cond_;
+    std::mutex yuv_mutex_;
+    std::condition_variable yuv_cond_;
+    std::thread scale_id_;
+    std::thread encode_id_;
 
     bool abort_;
     uint64_t nframe_counter_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     uint64_t time_ts_accum_;
 
-    struct timeval time_now_1_;
-    struct timeval time_pre_1_;
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
     int time_inited_;
     int now_frames_;
     int pre_frames_;
@@ -99,21 +101,21 @@ private:
 
     std::list<cv::Mat> bgr_frames_;
     std::list<AVFrame *> yuv_frames_;
-    pthread_mutex_t bgr_mutex_;
-    pthread_cond_t bgr_cond_;
-    pthread_mutex_t yuv_mutex_;
-    pthread_cond_t yuv_cond_;
-    pthread_t scale_id_;
-    pthread_t encode_id_;
+    std::mutex bgr_mutex_;
+    std::condition_variable bgr_cond_;
+    std::mutex yuv_mutex_;
+    std::condition_variable yuv_cond_;
+    std::thread scale_id_;
+    std::thread encode_id_;
 
     bool abort_;
     uint64_t nframe_counter_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     uint64_t time_ts_accum_;
 
-    struct timeval time_now_1_;
-    struct timeval time_pre_1_;
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
     int time_inited_;
     int now_frames_;
     int pre_frames_;
@@ -152,20 +154,20 @@ private:
 
     std::list<cv::Mat> bgr_frames_;
     std::list<void *> yuv_frames_;
-    pthread_mutex_t bgr_mutex_;
-    pthread_cond_t bgr_cond_;
-    pthread_mutex_t yuv_mutex_;
-    pthread_cond_t yuv_cond_;
+    std::mutex bgr_mutex_;
+    std::condition_variable bgr_cond_;
+    std::mutex yuv_mutex_;
+    std::condition_variable yuv_cond_;
     bool abort_;
-    pthread_t scale_id_;
-    pthread_t encode_id_;
+    std::thread scale_id_;
+    std::thread encode_id_;
     // color convert
     // mem pool
     uint32_t pool_num_ = 10;
     uint32_t out_buffer_size_ = 0;
     std::list<void*> out_buffer_pool_;
-    pthread_mutex_t out_buffer_pool_mutex_;
-    pthread_cond_t out_buffer_pool_cond_;
+    std::mutex out_buffer_pool_mutex_;
+    std::condition_variable out_buffer_pool_cond_;
     int width_;
     int height_;
     int fps_;
@@ -192,12 +194,12 @@ private:
 
     uint64_t nframe_counter_;
     uint64_t nframe_counter_recv_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     uint64_t time_ts_accum_;
 
-    struct timeval time_now_1_;
-    struct timeval time_pre_1_;
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
     int time_inited_;
     int now_frames_;
     int pre_frames_;
