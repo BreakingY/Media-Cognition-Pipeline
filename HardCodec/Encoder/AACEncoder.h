@@ -4,10 +4,12 @@
 #include "DecEncInterface.h"
 #include "log_helpers.h"
 #include <opencv2/opencv.hpp>
-#include <sys/time.h>
 #include <string.h>
-#include <pthread.h>
 #include <list>
+#include <thread>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -68,18 +70,18 @@ private:
     AVCodec *codec_ = NULL;
     AVPacket pkt_enc_;
 
-    pthread_mutex_t pcm_mutex_;
-    pthread_cond_t pcm_cond_;
+    std::mutex pcm_mutex_;
+    std::condition_variable pcm_cond_;
     std::list<AACPCMNode *> pcm_frames_;
-    pthread_mutex_t frame_mutex_;
-    pthread_cond_t frame_cond_;
+    std::mutex frame_mutex_;
+    std::condition_variable frame_cond_;
     std::list<AVFrame *> dec_frames_;
-    pthread_t scale_id_;
-    pthread_t encode_id_;
+    std::thread scale_id_;
+    std::thread encode_id_;
 
     bool abort_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
     int now_frames_;
     int pre_frames_;

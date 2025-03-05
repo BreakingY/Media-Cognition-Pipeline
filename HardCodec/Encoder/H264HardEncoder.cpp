@@ -1,7 +1,6 @@
 #ifdef USE_FFMPEG_NVIDIA
 #include "H264HardEncoder.h"
 #include "log_helpers.h"
-#include <iostream>
 
 static const uint64 NANO_SECOND = UINT64_C(1000000000);
 HardVideoEncoder::HardVideoEncoder()
@@ -11,23 +10,11 @@ HardVideoEncoder::HardVideoEncoder()
     sws_context_ = NULL;
     abort_ = false;
     callback_ = NULL;
-    pthread_cond_init(&bgr_cond_, NULL);
-    pthread_mutex_init(&bgr_mutex_, NULL);
-    pthread_cond_init(&yuv_cond_, NULL);
-    pthread_mutex_init(&yuv_mutex_, NULL);
     nframe_counter_ = 0;
     time_ts_accum_ = 0;
-    int s = 0;
     time_inited_ = 0;
-    s = pthread_create(&scale_id_, NULL, &HardVideoEncoder::VideoScaleThread, this);
-    if (s != 0) {
-        log_error("Video Scale Thread Create Error!");
-    }
-
-    s = pthread_create(&encode_id_, NULL, &HardVideoEncoder::VideoEncThread, this);
-    if (s != 0) {
-        log_error("Video Encode Thread Create Error!");
-    }
+    scale_id_ = std::thread(HardVideoEncoder::VideoScaleThread, this);
+    encode_id_ = std::thread(HardVideoEncoder::VideoEncThread, this);
 }
 void HardVideoEncoder::SetDataCallback(EncDataCallListner *call_func)
 {
@@ -36,18 +23,9 @@ void HardVideoEncoder::SetDataCallback(EncDataCallListner *call_func)
 }
 HardVideoEncoder::~HardVideoEncoder()
 {
-    int ret = 1;
     abort_ = true;
-    ret = pthread_join(encode_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion encode_id Error!");
-    }
-
-    ret = pthread_join(scale_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion video_scale_id Error!");
-    }
-
+    encode_id_.join();
+    scale_id_.join();
     bgr_frames_.clear();
 
     for (std::list<AVFrame *>::iterator it = yuv_frames_.begin(); it != yuv_frames_.end(); ++it) {
@@ -66,10 +44,6 @@ HardVideoEncoder::~HardVideoEncoder()
         sws_freeContext(sws_context_);
         sws_context_ = NULL;
     }
-    pthread_mutex_destroy(&bgr_mutex_);
-    pthread_cond_destroy(&bgr_cond_);
-    pthread_mutex_destroy(&yuv_mutex_);
-    pthread_cond_destroy(&yuv_cond_);
 
     log_info("~HardVideoEncoder");
 }
@@ -213,11 +187,11 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
     int last_width;
     long local_cnt = 0;
     while (!self->abort_) {
-        pthread_mutex_lock(&self->bgr_mutex_);
+        std::unique_lock<std::mutex> guard(self->bgr_mutex_);
         if (!self->bgr_frames_.empty()) {
             cv::Mat bgr_frame = self->bgr_frames_.front();
             self->bgr_frames_.pop_front();
-            pthread_mutex_unlock(&self->bgr_mutex_);
+            guard.unlock();
             // 如果尺寸发生变化需要重新初始化
             if (local_cnt == 0) {
                 last_width = self->h264_codec_ctx_->width;
@@ -251,7 +225,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
 
             sws_scale(self->sws_context_, mat_frame.data, mat_frame.linesize, 0, mat_frame.height,
                       yuv_frame->data, yuv_frame->linesize);
-            pthread_mutex_lock(&self->yuv_mutex_);
+            std::unique_lock<std::mutex> guard(self->yuv_mutex_);
 #ifdef DROP_FRAME
 			// 丢帧处理
             if (self->yuv_frames_.size() > 5) {
@@ -265,19 +239,12 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             }
 #endif
             self->yuv_frames_.push_back(yuv_frame);
-            pthread_mutex_unlock(&self->yuv_mutex_);
-            pthread_cond_signal(&self->yuv_cond_);
+            guard.unlock();
+            self->yuv_cond_.notify_one();
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->bgr_cond_, &self->bgr_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->bgr_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->bgr_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
         }
     }
     log_info("VideoScaleThread exit");
@@ -289,11 +256,11 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
     HardVideoEncoder *self = (HardVideoEncoder *)arg;
     int ret = 0;
     while (!self->abort_) {
-        pthread_mutex_lock(&self->yuv_mutex_);
+        std::unique_lock<std::mutex> guard(self->yuv_mutex_);
         if (!self->yuv_frames_.empty()) {
             AVFrame *yuv_frame = self->yuv_frames_.front();
             self->yuv_frames_.pop_front();
-            pthread_mutex_unlock(&self->yuv_mutex_);
+            guard.unlock();
 
             ret = avcodec_send_frame(self->h264_codec_ctx_, yuv_frame);
             if (ret < 0) {
@@ -319,14 +286,14 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
                     log_error("Error during encoding");
                     break;
                 }
-                gettimeofday(&self->time_now_, NULL);
+                self->time_now_ = std::chrono::steady_clock::now();
                 if (self->nframe_counter_ - 1 == 0) {
                     self->time_pre_ = self->time_now_;
                     self->time_ts_accum_ = 0;
                 }
                 // 编码后的数据sps pps也直接在packet->data里面,并且包含了起始码
                 packet->stream_index = 0;
-                packet->duration = 1000 * (self->time_now_.tv_sec - self->time_pre_.tv_sec) + (self->time_now_.tv_usec - self->time_pre_.tv_usec) / 1000;
+                packet->duration = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
                 self->time_ts_accum_ += packet->duration;
                 packet->pts = self->time_ts_accum_;
                 if (self->callback_) {
@@ -339,16 +306,10 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             av_frame_free(&yuv_frame);
             av_packet_free(&packet);
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->yuv_cond_, &self->yuv_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->yuv_mutex_);
+            auto now = std::chrono::system_clock::now();
+            self->yuv_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
+            continue;
         }
     }
     // 清空缓冲区 TODO 代码优化，这部分代码有点重复了
@@ -364,14 +325,14 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             log_error("Error during encoding");
             break;
         }
-        gettimeofday(&self->time_now_, NULL);
+        self->time_now_ = std::chrono::steady_clock::now();
         if (self->nframe_counter_ - 1 == 0) {
             self->time_pre_ = self->time_now_;
             self->time_ts_accum_ = 0;
         }
         // 编码后的数据sps pps也直接在packet->data里面,并且包含了起始码
         packet->stream_index = 0;
-        packet->duration = 1000 * (self->time_now_.tv_sec - self->time_pre_.tv_sec) + (self->time_now_.tv_usec - self->time_pre_.tv_usec) / 1000;
+        packet->duration = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
         self->time_ts_accum_ += packet->duration;
         packet->pts = self->time_ts_accum_;
         if (self->callback_) {
@@ -388,7 +349,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
 
 int HardVideoEncoder::AddVideoFrame(cv::Mat bgr_frame)
 {
-    pthread_mutex_lock(&bgr_mutex_);
+    std::unique_lock<std::mutex> guard(bgr_mutex_);
 #ifdef DROP_FRAME
 	// 丢帧处理
     if (bgr_frames_.size() > 5) {
@@ -396,16 +357,16 @@ int HardVideoEncoder::AddVideoFrame(cv::Mat bgr_frame)
     }
 #endif
     bgr_frames_.push_back(bgr_frame);
-    pthread_mutex_unlock(&bgr_mutex_);
-    pthread_cond_signal(&bgr_cond_);
+    guard.unlock();
+    bgr_cond_.notify_one();
     if (!time_inited_) {
         time_inited_ = 1;
-        gettimeofday(&time_now_1_, NULL);
-        gettimeofday(&time_pre_1_, NULL);
+        time_now_1_ = std::chrono::steady_clock::now();
+        time_pre_1_ = time_now_1_;
         now_frames_ = pre_frames_ = 0;
     } else {
-        gettimeofday(&time_now_1_, NULL);
-        long tmp_time = 1000 * (time_now_1_.tv_sec - time_pre_1_.tv_sec) + (time_now_1_.tv_usec - time_pre_1_.tv_usec) / 1000;
+        time_now_1_ = std::chrono::steady_clock::now();
+        long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_1_ - time_pre_1_).count();
         if (tmp_time > 1000) {
             log_debug(" output frame rate {} ", (now_frames_ - pre_frames_ + 1) * 1000 / tmp_time);
             time_pre_1_ = time_now_1_;

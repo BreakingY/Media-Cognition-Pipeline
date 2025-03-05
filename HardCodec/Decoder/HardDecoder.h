@@ -8,8 +8,10 @@
 #include <opencv2/opencv.hpp>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
-#include <pthread.h>
+#include <thread>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -80,20 +82,20 @@ private:
     enum AVPixelFormat hw_pix_fmt_;
     AVBufferRef *hw_device_ctx_ = NULL;
 
-    pthread_mutex_t packet_mutex_;
-    pthread_cond_t packet_cond_;
-    pthread_cond_t frame_cond_;
-    pthread_mutex_t frame_mutex_;
+    std::mutex packet_mutex_;
+    std::condition_variable packet_cond_;
+    std::condition_variable frame_cond_;
+    std::mutex frame_mutex_;
     std::list<HardDataNode *> es_packets_;
     std::list<AVFrame *> yuv_frames_;
-    pthread_t dec_thread_id_;
-    pthread_t sws_thread_id_;
+    std::thread dec_thread_id_;
+    std::thread sws_thread_id_;
     bool abort_;
 
     int now_frames_;
     int pre_frames_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
 
     unsigned char *image_ptr_ = NULL;
@@ -127,20 +129,20 @@ private:
     struct SwsContext *img_convert_ctx_ = NULL;
     enum AVPixelFormat out_pix_fmt_ = AV_PIX_FMT_NONE;
 
-    pthread_mutex_t packet_mutex_;
-    pthread_cond_t packet_cond_;
-    pthread_cond_t frame_cond_;
-    pthread_mutex_t frame_mutex_;
+    std::mutex packet_mutex_;
+    std::condition_variable packet_cond_;
+    std::condition_variable frame_cond_;
+    std::mutex frame_mutex_;
     std::list<HardDataNode *> es_packets_;
     std::list<AVFrame *> yuv_frames_;
-    pthread_t dec_thread_id_;
-    pthread_t sws_thread_id_;
+    std::thread dec_thread_id_;
+    std::thread sws_thread_id_;
     bool abort_;
 
     int now_frames_;
     int pre_frames_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
 
     unsigned char *image_ptr_ = NULL;
@@ -185,8 +187,8 @@ private:
     uint32_t pool_num_ = 10;
     uint32_t out_buffer_size_ = 0;
     std::list<void*> out_buffer_pool_;
-    pthread_mutex_t out_buffer_pool_mutex_;
-    pthread_cond_t out_buffer_pool_cond_;
+    std::mutex out_buffer_pool_mutex_;
+    std::condition_variable out_buffer_pool_cond_;
 
     // color convert
     hi_vpc_chn channel_id_color_;
@@ -196,20 +198,20 @@ private:
     unsigned char *image_ptr_ = NULL;
 
 
-    pthread_t send_stream_thread_id_;
-    pthread_t get_pic_thread_id_;
+    std::thread send_stream_thread_id_;
+    std::thread get_pic_thread_id_;
 
 
     DecDataCallListner *callback_ = NULL;
-    pthread_mutex_t packet_mutex_;
-    pthread_cond_t packet_cond_;
+    std::mutex packet_mutex_;
+    std::condition_variable packet_cond_;
     std::list<HardDataNode *> es_packets_;
     bool abort_ = false;
 
     int now_frames_;
     int pre_frames_;
-    struct timeval time_now_;
-    struct timeval time_pre_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
     
 };

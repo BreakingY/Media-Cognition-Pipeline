@@ -37,18 +37,10 @@ HardVideoDecoder::HardVideoDecoder(bool is_h265)
     callback_ = NULL;
     time_inited_ = 0;
     now_frames_ = pre_frames_ = 0;
-    pthread_cond_init(&packet_cond_, NULL);
-    pthread_mutex_init(&packet_mutex_, NULL);
-    pthread_cond_init(&out_buffer_pool_cond_, NULL);
-    pthread_mutex_init(&out_buffer_pool_mutex_, NULL);
 }
 HardVideoDecoder::~HardVideoDecoder()
 {
     Stop();
-    pthread_mutex_destroy(&packet_mutex_);
-    pthread_cond_destroy(&packet_cond_);
-    pthread_mutex_destroy(&out_buffer_pool_mutex_);
-    pthread_cond_destroy(&out_buffer_pool_cond_);
     for (std::list<HardDataNode *>::iterator it = es_packets_.begin(); it != es_packets_.end(); ++it){
         HardDataNode *packet = *it;
         delete packet;
@@ -59,14 +51,8 @@ HardVideoDecoder::~HardVideoDecoder()
 void HardVideoDecoder::Stop(){
     CHECK_ACL(aclrtSetDevice(device_id_));
     abort_ = true;
-    int ret = pthread_join(send_stream_thread_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion send_stream_thread_id_ Error!");
-    }
-    ret = pthread_join(get_pic_thread_id_, NULL);
-    if (ret != 0) {
-        log_error("Jion get_pic_thread_id_ Error!");
-    }
+    send_stream_thread_id_.join();
+    get_pic_thread_id_.join();
     CHECK_DVPP_MPI(hi_mpi_vdec_stop_recv_stream(channel_id_));
     CHECK_DVPP_MPI(hi_mpi_vdec_destroy_chn(channel_id_));
     while (!out_buffer_pool_.empty()) {
@@ -147,30 +133,22 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
 
     
     CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &in_es_buffer_, in_es_buffer_size_));
-    pthread_create(&send_stream_thread_id_, NULL, SendStream, this);
-    pthread_create(&get_pic_thread_id_, NULL, GetPic, this);
+    send_stream_thread_id_ = std::thread(HardVideoDecoder::SendStream, this);
+    get_pic_thread_id_ = std::thread(HardVideoDecoder::GetPic, this);
     return;
 }
 void *HardVideoDecoder::GetOutAddr(){
     while(!abort_){
-        pthread_mutex_lock(&out_buffer_pool_mutex_);
+        std::unique_lock<std::mutex> guard(out_buffer_pool_mutex_);
         if (!out_buffer_pool_.empty()) {
             void *addr = out_buffer_pool_.front();
             out_buffer_pool_.pop_front();
-            pthread_mutex_unlock(&out_buffer_pool_mutex_);
+            guard.unlock();
             return addr;
         } else {
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&out_buffer_pool_cond_, &out_buffer_pool_mutex_, &n_ts);
-            pthread_mutex_unlock(&out_buffer_pool_mutex_);
-
+            auto now = std::chrono::system_clock::now();
+            out_buffer_pool_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }
@@ -180,10 +158,10 @@ void HardVideoDecoder::PutOutAddr(void *addr){
     if(!addr){
         return;
     }
-    pthread_mutex_lock(&out_buffer_pool_mutex_);
+    std::unique_lock<std::mutex> guard(out_buffer_pool_mutex_);
     out_buffer_pool_.push_back(addr);
-    pthread_mutex_unlock(&out_buffer_pool_mutex_);
-    pthread_cond_signal(&out_buffer_pool_cond_);
+    guard.unlock();
+    out_buffer_pool_cond_.notify_one();
     return;
 }
 void HardVideoDecoder::VdecResetChn(){
@@ -205,19 +183,19 @@ void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t
     memcpy(node->es_data, data, data_len);
     node->es_data_len = data_len;
 
-    pthread_mutex_lock(&packet_mutex_);
+    std::unique_lock<std::mutex> guard(packet_mutex_);
     es_packets_.push_back(node);
-    pthread_mutex_unlock(&packet_mutex_);
-    pthread_cond_signal(&packet_cond_);
+    guard.unlock();
+    packet_cond_.notify_one();
     return;
 }
 static uint64_t GetCurrentTimeUs()
 {
-    struct timeval cur_time;
-    gettimeofday(&cur_time, NULL);
-    uint64_t time_us = (uint64_t)cur_time.tv_sec * 1000000 + cur_time.tv_usec;
-    return time_us;
+    auto now = std::chrono::steady_clock::now();
+    auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+    return static_cast<uint64_t>(time_us);
 }
+
 void HardVideoDecoder::DecodeVideo(HardDataNode *data){
     hi_vdec_stream stream;
     hi_vdec_pic_info out_pic_info;
@@ -257,27 +235,18 @@ void *HardVideoDecoder::SendStream(void *arg){
     HardVideoDecoder *self = (HardVideoDecoder*)arg;
     CHECK_ACL(aclrtSetDevice(self->device_id_));
     while (!self->abort_) {
-        pthread_mutex_lock(&self->packet_mutex_);
+        std::unique_lock<std::mutex> guard(self->packet_mutex_);
         if (!self->es_packets_.empty()) {
             HardDataNode *pVideoPacket = self->es_packets_.front();
             self->es_packets_.pop_front();
-            pthread_mutex_unlock(&self->packet_mutex_);
+            guard.unlock();
             self->DecodeVideo(pVideoPacket);
 
             delete pVideoPacket;
         } else {
-
-            struct timespec n_ts;
-            clock_gettime(CLOCK_REALTIME, &n_ts);
-            if (n_ts.tv_nsec + 10 * 1000000 >= NANO_SECOND) {
-                n_ts.tv_sec += 1;
-                n_ts.tv_nsec = n_ts.tv_nsec + 10 * 1000000 - NANO_SECOND;
-            } else {
-                n_ts.tv_nsec += 10 * 1000000;
-            }
-            pthread_cond_timedwait(&self->packet_cond_, &self->packet_mutex_, &n_ts);
-            pthread_mutex_unlock(&self->packet_mutex_);
-
+            auto now = std::chrono::system_clock::now();
+            self->packet_cond_.wait_until(guard, now + std::chrono::milliseconds(100));
+            guard.unlock();
             continue;
         }
     }
@@ -321,11 +290,11 @@ void *HardVideoDecoder::GetPic(void *arg){
                     self->now_frames_++;
                     if (!self->time_inited_) {
                         self->time_inited_ = 1;
-                        gettimeofday(&self->time_now_, NULL);
-                        gettimeofday(&self->time_pre_, NULL);
+                        self->time_now_ = std::chrono::steady_clock::now();
+                        self->time_pre_ = time_now_;
                     } else {
-                        gettimeofday(&self->time_now_, NULL);
-                        long tmp_time = 1000 * (self->time_now_.tv_sec - self->time_pre_.tv_sec) + (self->time_now_.tv_usec - self->time_pre_.tv_usec) / 1000;
+                        self->time_now_ = std::chrono::steady_clock::now();
+                        long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
                         if (tmp_time > 1000) { // 1s
                             int tmp_frame_rate = (self->now_frames_ - self->pre_frames_ + 1) * 1000 / tmp_time;
                             log_debug("input frame rate {} ", tmp_frame_rate);

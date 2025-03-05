@@ -91,13 +91,13 @@ static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_
 int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
 {
     // 这里不使用编码器传过来的时间戳，根据当前时间重新生成
-    gettimeofday(&time_now_, NULL);
+    time_now_ = std::chrono::steady_clock::now();
     nframe_counter_++;
     if (nframe_counter_ == 1) {
         time_pre_ = time_now_;
         time_ts_accum_ = 0;
     }
-    uint64_t duration_t = 1000 * (time_now_.tv_sec - time_pre_.tv_sec) + (time_now_.tv_usec - time_pre_.tv_usec) / 1000;
+    uint64_t duration_t = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_ - time_pre_).count();
     time_ts_accum_ += duration_t;
     uint64_t pts_t = time_ts_accum_;
     time_pre_ = time_now_;
@@ -222,13 +222,13 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     ParseAdtsHeader((uint8_t*)data, &res);
     log_info("channelCfg:{} rate:{}",res.channelCfg,sampling_frequencies[res.samplingFreqIndex]);
 #endif
-    gettimeofday(&time_now_1_, NULL);
+    time_now_1_ = std::chrono::steady_clock::now();
     nframe_counter_1_++;
     if (nframe_counter_1_ == 1) {
         time_pre_1_ = time_now_1_;
         time_ts_accum_1_ = 0;
     }
-    uint64_t duration_t = 1000 * (time_now_1_.tv_sec - time_pre_1_.tv_sec) + (time_now_1_.tv_usec - time_pre_1_.tv_usec) / 1000;
+    uint64_t duration_t = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_1_ - time_pre_1_).count();
     time_ts_accum_1_ += duration_t;
     uint64_t pts_t = time_ts_accum_1_;
     // 模拟实时流，所以这里面的pts重新生成

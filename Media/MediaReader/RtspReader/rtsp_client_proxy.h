@@ -1,8 +1,11 @@
 #ifndef RTSP_CLIENT_PROXY
 #define RTSP_CLIENT_PROXY
 
-#include <unistd.h>
-#include <pthread.h>
+#include <thread>
+#include <mutex>
+#include <chrono>
+#include <list>
+#include <condition_variable>
 #include "rtsp_client.h"
 #include "MediaInterface.h"
 #include "TypeDef.h"
@@ -27,7 +30,7 @@ private:
     std::string rtsp_url_;
     enum TRANSPORT transport_ = TRANSPORT::RTP_OVER_TCP;
     RtspClient *client_ = NULL;
-    pthread_t tid_;
+    std::thread tid_;
     bool run_flag_ = true;
     int width_ = -1;
     int height_ = -1;
