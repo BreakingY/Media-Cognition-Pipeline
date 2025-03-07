@@ -26,11 +26,7 @@
 * 音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac。
 * 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0(昇腾SDK)。
 * Windows 软件安装参考：
-  * MinGW: https://blog.csdn.net/weixin_43352606/article/details/142333338
-  * Cmake: https://blog.csdn.net/didi_ya/article/details/123029415
-  * OpenCV(可以在网上下载用MinGW编译好的OpenCV, 自己编译很容易出错。或者把项目添加到Visual Studio中): 
-    * https://blog.csdn.net/sunhuansheng/article/details/125966995
-    * https://blog.csdn.net/wuxulong123/article/details/134343003
+  * https://sunkx.blog.csdn.net/article/details/146064215
 
 # 编译
 1. Linux
