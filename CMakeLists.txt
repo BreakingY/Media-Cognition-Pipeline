@@ -7,7 +7,7 @@ if(WIN32)
     include_directories("D:/msys64/home/sunkx1/ff-build/include")
     link_directories("D:/msys64/mingw64/lib")
     link_directories("D:/msys64/home/sunkx1/ff-build/lib")
-    #opencv
+    # opencv
     include_directories("D:/opencv-mingw/install/include")
     link_directories("D:/opencv-mingw/install/x64/mingw/lib")
 elseif(UNIX)
