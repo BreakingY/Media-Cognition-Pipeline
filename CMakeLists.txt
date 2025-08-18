@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project (VIDEOCODECPROJ)
 set(CMAKE_CXX_STANDARD 14)
+option(FFMPEG_SOFT "Enable FFmpeg soft codec" OFF)
+option(FFMPEG_NVIDIA "Enable FFmpeg nvidia codec" OFF)
+option(DVPP_MPI "Enable Ascend DVPP V2 codec" OFF)
 if(WIN32)
     # ffmpeg
     include_directories("D:/msys64/mingw64/include")
@@ -43,25 +46,13 @@ set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -fpermissive -std=c++14) 
 set(CMAKE_BUILD_TYPE Release)
 
-######ffmpeg nvidia######
-# set(FFMPEG_NVIDIA FORCE)
-#########################
-
-#######ffmpeg soft#######
-set(FFMPEG_SOFT FORCE)
-#########################
-
-#####Ascend DVPP V2######
-# set(DVPP_MPI FORCE)
-#########################
-
-if(DEFINED  FFMPEG_NVIDIA)
+if(FFMPEG_NVIDIA)
     message(STATUS "USE_FFMPEG_NVIDIA OK")
     add_definitions(-DUSE_FFMPEG_NVIDIA)
-elseif(DEFINED FFMPEG_SOFT)
+elseif(FFMPEG_SOFT)
     message(STATUS "USE_FFMPEG_SOFT OK")
     add_definitions(-DUSE_FFMPEG_SOFT)
-elseif(DEFINED DVPP_MPI)
+elseif(DVPP_MPI)
     message(STATUS "USE_DVPP_MPI OK")
     add_definitions(-DUSE_DVPP_MPI -DHMEV_PLATFORM_SDK)
     include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp
@@ -74,7 +65,7 @@ endif()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
-if(DEFINED  DVPP_MPI)
+if(DVPP_MPI)
     target_link_libraries(mcp ascendcl acl_dvpp_mpi)
 endif()
 if(WIN32)
