@@ -47,6 +47,7 @@
 
 # TODO
 * 解除DVPP视频宽高的限制
+* NVIDIA使用cuda流优化
 
 # 技术交流
 * kxsun617@163.com
