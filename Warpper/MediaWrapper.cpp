@@ -342,9 +342,19 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
     // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
     // 之后再把处理后的图像进行编码
     if (!hard_encoder_) {
+#if defined(USE_NVIDIA_X86)
+        if(use_nv_enc_flag_){
+            hard_encoder_ = new NVHardVideoEncoder();
+        }
+        else{
+            hard_encoder_ =  new NVSoftVideoEncoder();
+        }
+        hard_encoder_->SetDevice(device_id_);
+#elif defined(USE_DVPP_MPI)
         hard_encoder_ = new HardVideoEncoder();
-#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86)
-        hard_encoder_->SetDevice(device_id_); // dvpp nvidia
+        hard_encoder_->SetDevice(device_id_);
+#else
+        hard_encoder_ = new HardVideoEncoder();
 #endif
         hard_encoder_->Init(frame, fps_);
         hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));

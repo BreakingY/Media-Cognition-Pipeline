@@ -94,9 +94,6 @@ private:
     AVCodec *h264_codec_ = NULL;
     SwsContext *sws_context_ = NULL;
     enum AVPixelFormat sw_pix_format_ = AV_PIX_FMT_YUV420P;
-    // hard enc
-    enum AVHWDeviceType type_ = AV_HWDEVICE_TYPE_NONE;
-    bool is_hard_enc_ = false;
     enum AVCodecID decodec_id_;
 
     std::list<cv::Mat> bgr_frames_;
@@ -212,12 +209,65 @@ private:
 class HardVideoEncoder
 {
 public:
-    HardVideoEncoder();
-    ~HardVideoEncoder();
-    int AddVideoFrame(cv::Mat bgr_frame);
-    void SetDevice(int device_id);
-    int Init(cv::Mat init_frame, int fps);
-    void SetDataCallback(EncDataCallListner *call_func);
+    virtual ~HardVideoEncoder() {}
+    virtual int AddVideoFrame(cv::Mat bgr_frame) = 0;
+    virtual void SetDevice(int device_id) = 0;
+    virtual int Init(cv::Mat init_frame, int fps) = 0;
+    virtual void SetDataCallback(EncDataCallListner *call_func) = 0;
+};
+class NVSoftVideoEncoder: public HardVideoEncoder
+{
+public:
+    NVSoftVideoEncoder();
+    virtual ~NVSoftVideoEncoder();
+    int AddVideoFrame(cv::Mat bgr_frame) override;
+    virtual void SetDevice(int device_id) override;
+    int Init(cv::Mat init_frame, int fps) override;
+    void SetDataCallback(EncDataCallListner *call_func) override;
+
+private:
+    int SoftEncInit(int width, int height, int fps);
+    static void *VideoScaleThread(void *arg);
+    static void *VideoEncThread(void *arg);
+
+private:
+    EncDataCallListner *callback_ = NULL;
+    AVCodecContext *h264_codec_ctx_ = NULL;
+    AVCodec *h264_codec_ = NULL;
+    SwsContext *sws_context_ = NULL;
+    enum AVPixelFormat sw_pix_format_ = AV_PIX_FMT_YUV420P;
+    enum AVCodecID decodec_id_;
+
+    std::list<cv::Mat> bgr_frames_;
+    std::list<AVFrame *> yuv_frames_;
+    std::mutex bgr_mutex_;
+    std::condition_variable bgr_cond_;
+    std::mutex yuv_mutex_;
+    std::condition_variable yuv_cond_;
+    std::thread scale_id_;
+    std::thread encode_id_;
+
+    bool abort_;
+    uint64_t nframe_counter_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    uint64_t time_ts_accum_;
+
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
+    int time_inited_;
+    int now_frames_;
+    int pre_frames_;
+};
+class NVHardVideoEncoder: public HardVideoEncoder
+{
+public:
+    NVHardVideoEncoder();
+    virtual ~NVHardVideoEncoder();
+    int AddVideoFrame(cv::Mat bgr_frame) override;
+    void SetDevice(int device_id) override;
+    int Init(cv::Mat init_frame, int fps) override;
+    void SetDataCallback(EncDataCallListner *call_func) override;
 
 private:
     static void *VideoEncThread(void *arg);
@@ -226,7 +276,6 @@ private:
     EncDataCallListner *callback_ = NULL;
 
     std::list<cv::Mat> bgr_frames_;
-    std::list<void *> yuv_frames_;
     std::mutex bgr_mutex_;
     std::condition_variable bgr_cond_;
 
@@ -243,10 +292,6 @@ private:
     int height_;
     int fps_;
     
-
-    unsigned char *image_ptr_ = NULL;
-    uint64_t image_ptr_size_ = 1024 * 1024 * 2;
-
     uint64_t nframe_counter_;
     std::chrono::steady_clock::time_point time_now_;
     std::chrono::steady_clock::time_point time_pre_;
