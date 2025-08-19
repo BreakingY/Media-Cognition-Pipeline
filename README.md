@@ -25,7 +25,7 @@
 # 准备
 * ffmpeg版本==4.x 请根据安装位置修改CMakeLists.txt，把头文件和库路径添加进去。
 * 音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac。
-* 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0(昇腾SDK)。
+* 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0(昇腾SDK)、NVIDIA:cuda12.4; 驱动550.163.01; Video_Codec_SDK11.0.10。
 * Windows 软件安装参考：
   * https://sunkx.blog.csdn.net/article/details/146064215
 
