@@ -205,5 +205,59 @@ private:
     int pre_frames_;
 };
 #endif
+#ifdef USE_NVIDIA_X86
+#include "NvEncoderCuda.h"
+#include "NvEncoderCLIOptions.h"
+#include "NvCodecUtils.h"
+class HardVideoEncoder
+{
+public:
+    HardVideoEncoder();
+    ~HardVideoEncoder();
+    int AddVideoFrame(cv::Mat bgr_frame);
+    void SetDevice(int device_id);
+    int Init(cv::Mat init_frame, int fps);
+    void SetDataCallback(EncDataCallListner *call_func);
+
+private:
+    static void *VideoEncThread(void *arg);
+private:
+    int32_t device_id_ = 0;
+    EncDataCallListner *callback_ = NULL;
+
+    std::list<cv::Mat> bgr_frames_;
+    std::list<void *> yuv_frames_;
+    std::mutex bgr_mutex_;
+    std::condition_variable bgr_cond_;
+
+    NvEncoderInitParam init_param_;
+    NV_ENC_BUFFER_FORMAT eformat_;
+    void *ptr_image_bgr_device_ = NULL;
+    void *ptr_image_bgra_device_ = NULL;
+    NvEncoderCuda *enc_ = NULL;
+    
+    bool abort_;
+    std::thread encode_id_;
+    
+    int width_;
+    int height_;
+    int fps_;
+    
+
+    unsigned char *image_ptr_ = NULL;
+    uint64_t image_ptr_size_ = 1024 * 1024 * 2;
+
+    uint64_t nframe_counter_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    uint64_t time_ts_accum_;
+
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
+    int time_inited_;
+    int now_frames_;
+    int pre_frames_;
+};
+#endif
 
 #endif

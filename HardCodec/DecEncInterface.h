@@ -9,7 +9,7 @@
 class DecDataCallListner
 {
 public:
-    virtual void OnRGBData(cv::Mat frame) = 0;
+    virtual void OnRGBData(cv::Mat frame) = 0; // frame中的格式是opencv的默认格式，即BGR
     virtual void OnPCMData(unsigned char **data, int data_len) = 0; // data是原生的输出数据，指针数组，data_len是单通道样本个数
 };
 // 编码后数据接口

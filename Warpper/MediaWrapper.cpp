@@ -293,8 +293,8 @@ void MiedaWrapper::OnVideoData(VideoData data)
         log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
         hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
-#ifdef USE_DVPP_MPI
-        hard_decoder_->Init(device_id_, width_, height_); // dvpp
+#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86)
+        hard_decoder_->Init(device_id_, width_, height_); // dvpp nvidia
 #endif
     }
     // int type;
@@ -343,8 +343,8 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
     // 之后再把处理后的图像进行编码
     if (!hard_encoder_) {
         hard_encoder_ = new HardVideoEncoder();
-#ifdef USE_DVPP_MPI
-        hard_encoder_->SetDevice(device_id_); // dvpp
+#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86)
+        hard_encoder_->SetDevice(device_id_); // dvpp nvidia
 #endif
         hard_encoder_->Init(frame, fps_);
         hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));

@@ -6,7 +6,8 @@
 * 视频编解码有三种实现：
   1. FFmpeg硬编解码(HardDecoder.cpp、H264HardEncoder.cpp)，仅支持英伟达显卡，cmake -DFFMPEG_NVIDIA=ON .. 支持软硬编解码自动切换(优先使用硬编解码-不是所有nvidia显卡都支持编解码、不支持则自动切换到软编解码，ffmpeg需要在编译安装的时候添加Nvidia硬编解码功能)。 博客地址：https://blog.csdn.net/weixin_43147845/article/details/136812735
   2. FFmpeg纯软编解码(SoftDecoder.cpp、H264SoftEncoder.cpp)，cmake -DFFMPEG_SOFT=ON .. 此时代码可以在任何Linux/Windows环境下运行,只需要安装ffmpeg即可
-  3. 昇腾显卡DVPP V2版本编解码(DVPPDecoder.cpp、H264DVPPEncoder.cpp、dvpp_enc)，cmake -DDVPP_MPI=ON ..
+  3. 昇腾显卡DVPP V2版本编解码(DVPPDecoder.cpp、H264DVPPEncoder.cpp、dvpp_enc)，默认使用第0号NPU(MiedaWrapper.h), cmake -DDVPP_MPI=ON ..
+  4. Video_Codec_SDK，使用NVIDIA x86原生SDK,下载地址：https://developer.nvidia.com/video_codec_sdk/downloads/v11，项目使用Video_Codec_SDK_11.0.10版本，测试驱动版本为550.163.01, Nvcodec_utils目录里的文件都是从Video_Codec_SDK_11.0.10中提取的，因为Video_Codec_SDK_11.0.10中文件很多，实际使用过程中并不是所有的都需要，Nvcodec_utils里面只提取出来本项目使用的文件，并进行分类。使用前需要设置编码方式(不是所有的显卡都支持硬编码, 这部分正在做。目前还不支持切换编码方式)，默认使用第0号GPU(MiedaWrapper.h), 需要安装cuda(版本无要求), cmake -DNVIDIA_SDK_X86=ON ..(先导入环境变量export PATH=$PATH:/usr/local/cuda/bin和export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64)
 * 通过设置宏的方式，使用者可以添加适配任意显卡的代码，只要保证类名和被调用的类方法一致即可，平台扩展性好。
 * 支持格式，视频：H264/H265，音频：AAC。
 * ffmpeg-nvidia不适用jetson，jetson的编解码库和x86不一样。jetson编解码参考：https://github.com/BreakingY/jetpack-dec-enc
