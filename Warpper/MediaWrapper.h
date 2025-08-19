@@ -35,6 +35,11 @@ public:
     int WriteVideo2File(uint8_t *data, int len);
     int WriteAudio2File(uint8_t *data, int len);
 
+    // for nvpp nvidia
+    void SetDeviceId(int device_id) {device_id_ = device_id; return;}
+    // for nvidia
+    void UseNVEnc() {use_nv_enc_flag_ = true; return;}
+
 public:
     bool over_flag_ = false;
     // video
@@ -79,8 +84,8 @@ public:
     int video_stream_ = -1;
     int audio_stream_ = -1;
 
-    // GPU
+    // NPU GPU
     int32_t device_id_ = 0;
-
+    bool use_nv_enc_flag_ = false;
 };
 #endif
