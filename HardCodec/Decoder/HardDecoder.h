@@ -216,4 +216,49 @@ private:
     
 };
 #endif
+
+#ifdef USE_NVIDIA_X86
+#include <cuda.h>
+#include "NvDecoder.h"
+#include "NvCodecUtils.h"
+#include "ColorSpace.h"
+class HardVideoDecoder
+{
+
+public:
+    HardVideoDecoder(bool is_h265 = false);
+    virtual ~HardVideoDecoder();
+    void Init(int32_t device_id, int width, int height);
+    void SetFrameFetchCallback(DecDataCallListner *call_func);
+    void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+
+private:
+    static void *DecodeThread(void *arg);
+    void DecodeVideo(HardDataNode *data);
+private:
+    int32_t device_id_ = 0;
+    int width_;
+    int height_;
+    NvDecoder *dec_ = NULL;
+    cudaVideoCodec type_;
+    void *device_frame_ = NULL;
+    void *device_color_frame_ = NULL;
+    void* host_frame_ = NULL;
+
+    std::thread dec_thread_id_;
+
+    DecDataCallListner *callback_ = NULL;
+    std::mutex packet_mutex_;
+    std::condition_variable packet_cond_;
+    std::list<HardDataNode *> es_packets_;
+    bool abort_ = false;
+
+    int now_frames_;
+    int pre_frames_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    int time_inited_;
+    
+};
+#endif
 #endif
