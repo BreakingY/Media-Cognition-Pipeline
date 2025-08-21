@@ -203,6 +203,7 @@ private:
 };
 #endif
 #ifdef USE_NVIDIA_X86
+#include <cuda_runtime.h>
 #include "NvEncoderCuda.h"
 #include "NvEncoderCLIOptions.h"
 #include "NvCodecUtils.h"

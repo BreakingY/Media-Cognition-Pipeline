@@ -218,7 +218,7 @@ private:
 #endif
 
 #ifdef USE_NVIDIA_X86
-#include <cuda.h>
+#include <cuda_runtime.h>
 #include "NvDecoder.h"
 #include "NvCodecUtils.h"
 #include "ColorSpace.h"
