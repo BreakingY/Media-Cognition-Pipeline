@@ -420,7 +420,7 @@ void Muxer::RewriteVideoExtraData()
     } else if (video_type_ == VIDEO_H265) {
         H265WriteExtra(out_codecpar->extradata, out_codecpar->extradata_size);
     } else {
-        log_error("video_type_ error:{}", video_type_);
+        log_error("video_type_ error:{}", (int)video_type_);
     }
     return;
 }

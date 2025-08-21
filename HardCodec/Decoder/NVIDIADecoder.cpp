@@ -114,7 +114,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
         const int order[3] = {0, 1, 2};
         NppStatus status = nppiSwapChannels_8u_C4C3R((const Npp8u*)device_frame_, width_ * 4, (Npp8u*)device_color_frame_, width_ * 3, roi_size, order);
         if(status != NPP_SUCCESS){
-            log_error("NPP BGRA->BGR failed: {}", status);
+            log_error("NPP BGRA->BGR failed: {}", (int)status);
         }
         CHECK_CUDA(cudaMemcpy(host_frame_, device_color_frame_, width_ * height_ * 3, cudaMemcpyDeviceToHost));
         cv::Mat frame_mat(height_, width_, CV_8UC3, host_frame_);
