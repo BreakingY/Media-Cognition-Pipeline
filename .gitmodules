@@ -1,3 +1,6 @@
 [submodule "Log/spdlog"]
 	path = Log/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "Media/Bitstream"]
+	path = Media/Bitstream
+	url = https://github.com/ireader/avcodec
