@@ -16,9 +16,9 @@ Audio and video packaging, depackaging, and codec pipeline
 * Supports fetching audio and video from MP4 and RTSP. MP4 depackaging is done by FFmpeg; RTSP client is implemented in pure C++ without any dependencies, https://github.com/BreakingY/simple-rtsp-client
 * The code includes four modules, as shown below:
 
-  ![Diagram](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/fbde5819-4527-4eec-8b7b-508264efc995)
+![1_half](https://github.com/user-attachments/assets/278d1b1b-cfae-406c-9b87-3e2b318e83c1)
 * Wrapper combines the four modules, as shown below:
-  ![Media Flow](https://github.com/BreakingY/FFmpeg-Media-Codec-Pipeline/assets/99859929/f7fb8e07-ab2a-49c5-88e1-49301b6431bd)
+![2_half](https://github.com/user-attachments/assets/b0cf8428-0f8d-4904-8faa-c3980a7da2ce)
 * Uses modular and interface-based management, allowing users to assemble and extend pipelines, e.g., adding video/audio processing modules to handle decoded media, such as AI detection, speech recognition, etc.
 * Logging uses spdlog: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
