@@ -41,7 +41,7 @@ aux_source_directory(Media/MediaReader/RtspReader/3rdparty RTSP3Rd)
 aux_source_directory(Media/MediaReader/RtspReader/rtp RTP)
 
 aux_source_directory(Media/Bitstream/h264/source BH264)
-aux_source_directory(Media/Bitstream/h265/source BH265)
+aux_source_directory(Media/Bitstream/h265/src BH265)
 
 set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -fpermissive -std=c++14) 
