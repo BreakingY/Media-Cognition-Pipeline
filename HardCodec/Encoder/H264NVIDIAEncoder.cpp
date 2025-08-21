@@ -134,7 +134,7 @@ void *NVHardVideoEncoder::VideoEncThread(void *arg)
             const int order[3] = {0, 1, 2};
             NppStatus status = nppiSwapChannels_8u_C3C4R((const Npp8u*)self->ptr_image_bgr_device_, self->width_ * 3, (Npp8u*)self->ptr_image_bgra_device_, self->width_ * 4, roi_size, order, alpha_val);
             if(status != NPP_SUCCESS){
-                log_error("NPP BGR->BGRA failed: {}", status);
+                log_error("NPP BGR->BGRA failed: {}", (int)status);
             }
             std::vector<std::vector<uint8_t>> vPacket;
             const NvEncInputFrame *encoder_input_frame = self->enc_->GetNextInputFrame();

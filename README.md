@@ -30,6 +30,7 @@
   * https://sunkx.blog.csdn.net/article/details/146064215
 
 # 编译
+* git clone --recursive https://github.com/BreakingY/Media-Codec-Pipeline
 1. Linux
    * mkdir build
    * cd build

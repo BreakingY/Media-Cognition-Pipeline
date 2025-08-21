@@ -20,7 +20,7 @@ elseif(UNIX)
     find_package(OpenCV REQUIRED)
     include_directories(${OpenCV_INCLUDE_DIRS})
 endif()
-include_directories(Warpper Log Log/spdlog 
+include_directories(Warpper Log Log/spdlog/include
                     HardCodec HardCodec/Decoder HardCodec/Encoder 
                     Media/MediaCommon
                     Media/MediaMuxer
