@@ -19,7 +19,7 @@
 * Warpper实现了对四个模块的组合，如下图所示：
 ![2](https://github.com/user-attachments/assets/39082b4c-cba7-421d-b47e-e319c0d6a10b)
 * 采用模块化和接口化的管理方式，可自行组装扩展形成业务pipeline，比如添加视频处理模块、音频处理模块，对解码后的音视频进行处理，例如，AI检测、语音识别等。
-* 日志使用的spdlog，地址：https://github.com/gabime/spdlog
+* 日志，地址：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
 
 # 准备
