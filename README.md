@@ -20,7 +20,7 @@ Audio and video packaging, depackaging, and codec pipeline
 * Wrapper combines the four modules, as shown below:
 ![2](https://github.com/user-attachments/assets/39082b4c-cba7-421d-b47e-e319c0d6a10b)
 * Uses modular and interface-based management, allowing users to assemble and extend pipelines, e.g., adding video/audio processing modules to handle decoded media, such as AI detection, speech recognition, etc.
-* Logging uses spdlog: https://github.com/gabime/spdlog
+* Log: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
 
 # Preparation
