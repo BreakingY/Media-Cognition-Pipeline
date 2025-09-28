@@ -292,7 +292,7 @@ void *HardVideoDecoder::GetPic(void *arg){
                     if (!self->time_inited_) {
                         self->time_inited_ = 1;
                         self->time_now_ = std::chrono::steady_clock::now();
-                        self->time_pre_ = time_now_;
+                        self->time_pre_ = self->time_now_;
                     } else {
                         self->time_now_ = std::chrono::steady_clock::now();
                         long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
