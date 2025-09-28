@@ -155,6 +155,7 @@ void HardVideoEncoder::InitEncParams(VencParam* encParam)
 int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
 {
     CHECK_ACL(aclrtSetDevice(device_id_));
+    CHECK_DVPP_MPI(hi_mpi_sys_init());
     width_ = bgr_frame.cols;
     height_ = bgr_frame.rows;
     fps_ = fps;
