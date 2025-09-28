@@ -12,7 +12,6 @@ int main(int argc, char **argv)
     av_log_set_level(AV_LOG_FATAL);
 #ifdef USE_DVPP_MPI
     aclInit(NULL);
-    hi_mpi_sys_init();
 #endif
     MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2]);
     while (!test->OverHandle()) {
