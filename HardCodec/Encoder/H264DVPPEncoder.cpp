@@ -115,7 +115,7 @@ void vencStreamOut(uint32_t channelId, void* buffer, void *arg){
             self->time_pre_ = self->time_now_;
             self->time_ts_accum_ = 0;
         }
-        uint64_t duration = = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
+        uint64_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
         self->time_ts_accum_ += duration;
         if (self->callback_) {
             self->callback_->OnVideoEncData(self->image_ptr_, data_len, self->time_ts_accum_);
