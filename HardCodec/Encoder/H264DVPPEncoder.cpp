@@ -7,7 +7,7 @@ static std::atomic<int32_t> channel_id = {-1};
 #define CHECK_ACL(ret) \
     do { \
         if ((ret) != ACL_SUCCESS) { \
-            fprintf(stderr, "Error: ACL returned %d in file %s at line %d\n", \
+            fprintf(stderr, "Error: ACL returned %0x in file %s at line %d\n", \
                     (ret), __FILE__, __LINE__); \
             exit(1); \
         } \
@@ -15,7 +15,7 @@ static std::atomic<int32_t> channel_id = {-1};
 #define CHECK_DVPP_MPI(ret) \
     do { \
         if ((ret) != HI_SUCCESS) { \
-            fprintf(stderr, "Error: ACL DVPP MPI returned %d in file %s at line %d\n", \
+            fprintf(stderr, "Error: ACL DVPP MPI returned %0x in file %s at line %d\n", \
                     (ret), __FILE__, __LINE__); \
             exit(1); \
         } \
