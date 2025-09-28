@@ -26,7 +26,7 @@ Audio and video packaging, depackaging, and codec pipeline
 # Preparation
 * FFmpeg version == 4.x, please modify CMakeLists.txt according to the installation path, adding headers and library paths.
 * Audio uses fdk-aac encoding, ensure FFmpeg includes fdk-aac.
-* Test versions: FFmpeg 4.0.5, OpenCV 4.5.1, CANN 7.0.0 (Ascend SDK), NVIDIA: CUDA 12.4, Driver 550.163.01, Video_Codec_SDK 11.0.10.
+* Test versions: FFmpeg 4.0.5, OpenCV 4.5.1, CANN 7.0.0/8.2.RC1 (Ascend SDK), NVIDIA: CUDA 12.4, Driver 550.163.01, Video_Codec_SDK 11.0.10.
 * Windows software installation reference:
   * https://sunkx.blog.csdn.net/article/details/146064215
 
