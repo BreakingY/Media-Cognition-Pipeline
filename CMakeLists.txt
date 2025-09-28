@@ -58,7 +58,7 @@ elseif(DVPP_MPI)
     add_definitions(-DUSE_DVPP_MPI -DHMEV_PLATFORM_SDK)
     include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp
                         HardCodec/Encoder/dvpp_enc)
-    link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64/stub)
+    link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64)
     aux_source_directory(HardCodec/Encoder/dvpp_enc DVPP_ENC)
 elseif(NVIDIA_SDK_X86)
     message(STATUS "USE_NVIDIA_X86 OK")
