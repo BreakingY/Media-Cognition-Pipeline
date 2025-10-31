@@ -326,6 +326,14 @@ int RtspClient::DecodeDESCRIBE(const char *url, const char *buffer, int len){
         return -1;
     }
     if(parsed_message.code == 401){ // Unauthorized
+        authorization_try_cnt++;
+        if(authorization_try_cnt >= authorization_try_max){
+#ifdef RTSP_DEBUG
+            std::cout <<  __FILE__ << __LINE__ << std::endl;
+            std::cout <<  "Authenticate failed" << std::endl;
+#endif
+            return -1;
+        }
         std::string authenticate = GetValueByKey(parsed_message.result, "WWW-Authenticate");
         if(authenticate.empty()){
             buffer_cmd_used_ -= used_bytes;
