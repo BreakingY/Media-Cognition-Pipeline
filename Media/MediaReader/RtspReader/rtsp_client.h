@@ -128,6 +128,9 @@ private:
     uint8_t buffer_[4 * 1024 * 1024];
     int pos_buffer_ = 0;
     enum ParseState stat_ = EMPTY_STATE;
+
+    int authorization_try_cnt = 0;
+    int authorization_try_max = 2;
 };
 
 #endif
