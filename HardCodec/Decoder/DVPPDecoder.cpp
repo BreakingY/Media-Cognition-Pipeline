@@ -88,7 +88,7 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
     chn_attr_.pic_height = height;
     chn_attr_.stream_buf_size = width * height * 3 / 2;
     chn_attr_.frame_buf_cnt = 1;
-    hi_pic_buf_attr buf_attr{width, height, 0, bit_width_, out_format_, HI_COMPRESS_MODE_NONE};
+    hi_pic_buf_attr buf_attr{(hi_u32)width, (hi_u32)height, 0, bit_width_, out_format_, HI_COMPRESS_MODE_NONE};
     chn_attr_.frame_buf_size = hi_vdec_get_pic_buf_size(chn_attr_.type, &buf_attr);
     chn_attr_.video_attr.ref_frame_num = 1;
     chn_attr_.video_attr.temporal_mvp_en = HI_TRUE;
@@ -211,7 +211,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data){
         return;
     }
     stream.pts = GetCurrentTimeUs();
-    stream.addr = in_es_buffer_; // Configure input stream address
+    stream.addr = (hi_u8*)in_es_buffer_; // Configure input stream address
     CHECK_ACL(aclrtMemcpy(stream.addr, in_es_buffer_size_, data->es_data, data->es_data_len, ACL_MEMCPY_HOST_TO_DEVICE));
     stream.len = data->es_data_len; // Configure input stream size
     stream.end_of_frame = HI_TRUE; // Configure flage of frame end
@@ -224,7 +224,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data){
     out_pic_info.pixel_format = out_format_; // Configure output format
 
     stream.need_display = HI_TRUE;
-    out_pic_info.vir_addr = GetOutAddr();
+    out_pic_info.vir_addr = (hi_u64)GetOutAddr();
     out_pic_info.buffer_size = out_buffer_size_;
     int ret = hi_mpi_vdec_send_stream(channel_id_, &stream, &out_pic_info, -1);
     if(ret != HI_SUCCESS){
