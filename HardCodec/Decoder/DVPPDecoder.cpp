@@ -314,7 +314,7 @@ void *HardVideoDecoder::GetPic(void *arg){
                 // 4: Reference frame size set error
                 switch(dec_result){
                     case 1:
-                        log_error("Decode fail");
+                        // log_error("Decode fail"); // Maybe haven't received a complete frame yet
                         break;
                     case 2:
                         // log_error("This result is returned for the second field of the interlaced field stream, which is normal.");
