@@ -306,6 +306,30 @@ void *HardVideoDecoder::GetPic(void *arg){
                     self->callback_->OnRGBData(frame_ret);
                 }
             }
+            else{
+                // 0: Decode success
+                // 1: Decode fail
+                // 2: This result is returned for the second field of the interlaced field stream, which is normal.
+                // 3: Reference frame number set error
+                // 4: Reference frame size set error
+                switch(dec_result){
+                    case 1:
+                        log_error("Decode fail");
+                        break;
+                    case 2:
+                        // log_error("This result is returned for the second field of the interlaced field stream, which is normal.");
+                        break;
+                    case 3:
+                        log_error("Reference frame number set error");
+                        break;
+                    case 4:
+                        log_error("Reference frame size set error");
+                        break;
+                    default:
+                        break;
+                }
+                
+            }
             if(output_buffer != NULL){
                 self->PutOutAddr(output_buffer);
             }
