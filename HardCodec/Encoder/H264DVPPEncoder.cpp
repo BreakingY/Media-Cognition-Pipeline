@@ -126,7 +126,7 @@ void vencStreamOut(uint32_t channelId, void* buffer, void *arg){
 }
 void HardVideoEncoder::InitEncParams(VencParam* encParam)
 {
-    encParam->codecType = codec_type_;
+    encParam->codecType = (VencCodecType)codec_type_;
     encParam->encCallback.encDateOutProcess = vencStreamOut;
     encParam->encCallback.arg = this;
     encParam->rcMode = HMEV_RC_VBR;
