@@ -239,11 +239,23 @@ int RtspClient::SendOPTIONS(const char *url){
     char result[512] = {0};
     sprintf(result, "OPTIONS %s RTSP/1.0\r\n"
                     "CSeq: %d\r\n"
-                    "User-Agent: %s\r\n"
-                    "\r\n",
+                    "User-Agent: %s\r\n",
             url,
             cseq,
             USER_AGENT);
+
+    std::string authenticate;
+    if(!realm_.empty() && !nonce_.empty()){
+        std::string response = GenerateAuthResponse(url_info_.username.c_str(), url_info_.password.c_str(), realm_.c_str(), nonce_.c_str(), url, "OPTIONS");
+        authenticate = GenerateAuthHeader(url, response);
+    }
+    if(!authenticate.empty()){
+        sprintf(result+strlen(result),"Authorization: %s\r\n",authenticate.c_str());
+    }
+    if(!session_.empty()){
+        sprintf(result+strlen(result),"Session: %s\r\n",session_.c_str());
+    }
+    sprintf(result+strlen(result),"\r\n");
     int ret = send(rtsp_sd_, result, strlen(result), 0);
 #ifdef RTSP_DEBUG
     std::cout <<  __FILE__ << __LINE__ << std::endl;
@@ -703,9 +715,18 @@ int RtspClient::ReadPacketTcp(){
             }
         }
         if(stat_ == RTSP_MESSAGE_STATE){
-            // skip rtsp message
+            buffer_heartbeat_[pos_buffer_heartbeat_] = *ptr;
+            pos_buffer_heartbeat_++;
             ptr++;
         }
+        if((last_stat_ == RTSP_MESSAGE_STATE) && (last_stat_ != stat_)){
+            pos_buffer_heartbeat_ = 0;
+#ifdef RTSP_DEBUG
+            std::cout << "heartbeat response:" << std::endl;
+            std::cout << buffer_heartbeat_ << std::endl;
+#endif
+        }
+        last_stat_ = stat_;
     }
     return pos_buffer_end;
 }

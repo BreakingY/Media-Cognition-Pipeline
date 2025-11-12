@@ -9,7 +9,7 @@
 #include "sdp.h"
 #include "rtp_demuxer.h"
 #define USER_AGENT "simple-rtsp-client"
-#define READ_SOCK_DATA_LEN 1500
+#define READ_SOCK_DATA_LEN 4096
 enum TRANSPORT{
     RTP_OVER_TCP = 0,
     RTP_OVER_UDP,
@@ -48,6 +48,7 @@ public:
     void SetCallBack(RtspMediaInterface *call_back){call_back_ = call_back; return;}
     void GetAudioInfo(int &sample_rate_index, int &channels, int &profile) {sdp_->GetAudioInfo(sample_rate_index, channels, profile); return;}
     bool GetOpenStat(){return connected_;}
+    int GetFramerate(){return sdp_->GetFramerate();}
 private:
     void OnVideoData(int64_t pts, const uint8_t* data, size_t size);
     void OnAudioData(int64_t pts,  const uint8_t* data, size_t size);
@@ -128,6 +129,10 @@ private:
     uint8_t buffer_[4 * 1024 * 1024];
     int pos_buffer_ = 0;
     enum ParseState stat_ = EMPTY_STATE;
+    // heartbeat
+    unsigned char buffer_heartbeat_[READ_SOCK_DATA_LEN];
+    int pos_buffer_heartbeat_ = 0;
+    enum ParseState last_stat_ = EMPTY_STATE;
 
     int authorization_try_cnt = 0;
     int authorization_try_max = 2;

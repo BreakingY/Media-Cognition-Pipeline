@@ -30,6 +30,7 @@ struct MediaInfo{
     int sample_rate_index;
     int channels;           // only audio
     int profile;            // only audio from config=1390
+    int framerate;          // only video
 };
 struct SdpInfo{
     std::string contorl;            // * or url
@@ -48,6 +49,7 @@ public:
     enum MediaEnum GetVideoType() {return sdp_info_.media_info[0].media_type;}
     enum MediaEnum GetAudioType() {return sdp_info_.media_info[1].media_type;}
     void GetAudioInfo(int &sample_rate_index, int &channels, int &profile) {sample_rate_index = sdp_info_.media_info[1].sample_rate_index; channels = sdp_info_.media_info[1].channels; profile = sdp_info_.media_info[1].profile; return;}
+    int GetFramerate() {return sdp_info_.media_info[0].framerate;}
 private:
     int ParseSession();
     int ParseVideo();
