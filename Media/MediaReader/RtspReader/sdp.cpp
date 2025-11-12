@@ -42,6 +42,7 @@ static void PrintMedia(struct MediaInfo info){
     std::cout << "info.sample_rate:" << info.sample_rate << std::endl;
     std::cout << "info.channels:" << info.channels << std::endl;
     std::cout << "info.profile:" << info.profile << std::endl;
+    std::cout << "info.framerate:" << info.framerate << std::endl;
     std::cout << std::endl;
     return;
 }
@@ -199,6 +200,16 @@ int SDPParse::ParseVideo(){
 
     sdp_info_.media_info[0].channels = 0;
     sdp_info_.media_info[0].profile = 0;
+
+    if(sdp_video_.find("a=framerate:") != std::string::npos){
+        start = sdp_video_.find("a=framerate:");
+        end = sdp_video_.find("\r\n", start);
+        std::string framerate = sdp_video_.substr(start + strlen("a=framerate:"), end - start - strlen("a=framerate:"));
+        sdp_info_.media_info[0].framerate = std::stoi(framerate);
+    }
+    else{
+        sdp_info_.media_info[0].framerate = 0;
+    }
     return 0;
 }
 /*

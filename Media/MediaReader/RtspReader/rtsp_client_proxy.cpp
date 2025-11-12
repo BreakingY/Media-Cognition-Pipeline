@@ -74,6 +74,9 @@ enum AudioType RtspClientProxy::GetAudioType(){
 
 }
 void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t size){
+    if(fps_ == -1 && client_->GetFramerate() > 0){
+        fps_ = client_->GetFramerate();
+    }
     int type;
     if(client_->GetVideoType() == MediaEnum::H264){
         // std::cout << "video type:" << (data[4] & 0x1f) << std::endl;
