@@ -15,7 +15,6 @@ class RtspClientProxy:public RtspMediaInterface{
 public:
     RtspClientProxy(char *rtsp_url);
     ~RtspClientProxy();
-    int ProbeVideoFps();
     void GetVideoCon(int &width, int &height, int &fps);
     void GetAudioCon(int &sample_rate_index, int &channels, int &profile);
     enum VideoType GetVideoType();

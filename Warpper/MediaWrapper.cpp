@@ -250,15 +250,12 @@ MiedaWrapper::MiedaWrapper(char *input, char *ouput)
     if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){ // rtsp
         rtsp_flag_ = true;
         rtsp_client_proxy_ = new RtspClientProxy(input);
-        rtsp_client_proxy_->ProbeVideoFps(); // 必须在SetDataListner之前调用ProbeVideoFps,否则在RtspClientProxy::RtspVideoData调用data_listner_的时候会阻塞
-        rtsp_client_proxy_->GetVideoCon(width_, height_, fps_);
         rtsp_client_proxy_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
         });
     }
     else{ // file
         reader_ = new MediaReader(input);
-        reader_->GetVideoCon(width_, height_, fps_);
         reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
         });
@@ -290,6 +287,12 @@ void MiedaWrapper::OnVideoData(VideoData data)
         }
     }
     if (!hard_decoder_) {
+        if(rtsp_flag_ == true){
+            rtsp_client_proxy_->GetVideoCon(width_, height_, fps_);
+        }
+        else{
+            reader_->GetVideoCon(width_, height_, fps_);
+        }
         log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
         hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
