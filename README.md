@@ -50,7 +50,6 @@ Audio and video packaging, depackaging, and codec pipeline
 
 # TODO
 * Remove DVPP video width/height limitations
-* Optimize NVIDIA using CUDA streams
 
 # Technical Contact
 * kxsun617@163.com
