@@ -36,13 +36,6 @@ void *RtspClientProxy::ReconnectThread(void *arg){
     }
     return NULL;
 }
-int RtspClientProxy::ProbeVideoFps(){
-    while(fps_ == -1){
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-    video_ready_ = false;
-    return fps_;
-}
 void RtspClientProxy::GetVideoCon(int &width, int &height, int &fps){
     width = width_;
     height = height_;
@@ -117,6 +110,9 @@ void RtspClientProxy::RtspVideoData(int64_t pts, const uint8_t* data, size_t siz
                 fps_ = 90000 / (interval_sum_ / probe_cnt_);
             }
         }
+    }
+    if(fps_ < 0){
+        video_ready_ = false;
     }
     if(!video_ready_){
         return;
