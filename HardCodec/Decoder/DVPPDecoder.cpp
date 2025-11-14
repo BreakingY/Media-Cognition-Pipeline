@@ -90,7 +90,12 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
     chn_attr_.frame_buf_cnt = 1;
     hi_pic_buf_attr buf_attr{(hi_u32)width, (hi_u32)height, 0, bit_width_, out_format_, HI_COMPRESS_MODE_NONE};
     chn_attr_.frame_buf_size = hi_vdec_get_pic_buf_size(chn_attr_.type, &buf_attr);
-    chn_attr_.video_attr.ref_frame_num = 1;
+    if(chn_attr_.type == HI_PT_H265){
+        chn_attr_.video_attr.ref_frame_num = 4;
+    } 
+    else{
+        chn_attr_.video_attr.ref_frame_num = 1;
+    }
     chn_attr_.video_attr.temporal_mvp_en = HI_TRUE;
     chn_attr_.video_attr.tmv_buf_size = hi_vdec_get_tmv_buf_size(chn_attr_.type, width, height);
     channel_id_ = GetChannedId();
