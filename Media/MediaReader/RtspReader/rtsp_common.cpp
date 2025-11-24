@@ -22,9 +22,18 @@ bool ParseRTSPUrl(const std::string& rtsp_url, RTSPUrlInfo& url_info) {
     url_info.url = "rtsp://";
     std::streampos pos = iss.tellg();
     std::string str = rtsp_url.substr(static_cast<int>(pos));
-    if (str.find('@') != std::string::npos){
-        std::getline(iss, url_info.username, ':');  // Get username
-        std::getline(iss, url_info.password, '@');  // Get password
+    if (str.find('@') != std::string::npos) {
+        size_t at_pos = str.rfind('@');
+        std::string user_pass = str.substr(0, at_pos);
+
+        size_t colon_pos = user_pass.find(':');
+        if (colon_pos != std::string::npos) {
+            url_info.username = user_pass.substr(0, colon_pos);
+            url_info.password = user_pass.substr(colon_pos + 1);
+        } else {
+            url_info.username = user_pass;
+        }
+        iss.seekg(pos + at_pos + 1);
     }
     
     pos = iss.tellg();
