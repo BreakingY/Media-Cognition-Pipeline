@@ -277,11 +277,6 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
 {
     uint8_t *data = NULL;
     *length = 2;
-    data = (uint8_t *)malloc(*length);
-    if (data == NULL) {
-        log_error("malloc error");
-        return NULL;
-    }
     if (profile < 1 || profile > 4) {
         return NULL;
     }
@@ -296,6 +291,11 @@ static uint8_t *generate_aac_specific_config(int channelConfig, int samplingFreq
     }
 
     if (channelConfig < 1 || channelConfig > 7) {
+        return NULL;
+    }
+    data = (uint8_t *)malloc(*length);
+    if (data == NULL) {
+        log_error("malloc error");
         return NULL;
     }
     int freq_arr[13] = {
