@@ -168,6 +168,8 @@ private:
     int width_;
     int height_;
     int fps_;
+    int width_stride_;
+    int height_stride_;
     // color input
     void * in_img_buffer_ = NULL;
     uint32_t in_img_buffer_size_;

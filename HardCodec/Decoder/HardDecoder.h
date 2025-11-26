@@ -189,6 +189,8 @@ private:
     std::list<void*> out_buffer_pool_;
     std::mutex out_buffer_pool_mutex_;
     std::condition_variable out_buffer_pool_cond_;
+    int width_stride_;
+    int height_stride_;
 
     // color convert
     hi_vpc_chn channel_id_color_;
