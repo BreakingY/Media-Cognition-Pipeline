@@ -125,8 +125,6 @@ private:
 #include "sample_comm.h"
 #include "sample_api.h"
 #include "sample_encoder_manage.h"
-// w-Integer multiples of 16 
-// h-Integer multiples of 2
 void vencStreamOut(uint32_t channelId, void* buffer, void *arg);
 class HardVideoEncoder
 {
