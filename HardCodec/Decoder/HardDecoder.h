@@ -152,8 +152,6 @@ private:
 #include <acl.h>
 #include <acl_rt.h>
 #include <hi_dvpp.h>
-// w-Integer multiples of 16 
-// h-Integer multiples of 2
 class HardVideoDecoder
 {
 
