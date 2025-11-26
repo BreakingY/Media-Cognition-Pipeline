@@ -57,9 +57,10 @@ elseif(DVPP_MPI)
     message(STATUS "USE_DVPP_MPI OK")
     add_definitions(-DUSE_DVPP_MPI -DHMEV_PLATFORM_SDK)
     include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp
-                        HardCodec/Encoder/dvpp_enc)
+                        HardCodec/Encoder/dvpp_enc HardCodec/DVPP_utils)
     link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64)
     aux_source_directory(HardCodec/Encoder/dvpp_enc DVPP_ENC)
+    aux_source_directory(HardCodec/DVPP_utils DVPP_UTILS)
 elseif(NVIDIA_SDK_X86)
     message(STATUS "USE_NVIDIA_X86 OK")
     add_definitions(-DUSE_NVIDIA_X86)
@@ -77,7 +78,8 @@ endif()
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
-add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC} ${NVDEC} ${NVENC} ${CUDA_SOURCES})
+add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC} ${DVPP_UTILS} 
+                        ${NVDEC} ${NVENC} ${CUDA_SOURCES})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
 if(DVPP_MPI)
     target_link_libraries(mcp ascendcl acl_dvpp_mpi)

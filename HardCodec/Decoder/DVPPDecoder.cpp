@@ -1,24 +1,9 @@
 #ifdef USE_DVPP_MPI
 #include "HardDecoder.h"
+#include "dvpp_common.h"
 #include <atomic>
 static const uint64_t NANO_SECOND = UINT64_C(1000000000);
 static std::atomic<int32_t> channel_id = {-1};
-#define CHECK_ACL(ret) \
-    do { \
-        if ((ret) != ACL_SUCCESS) { \
-            fprintf(stderr, "Error: ACL returned %0x in file %s at line %d\n", \
-                    (ret), __FILE__, __LINE__); \
-            exit(1); \
-        } \
-    } while (0)
-#define CHECK_DVPP_MPI(ret) \
-    do { \
-        if ((ret) != HI_SUCCESS) { \
-            fprintf(stderr, "Error: ACL DVPP MPI returned %0x in file %s at line %d\n", \
-                    (ret), __FILE__, __LINE__); \
-            exit(1); \
-        } \
-    } while (0)
 static int32_t GetChannedId(){
     if(channel_id >= VDEC_MAX_CHN_NUM){ // VDEC_MAX_CHN_NUM == 256
         channel_id = -1;
@@ -70,6 +55,10 @@ void HardVideoDecoder::Stop(){
         CHECK_DVPP_MPI(hi_mpi_dvpp_free(output_pic_.picture_address));
         output_pic_.picture_address = NULL;
     }
+    if(input_pic_.picture_address){
+        CHECK_DVPP_MPI(hi_mpi_dvpp_free(input_pic_.picture_address));
+        input_pic_.picture_address = NULL;
+    }
     if(image_ptr_){
         free(image_ptr_);
         image_ptr_ = NULL;
@@ -81,6 +70,9 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
     device_id_ = device_id;
     width_ = width;
     height_ = height;
+    // YUV420p stride
+    width_stride_ = ALIGN_UP16(width);
+    height_stride_ = ALIGN_UP2(height);
     CHECK_ACL(aclrtSetDevice(device_id_));
     CHECK_DVPP_MPI(hi_mpi_sys_init());
     chn_attr_.mode = HI_VDEC_SEND_MODE_FRAME; // Only support frame mode
@@ -111,7 +103,7 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
     CHECK_DVPP_MPI(hi_mpi_vdec_set_chn_param(channel_id_, &chn_param));
     CHECK_DVPP_MPI(hi_mpi_vdec_start_recv_stream(channel_id_));
 
-    out_buffer_size_ = width * height * 3 / 2; // YUV420P
+    out_buffer_size_ = width_stride_ * height_stride_ * 3 / 2; // YUV420P
     for (uint32_t i = 0; i < pool_num_; i++) {
         void* out_buffer = NULL;
         CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &out_buffer, out_buffer_size_));
@@ -125,16 +117,23 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
     input_pic_.picture_width = width_;
     input_pic_.picture_height = height_;
     input_pic_.picture_format = out_format_;
+    /*
     input_pic_.picture_width_stride = width_;
     input_pic_.picture_height_stride = height_;
     input_pic_.picture_buffer_size = width_ * height_ * 3 / 2;
+    */
+    configure_stride_and_buffer_size(input_pic_);
+    CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &input_pic_.picture_address, input_pic_.picture_buffer_size));
 
     output_pic_.picture_width = width_;
     output_pic_.picture_height = height_;
     output_pic_.picture_format = out_format_color_;
+    /*
     output_pic_.picture_width_stride = width_ * 3;
     output_pic_.picture_height_stride = height_;
     output_pic_.picture_buffer_size = width_ * height_ * 3;
+    */
+    configure_stride_and_buffer_size(output_pic_);
     CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &output_pic_.picture_address, output_pic_.picture_buffer_size));
 
     
@@ -224,8 +223,8 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data){
 
     out_pic_info.width = width_; // Output image width, supports resize, set 0 means no resize
     out_pic_info.height = height_; // Output image height, supports resize, set 0 means no resize
-    out_pic_info.width_stride = width_; // Output memory width stride
-    out_pic_info.height_stride = height_; // Output memory height stride
+    out_pic_info.width_stride = width_stride_; // Output memory width stride
+    out_pic_info.height_stride = height_stride_; // Output memory height stride
     out_pic_info.pixel_format = out_format_; // Configure output format
 
     stream.need_display = HI_TRUE;
@@ -281,7 +280,13 @@ void *HardVideoDecoder::GetPic(void *arg){
             if((dec_result == 0) && (output_buffer != NULL)){ // get frame
                 uint64_t pts = frame.v_frame.pts; // stream.pts
                 // color convert
+                /*
                 self->input_pic_.picture_address = output_buffer;
+                */
+                ret = prepare_input_data_from_device(self->input_pic_, (const char *)output_buffer, self->width_stride_, self->height_stride_);
+                if(ret < 0){
+                    log_error("prepare_input_data_from_device {} ", ret);
+                }
                 uint32_t task_id;
                 CHECK_DVPP_MPI(hi_mpi_vpc_convert_color(self->channel_id_color_, &self->input_pic_, &self->output_pic_, &task_id, -1));
                 CHECK_DVPP_MPI(hi_mpi_vpc_get_process_result(self->channel_id_color_, task_id, -1));
@@ -289,7 +294,11 @@ void *HardVideoDecoder::GetPic(void *arg){
                 if(!self->image_ptr_){
                     self->image_ptr_ = (unsigned char *)malloc(size);
                 }
-                CHECK_ACL(aclrtMemcpy(self->image_ptr_ , size, self->output_pic_.picture_address, size, ACL_MEMCPY_DEVICE_TO_HOST));
+                // CHECK_ACL(aclrtMemcpy(self->image_ptr_ , size, self->output_pic_.picture_address, size, ACL_MEMCPY_DEVICE_TO_HOST));
+                ret = handle_output_data_from_device_to_host((const char *)self->image_ptr_, self->width_ * 3,  self->height_, self->output_pic_);
+                if(ret < 0){
+                    log_error("handle_output_data_from_device_to_host {} ", ret);
+                }
                 cv::Mat frame_mat(self->height_, self->width_, CV_8UC3, self->image_ptr_);
                 cv::Mat frame_ret = frame_mat.clone();
                 if (self->callback_ != NULL) {

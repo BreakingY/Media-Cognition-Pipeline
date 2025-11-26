@@ -46,8 +46,6 @@
 2. rtsp测试：./MediaCodec your_rtsp_url out.mp4
 3. 昇腾测试：./MediaCodec ../Test/dvpp_venc.mp4 out.mp4
 
-# TODO
-* 解除DVPP视频宽高的限制
 
 # 技术交流
 * kxsun617@163.com

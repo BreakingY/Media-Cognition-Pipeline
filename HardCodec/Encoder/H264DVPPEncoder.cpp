@@ -1,25 +1,10 @@
 #ifdef USE_DVPP_MPI
 #include "H264HardEncoder.h"
 #include "log_helpers.h"
+#include "dvpp_common.h"
 
 static const uint64 NANO_SECOND = UINT64_C(1000000000);
 static std::atomic<int32_t> channel_id = {-1};
-#define CHECK_ACL(ret) \
-    do { \
-        if ((ret) != ACL_SUCCESS) { \
-            fprintf(stderr, "Error: ACL returned %0x in file %s at line %d\n", \
-                    (ret), __FILE__, __LINE__); \
-            exit(1); \
-        } \
-    } while (0)
-#define CHECK_DVPP_MPI(ret) \
-    do { \
-        if ((ret) != HI_SUCCESS) { \
-            fprintf(stderr, "Error: ACL DVPP MPI returned %0x in file %s at line %d\n", \
-                    (ret), __FILE__, __LINE__); \
-            exit(1); \
-        } \
-    } while (0)
 static int32_t GetChannedId(){
     if(channel_id >= MAX_ENC_CHANNEL_NUM){ // MAX_ENC_CHANNEL_NUM == 256
         channel_id = -1;
@@ -63,6 +48,10 @@ HardVideoEncoder::~HardVideoEncoder()
     if(image_ptr_){
         free(image_ptr_);
         image_ptr_ = NULL;
+    }
+    if(input_pic_.picture_address){
+        CHECK_DVPP_MPI(hi_mpi_dvpp_free(input_pic_.picture_address));
+        input_pic_.picture_address = NULL;
     }
     log_info("~HardVideoEncoder");
 }
@@ -159,32 +148,42 @@ int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
     width_ = bgr_frame.cols;
     height_ = bgr_frame.rows;
     fps_ = fps;
+    // BGR stride
+    width_stride_ = bgr_frame.step;
+    log_debug("width_*3:{} width_stride_:{} height_:{} ", width_*3, width_stride_, height_);
+    height_stride_ = height_;
     // color
     in_img_buffer_size_ = bgr_frame.cols * bgr_frame.rows * 3;
     CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &in_img_buffer_, in_img_buffer_size_));
-    out_buffer_size_ = width_ * height_ * 3 / 2; // YUV420P
-    for (uint32_t i = 0; i < pool_num_; i++) {
-        void* out_buffer = NULL;
-        CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &out_buffer, out_buffer_size_));
-        out_buffer_pool_.push_back(out_buffer);
-    }
     hi_vpc_chn_attr st_chn_attr {};
     st_chn_attr.attr = 0;
     CHECK_DVPP_MPI(hi_mpi_vpc_sys_create_chn(&channel_id_color_, &st_chn_attr));
     input_pic_.picture_width = width_;
     input_pic_.picture_height = height_;
     input_pic_.picture_format = in_format_;
+    /*
     input_pic_.picture_width_stride = width_ * 3;
     input_pic_.picture_height_stride = height_;
     input_pic_.picture_buffer_size = width_ * height_ * 3;
+    */
+    configure_stride_and_buffer_size(input_pic_);
+    CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &input_pic_.picture_address, input_pic_.picture_buffer_size));
 
     output_pic_.picture_width = width_;
     output_pic_.picture_height = height_;
     output_pic_.picture_format = out_format_;
+    /*
     output_pic_.picture_width_stride = width_;
     output_pic_.picture_height_stride = height_;
     output_pic_.picture_buffer_size = width_ * height_ * 3 / 2;
-
+    */
+    configure_stride_and_buffer_size(output_pic_);
+    out_buffer_size_ = output_pic_.picture_width_stride * output_pic_.picture_height_stride * 3 / 2; // YUV420P
+    for (uint32_t i = 0; i < pool_num_; i++) {
+        void* out_buffer = NULL;
+        CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &out_buffer, out_buffer_size_));
+        out_buffer_pool_.push_back(out_buffer);
+    }
     // enc
     bit_rate_ = CalcBitrate(width_, height_, fps_);
     enc_channel_ = GetChannedId();
@@ -267,8 +266,12 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             self->bgr_frames_.pop_front();
             guard.unlock();
             void *addr = self->GetColorAddr();
-            CHECK_ACL(aclrtMemcpy(self->in_img_buffer_ , self->in_img_buffer_size_, bgr_frame.data, self->in_img_buffer_size_, ACL_MEMCPY_HOST_TO_DEVICE));
-            self->input_pic_.picture_address = self->in_img_buffer_;
+            // CHECK_ACL(aclrtMemcpy(self->in_img_buffer_ , self->in_img_buffer_size_, bgr_frame.data, self->in_img_buffer_size_, ACL_MEMCPY_HOST_TO_DEVICE));
+            // self->input_pic_.picture_address = self->in_img_buffer_;
+            int ret = prepare_input_data_from_host(self->input_pic_, (const char *)bgr_frame.data, self->width_stride_, self->height_stride_);
+            if(ret < 0){
+                log_error("prepare_input_data_from_device {} ", ret);
+            }
             self->output_pic_.picture_address = addr;
             uint32_t task_id;
             CHECK_DVPP_MPI(hi_mpi_vpc_convert_color(self->channel_id_color_, &self->input_pic_, &self->output_pic_, &task_id, -1));
@@ -326,7 +329,14 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
                 std::this_thread::sleep_for(std::chrono::microseconds(2000)); // sleep 2000 us
                 continue;
             }
-            CHECK_ACL(aclrtMemcpy(video_frame_info->v_frame.virt_addr[0] , self->out_buffer_size_, yuv_frame, self->out_buffer_size_, ACL_MEMCPY_DEVICE_TO_DEVICE));
+            // CHECK_ACL(aclrtMemcpy(video_frame_info->v_frame.virt_addr[0] , self->out_buffer_size_, yuv_frame, self->out_buffer_size_, ACL_MEMCPY_DEVICE_TO_DEVICE));
+            hi_vpc_pic_info output_pic = self->output_pic_;
+            output_pic.picture_address = yuv_frame;
+            video_frame_info->v_frame.height_stride[0] = video_frame_info->v_frame.height_stride[0] == 0 ? self->height_ : video_frame_info->v_frame.height_stride[0];
+            ret = handle_output_data_from_device_to_device((const char *)video_frame_info->v_frame.virt_addr[0], video_frame_info->v_frame.width_stride[0], video_frame_info->v_frame.height_stride[0], output_pic);
+            if(ret < 0){
+                log_error("handle_output_data_from_device_to_device:{}", ret);
+            }
             video_frame_info->v_frame.time_ref = self->nframe_counter_ * 2;
             ret = venc_mng_process_buffer((IHWCODEC_HANDLE)enc_handle, (void*)video_frame_info);
             if (ret != HMEV_SUCCESS) {

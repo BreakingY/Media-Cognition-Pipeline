@@ -48,8 +48,6 @@ Audio and video packaging, depackaging, and codec pipeline
 2. RTSP test: `./MediaCodec your_rtsp_url out.mp4`
 3. Ascend test: `./MediaCodec ../Test/dvpp_venc.mp4 out.mp4`
 
-# TODO
-* Remove DVPP video width/height limitations
 
 # Technical Contact
 * kxsun617@163.com
