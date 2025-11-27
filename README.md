@@ -12,7 +12,7 @@ Audio and video packaging, depackaging, and codec pipeline
 * Users can add support for any GPU by defining macros, as long as class names and methods are consistent, offering good platform scalability.
 * Supported formats: Video: H264/H265, Audio: AAC.
 * ffmpeg-nvidia is not suitable for Jetson; Jetson's codec library differs from x86. Jetson encoding/decoding reference: https://github.com/BreakingY/jetpack-dec-enc
-* Ascend DVPP has two versions: V1 and V2. V1 and V2 are for different platforms; please check the official site. Future Ascend GPUs should all support V2. DVPP video input width must be a multiple of 16, height a multiple of 2, and not all video formats are supported.
+* Ascend DVPP has two versions: V1 and V2. V1 and V2 are for different platforms; please check the official site. Future Ascend GPUs should all support V2. 
 * Supports fetching audio and video from MP4 and RTSP. MP4 depackaging is done by FFmpeg; RTSP client is implemented in pure C++ without any dependencies, https://github.com/BreakingY/simple-rtsp-client
 * The code includes four modules, as shown below:
 
