@@ -13,7 +13,7 @@ Audio and video packaging, depackaging, and codec pipeline
     * This code can run on any Linux/Windows environment, only requires FFmpeg installation.
   * Ascend DVPP V2 codec (DVPPDecoder.cpp、H264DVPPEncoder.cpp、DVPP_utils)
     * `cmake -DDVPP_MPI=ON ..`
-    * default uses NPU 0 (MiedaWrapper.h) 
+    * default uses NPU 0 (MiedaWrapper.h-->device_id_) 
   * NVIDIA x86 codec(NVIDIADecoder.cpp、H264NVIDIAEncoder.Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..` (first import environment variables `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * Using NVIDIA x86 native SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11). The project uses Video_Codec_SDK_11.0.10, tested with driver version 550.163.01. Files in Nvcodec_utils are extracted from Video_Codec_SDK_11.0.10; not all files are needed, only those used by this project are categorized. Before use, set the encoding method (not all GPUs support hardware encoding, default uses software encoding, MiedaWrapper.h-->use_nv_enc_flag_), default uses GPU 0 (MiedaWrapper.h-->device_id_), requires CUDA installation (version not limited)
