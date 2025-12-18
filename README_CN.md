@@ -11,7 +11,7 @@
     * `cmake -DFFMPEG_SOFT=ON ..`
     * 此时代码可以在任何Linux/Windows环境下运行,只需要安装ffmpeg即可
   * 昇腾DVPP V2版本编解码(DVPPDecoder.cpp、H264DVPPEncoder.cpp、DVPP_utils)
-    * `cmake -DDVPP_MPI=ON ..`
+    * `cmake -DDVPP_MPI=ON ..`(先执行`source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
     * 默认使用第0号NPU(MiedaWrapper.h-->device_id_)
   * NVIDIA x86编解码(NVIDIADecoder.cpp、H264NVIDIAEncoder、Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..`(先导入环境变量`export PATH=$PATH:/usr/local/cuda/bin`和`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)

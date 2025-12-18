@@ -12,7 +12,7 @@ Audio and video packaging, depackaging, and codec pipeline
     * `cmake -DFFMPEG_SOFT=ON ..`
     * This code can run on any Linux/Windows environment, only requires FFmpeg installation.
   * Ascend DVPP V2 codec (DVPPDecoder.cpp, H264DVPPEncoder.cpp, DVPP_utils)
-    * `cmake -DDVPP_MPI=ON ..`
+    * `cmake -DDVPP_MPI=ON ..`(first, execute `source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
     * default uses NPU 0 (MiedaWrapper.h-->device_id_) 
   * NVIDIA x86 codec(NVIDIADecoder.cpp, H264NVIDIAEncoder, Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..` (first import environment variables `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
