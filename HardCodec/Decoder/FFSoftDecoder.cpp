@@ -1,16 +1,21 @@
 #ifdef USE_FFMPEG_SOFT
 #include "HardDecoder.h"
 static const uint64_t NANO_SECOND = UINT64_C(1000000000);
-int HardVideoDecoder::SoftDecInit(bool is_h265)
+int HardVideoDecoder::SoftDecInit()
 {
     if (codec_) {
         log_warn("has been init Decoder...");
         return -1;
     }
-    if (is_h265) {
-        decodec_id_ = AV_CODEC_ID_H265;
-    } else {
+    if (codec_type_ ==  CODEC_TYPE::CODEC_H264) {
         decodec_id_ = AV_CODEC_ID_H264;
+    } 
+    else if (codec_type_ ==  CODEC_TYPE::CODEC_H265){
+        decodec_id_ = AV_CODEC_ID_H265;
+    }
+    else{
+        log_error("codec type error");
+        exit(1);
     }
     codec_ = avcodec_find_decoder(decodec_id_);
 #if 0
@@ -18,7 +23,7 @@ int HardVideoDecoder::SoftDecInit(bool is_h265)
 #endif
     codec_ctx_ = avcodec_alloc_context3(codec_);
     codec_ctx_->flags |= AV_CODEC_FLAG_LOW_DELAY;
-    if (is_h265) {
+    if (codec_type_ ==  CODEC_TYPE::CODEC_H265) {
         codec_ctx_->thread_count = 3;
     } else {
         codec_ctx_->thread_count = 1;
@@ -32,11 +37,12 @@ int HardVideoDecoder::SoftDecInit(bool is_h265)
     log_info("open soft dec ok");
     return 1;
 }
-HardVideoDecoder::HardVideoDecoder(bool is_h265)
+HardVideoDecoder::HardVideoDecoder(CODEC_TYPE codec_type)
 {
     codec_ctx_ = NULL;
     codec_ = NULL;
-    SoftDecInit(is_h265);
+    codec_type_ = codec_type;
+    SoftDecInit();
     abort_ = false;
     // av_init_packet(&packet_);
     memset(&packet_, 0, sizeof(packet_));

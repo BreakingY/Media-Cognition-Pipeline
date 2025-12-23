@@ -54,17 +54,22 @@ int HardVideoDecoder::hwDecoderInit(AVCodecContext *ctx, const enum AVHWDeviceTy
  */
 // try to open hard decodec cuda:AV_PIX_FMT_CUDA
 
-int HardVideoDecoder::HardDecInit(bool is_h265)
+int HardVideoDecoder::HardDecInit()
 {
     if (codec_) {
         log_warn("has been init Decoder...");
         return -1;
     }
     std::string codec_name;
-    if (is_h265) {
+    if (codec_type_ ==  CODEC_TYPE::CODEC_H264) {
+        codec_name = "h234_cuvid";
+    } 
+    else if (codec_type_ ==  CODEC_TYPE::CODEC_H265){
         codec_name = "hevc_cuvid";
-    } else {
-        codec_name = "h264_cuvid";
+    }
+    else{
+        log_error("codec type error");
+        exit(1);
     }
     // 列举支持的硬解码
     log_info("Available device types:");
@@ -135,16 +140,21 @@ int HardVideoDecoder::HardDecInit(bool is_h265)
     is_hard_ = true;
     return 1;
 }
-int HardVideoDecoder::SoftDecInit(bool is_h265)
+int HardVideoDecoder::SoftDecInit()
 {
     if (codec_) {
         log_warn("has been init Decoder...");
         return -1;
     }
-    if (is_h265) {
-        decodec_id_ = AV_CODEC_ID_H265;
-    } else {
+    if (codec_type_ ==  CODEC_TYPE::CODEC_H264) {
         decodec_id_ = AV_CODEC_ID_H264;
+    } 
+    else if (codec_type_ ==  CODEC_TYPE::CODEC_H265){
+        decodec_id_ = AV_CODEC_ID_H265;
+    }
+    else{
+        log_error("codec type error");
+        exit(1);
     }
     // switch to soft decodec
     codec_ = avcodec_find_decoder(decodec_id_);
@@ -153,7 +163,7 @@ int HardVideoDecoder::SoftDecInit(bool is_h265)
 #endif
     codec_ctx_ = avcodec_alloc_context3(codec_);
     codec_ctx_->flags |= AV_CODEC_FLAG_LOW_DELAY;
-    if (is_h265) {
+    if (codec_type_ ==  CODEC_TYPE::CODEC_H265) {
         codec_ctx_->thread_count = 3;
     } else {
         codec_ctx_->thread_count = 1;
@@ -167,12 +177,13 @@ int HardVideoDecoder::SoftDecInit(bool is_h265)
     log_info("open soft dec ok");
     return 1;
 }
-HardVideoDecoder::HardVideoDecoder(bool is_h265)
+HardVideoDecoder::HardVideoDecoder(CODEC_TYPE codec_type)
 {
     codec_ctx_ = NULL;
     codec_ = NULL;
-    if (HardDecInit(is_h265) < 0) {
-        SoftDecInit(is_h265);
+    codec_type_ = codec_type;
+    if (HardDecInit() < 0) {
+        SoftDecInit();
     }
     abort_ = false;
     // av_init_packet(&packet_);

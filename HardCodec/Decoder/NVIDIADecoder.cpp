@@ -25,13 +25,18 @@ static void CreateCudaContext(CUcontext *cuContext, int iGpu, unsigned int flags
     return;
 }
 
-HardVideoDecoder::HardVideoDecoder(bool is_h265)
+HardVideoDecoder::HardVideoDecoder(CODEC_TYPE codec_type)
 {
-    if(is_h265){
+    codec_type_ = codec_type;
+    if (codec_type_ ==  CODEC_TYPE::CODEC_H264) {
+        type_ = cudaVideoCodec_H264;
+    } 
+    else if (codec_type_ ==  CODEC_TYPE::CODEC_H265){
         type_ = cudaVideoCodec_HEVC;
     }
     else{
-        type_ = cudaVideoCodec_H264;
+        log_error("codec type error");
+        exit(1);
     }
     abort_ = false;
     callback_ = NULL;
