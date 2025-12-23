@@ -11,13 +11,18 @@ static int32_t GetChannedId(){
     channel_id++;
     return channel_id;
 }
-HardVideoDecoder::HardVideoDecoder(bool is_h265)
+HardVideoDecoder::HardVideoDecoder(CODEC_TYPE codec_type)
 {
-    if(is_h265){
+    codec_type_ = codec_type;
+    if(codec_type_ == CODEC_TYPE::CODEC_H264){
+        chn_attr_.type = HI_PT_H264;
+    }
+    else if (codec_type_ == CODEC_TYPE::CODEC_H265){
         chn_attr_.type = HI_PT_H265;
     }
     else{
-        chn_attr_.type = HI_PT_H264;
+        log_error("codec type error");
+        exit(1);
     }
     callback_ = NULL;
     time_inited_ = 0;

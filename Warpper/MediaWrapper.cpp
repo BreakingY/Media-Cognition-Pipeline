@@ -290,7 +290,14 @@ void MiedaWrapper::OnVideoData(VideoData data)
     }
     if (!hard_decoder_) {
         log_debug("video_type:{} width:{} height:{} fps_:{}", video_type_ == VIDEO_H264 ? "VIDEO_H264" : "VIDEO_H265", width_, height_, fps_);
-        hard_decoder_ = new HardVideoDecoder(video_type_ == VIDEO_H264 ? false : true);
+        CODEC_TYPE type = CODEC_NONE;
+        if(video_type_ == VIDEO_H264){
+            type = CODEC_H264;
+        }
+        else if(video_type_ == VIDEO_H265){
+            type = CODEC_H265;
+        }
+        hard_decoder_ = new HardVideoDecoder(type);
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
 #if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86)
         hard_decoder_->Init(device_id_, width_, height_); // dvpp nvidia

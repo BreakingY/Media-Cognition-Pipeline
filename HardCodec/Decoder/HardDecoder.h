@@ -51,14 +51,14 @@ class HardVideoDecoder
 {
 
 public:
-    HardVideoDecoder(bool is_h265 = false);
+    HardVideoDecoder(CODEC_TYPE codec_type);
     virtual ~HardVideoDecoder();
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
 
 private:
-    int HardDecInit(bool is_h265 = false);
-    int SoftDecInit(bool is_h265 = false);
+    int HardDecInit();
+    int SoftDecInit();
     int hwDecoderInit(AVCodecContext *ctx, const enum AVHWDeviceType type);
     static void *DecodeThread(void *arg);
     void DecodeVideo(HardDataNode *data);
@@ -67,6 +67,7 @@ private:
 
 private:
     bool is_hard_ = false;
+    CODEC_TYPE codec_type_;
     enum AVCodecID decodec_id_;
     DecDataCallListner *callback_ = NULL;
     AVCodecContext *codec_ctx_ = NULL;
@@ -106,19 +107,20 @@ class HardVideoDecoder
 {
 
 public:
-    HardVideoDecoder(bool is_h265 = false);
+    HardVideoDecoder(CODEC_TYPE codec_type);
     virtual ~HardVideoDecoder();
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
 
 private:
-    int SoftDecInit(bool is_h265 = false);
+    int SoftDecInit();
     static void *DecodeThread(void *arg);
     void DecodeVideo(HardDataNode *data);
     static void *ScaleThread(void *arg);
     void ScaleVideo(AVFrame *frame);
 
 private:
+    CODEC_TYPE codec_type_;
     enum AVCodecID decodec_id_;
     DecDataCallListner *callback_ = NULL;
     AVCodecContext *codec_ctx_ = NULL;
@@ -156,7 +158,7 @@ class HardVideoDecoder
 {
 
 public:
-    HardVideoDecoder(bool is_h265 = false);
+    HardVideoDecoder(CODEC_TYPE codec_type);
     virtual ~HardVideoDecoder();
     void Init(int32_t device_id, int width, int height);
     void SetFrameFetchCallback(DecDataCallListner *call_func);
@@ -171,6 +173,7 @@ private:
     void *GetOutAddr();
     void PutOutAddr(void *addr);
 private:
+    CODEC_TYPE codec_type_;
     int32_t device_id_ = 0;
     int width_;
     int height_;
@@ -226,7 +229,7 @@ class HardVideoDecoder
 {
 
 public:
-    HardVideoDecoder(bool is_h265 = false);
+    HardVideoDecoder(CODEC_TYPE codec_type);
     virtual ~HardVideoDecoder();
     void Init(int32_t device_id, int width, int height);
     void SetFrameFetchCallback(DecDataCallListner *call_func);
@@ -236,6 +239,7 @@ private:
     static void *DecodeThread(void *arg);
     void DecodeVideo(HardDataNode *data);
 private:
+    CODEC_TYPE codec_type_;
     int32_t device_id_ = 0;
     int width_;
     int height_;
