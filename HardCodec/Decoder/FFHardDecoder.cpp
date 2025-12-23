@@ -62,7 +62,7 @@ int HardVideoDecoder::HardDecInit()
     }
     std::string codec_name;
     if (codec_type_ ==  CODEC_TYPE::CODEC_H264) {
-        codec_name = "h234_cuvid";
+        codec_name = "h264_cuvid";
     } 
     else if (codec_type_ ==  CODEC_TYPE::CODEC_H265){
         codec_name = "hevc_cuvid";
