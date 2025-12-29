@@ -26,11 +26,9 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Not suitable for Jetson, Jetson codec libraries differ from x86. Reference for Jetson codec: https://github.com/BreakingY/jetpack-dec-enc
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
 * Supports audio/video from MP4 and RTSP. MP4 unpackaging is done by FFmpeg; RTSP client is implemented in pure C++: https://github.com/BreakingY/simple-rtsp-client
-* Code contains four modules, as shown below:
+* The code module division is shown in the following figure:
+![MCP](https://github.com/user-attachments/assets/7f3047c2-424e-45b8-aba4-fcba478c75e4)
 
-![1](https://github.com/user-attachments/assets/2dee0b7c-46c1-4161-9de9-3b0c7f270fc7)
-* Warpper combines the four modules, as shown below:
-![2](https://github.com/user-attachments/assets/39082b4c-cba7-421d-b47e-e319c0d6a10b)
 * Managed using modular, node-based, and interface-based design, can be assembled and extended to form business pipelines.
 * Logging: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
@@ -56,8 +54,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
    * cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..
    * mingw32-make -j
 3. Visual perception
-  * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_NVIDIA=ON ..
-  * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_ASCEND=ON ..
+   * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_NVIDIA=ON ..
+   * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_ASCEND=ON ..
 
 # Test
 1. File test: `./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4`
