@@ -4,3 +4,6 @@
 [submodule "Media/Bitstream"]
 	path = Media/Bitstream
 	url = https://github.com/ireader/avcodec
+[submodule "Cognition/ByteTrack-cpp"]
+	path = Cognition/ByteTrack-cpp
+	url = https://github.com/Vertical-Beach/ByteTrack-cpp.git
