@@ -26,11 +26,9 @@
 * 不适用jetson，jetson的编解码库和x86不一样。jetson编解码参考：https://github.com/BreakingY/jetpack-dec-enc
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
 * 支持从MP4、RTSP获取音视频。MP4解封装由FFMPEG完成；RTSP客户端纯C++实现，地址：https://github.com/BreakingY/simple-rtsp-client
-* 代码包含四个模块，如下图所示：
+* 代码模块划分如下图：
+![MCP](https://github.com/user-attachments/assets/7f3047c2-424e-45b8-aba4-fcba478c75e4)
 
-![1](https://github.com/user-attachments/assets/2dee0b7c-46c1-4161-9de9-3b0c7f270fc7)
-* Warpper实现了对四个模块的组合，如下图所示：
-![2](https://github.com/user-attachments/assets/39082b4c-cba7-421d-b47e-e319c0d6a10b)
 * 采用模块化、节点化和接口化的管理方式，可自行组装扩展形成业务pipeline。
 * 日志，地址：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
@@ -56,8 +54,8 @@
    * cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..
    * mingw32-make -j
 3. 视觉感知
-  * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_NVIDIA=ON ..
-  * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_ASCEND=ON ..
+   * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_NVIDIA=ON ..
+   * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_ASCEND=ON ..
 # 测试：
 1. 文件测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4
 2. rtsp测试：./MediaCodec your_rtsp_url out.mp4
