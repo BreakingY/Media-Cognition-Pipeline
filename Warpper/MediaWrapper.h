@@ -12,7 +12,12 @@
 #include "log_helpers.h"
 #include "rtsp_client_proxy.h"
 #include <opencv2/opencv.hpp>
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#include "NodeFlow.h"
+class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner, public InferDataListner
+#else
 class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner
+#endif
 {
 public:
     MiedaWrapper() = delete;
@@ -39,6 +44,11 @@ public:
     void SetDeviceId(int device_id) {device_id_ = device_id; return;}
     // for nvidia
     void UseNVEnc() {use_nv_enc_flag_ = true; return;}
+
+    #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+    void OnInferData(cv::Mat& img, DetectionInfo& info);
+    void SetEnginePath(std::string path){eng_path_ = path;}
+    #endif
 
 public:
     bool over_flag_ = false;
@@ -87,5 +97,10 @@ public:
     // NPU GPU
     int32_t device_id_ = 0;
     bool use_nv_enc_flag_ = false;
+
+    #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+    std::string eng_path_;
+    void *context_ = nullptr;
+    #endif
 };
 #endif

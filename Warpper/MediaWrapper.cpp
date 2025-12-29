@@ -346,6 +346,14 @@ void MiedaWrapper::OnAudioData(AudioData data)
 void MiedaWrapper::OnRGBData(cv::Mat frame)
 {
     // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+    if(context_ == nullptr){
+        DetectModelInit(eng_path_, device_id_);
+        context_ = AddStream(static_cast<InferDataListner *>(this), fps_);
+    }
+    StreamPushData(frame, context_);
+    return;
+#endif
     // 之后再把处理后的图像进行编码
     if (!hard_encoder_) {
 #if defined(USE_NVIDIA_X86)
@@ -368,6 +376,50 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
     hard_encoder_->AddVideoFrame(frame);
     return;
 }
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+static void DetectDraw(cv::Mat& img, DetectionInfo& info) {
+    for (const auto& det : info.dets) {
+        std::string label = "id:" + std::to_string(det.track_id);
+        if (det.class_id >= 0 && det.class_id < info.class_names.size()) {
+            label = info.class_names[det.class_id] + " " + label;
+        }
+        cv::Scalar color(0, 255, 0);
+        if (det.class_id >= 0) {
+            int c = det.class_id * 50;
+            color = cv::Scalar(c % 255, (c * 2) % 255, (c * 3) % 255);
+        }
+        cv::rectangle(img, det.box, color, 2);
+        int baseline = 0;
+        cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+        cv::Point text(det.box.x, std::max(0.0f, det.box.y - 5));
+
+        cv::putText(img, label, text, cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+    }
+}
+void MiedaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info){
+    DetectDraw(img, info);
+    if (!hard_encoder_) {
+#if defined(USE_NVIDIA_X86)
+        if(use_nv_enc_flag_){
+            hard_encoder_ = new NVHardVideoEncoder();
+        }
+        else{
+            hard_encoder_ =  new NVSoftVideoEncoder();
+        }
+        hard_encoder_->SetDevice(device_id_);
+#elif defined(USE_DVPP_MPI)
+        hard_encoder_ = new HardVideoEncoder();
+        hard_encoder_->SetDevice(device_id_);
+#else
+        hard_encoder_ = new HardVideoEncoder();
+#endif
+        hard_encoder_->Init(img, fps_);
+        hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
+    }
+    hard_encoder_->AddVideoFrame(img);
+    return;
+}
+#endif
 // FILE *fp_file = NULL;
 // data_len是单通道当本个数 LC-AAC:1024 HE-AAC:2048
 void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
@@ -482,5 +534,8 @@ MiedaWrapper::~MiedaWrapper()
         free(buffer_pcm_);
         buffer_pcm_ = NULL;
     }
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+    EndStream(context_);
+#endif
     log_debug("~MiedaWrapper");
 }

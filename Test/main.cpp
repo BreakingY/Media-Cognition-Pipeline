@@ -14,6 +14,11 @@ int main(int argc, char **argv)
     aclInit(NULL);
 #endif
     MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2]);
+#if defined(DETECTION_NVIDIA)
+    test->SetEnginePath("../Test/yolo11s-best.engine");
+#elif defined(DETECTION_ASCEND)
+    test->SetEnginePath("../Test/yolo11s-best.om");
+#endif
     while (!test->OverHandle()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

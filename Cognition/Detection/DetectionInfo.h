@@ -1,4 +1,3 @@
-#define DETECTION_NVIDIA
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
 #ifndef DETECTION_INFO_H
 #define DETECTION_INFO_H
@@ -7,9 +6,10 @@
 #include <list>
 #include <string>
 #include <stdio.h>
-#include <stdilb.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <opencv2/opencv.hpp>
 typedef struct DetectionSt {
     cv::Rect2f box;   // l_x, l_y, w, h
     float score;

@@ -1,5 +1,4 @@
-#define DETECTION_NVIDIA
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA)
 #ifndef YOLO_DETECTION_NODE_H
 #define YOLO_DETECTION_NODE_H
 
@@ -13,6 +12,7 @@
 #include <tuple>
 #include <cmath>
 #include <thread>
+#include <memory>
 #include <opencv2/opencv.hpp>
 #include <npp.h>
 #include <NvInfer.h>
@@ -36,34 +36,33 @@ public:
     YoloDetectionNode(std::string eng_path, int device_id);
     ~YoloDetectionNode();
     int Inference(const int batch_size);
-    void setDataNode(CollectorNode *collector = nullptr, 
-                    RelayNode *relayer = nullptr, 
-                    DistributorNode *distributor = nullptr){collector_ = collector; relayer_ = relayer; distributor_ = distributor;}
+    void SetDataNode(std::shared_ptr<CollectorNode> collector = nullptr, std::shared_ptr<RelayNode> relayer = nullptr, std::shared_ptr<DistributorNode> distributor = nullptr);
     void DetectThreadLoop();
 private:
     std::string eng_path_;
     int device_id_;
     cudaStream_t stream_;
-    nvinfer1::IRuntime* runtime_;
-    nvinfer1::ICudaEngine* engine_;
-    nvinfer1::IExecutionContext* context_;
+    std::unique_ptr<nvinfer1::IRuntime> runtime_;
+    std::unique_ptr<nvinfer1::ICudaEngine> engine_;
+    std::unique_ptr<nvinfer1::IExecutionContext> context_;
     std::vector<std::pair<int, std::string>> in_tensor_info_;
 	std::vector<std::pair<int, std::string>> out_tensor_info_;
     int batch_size_ = 4;
     int input_h_;
     int input_w_;
-    int output_pred; // 4(c_x, c_y, w, h) + len(class_names)
-	int anchors; // The total number of anchors after the fusion of three feature maps
-    const char *class_names[2] = {"dog", "person"};
+    int output_pred_; // 4(c_x, c_y, w, h) + len(class_names)
+	int anchors_; // The total number of anchors after the fusion of three feature maps
+    const char *class_names_[2] = {"dog", "person"};
     void* buffers_[2] = {nullptr, nullptr};
     float* output_ = nullptr;
 
     std::thread worker_;
     bool abort_ = false;
-    CollectorNode *collector_ = nullptr;
-    RelayNode *relayer_ = nullptr;
-    DistributorNode *distributor_ = nullptr;
+    bool thread_run_flag_ = false;
+    std::shared_ptr<CollectorNode> collector_;
+    std::shared_ptr<RelayNode> relayer_;
+    std::shared_ptr<DistributorNode> distributor_;
 }; 
 
 #endif // YOLO_DETECTION_NODE_H
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA
