@@ -1,7 +1,7 @@
-# Media-Codec-Pipeline
-音视频封装、解封装、编解码pipeline
+# Media-Cognition-Pipeline
+音视频封装、解封装、编解码、视觉感知(YOLO目标检测 + ByteTrack多目标跟踪)pipeline
 
-* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4)，采用模块化和接口化管理。
+* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4)，视觉感知, 采用模块化、节点化和接口化管理。
 * 音频编解码使用纯软方案。
 * 视频编解码有三种实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -16,7 +16,12 @@
   * NVIDIA x86编解码(NVIDIADecoder.cpp、H264NVIDIAEncoder、Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..`(先导入环境变量`export PATH=$PATH:/usr/local/cuda/bin`和`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * 使用NVIDIA x86原生SDK(https://developer.nvidia.com/video_codec_sdk/downloads/v11), 项目使用Video_Codec_SDK_11.0.10版本，测试驱动版本为550.163.01, Nvcodec_utils目录里的文件都是从Video_Codec_SDK_11.0.10中提取的，因为Video_Codec_SDK_11.0.10中文件很多，实际使用过程中并不是所有的都需要，Nvcodec_utils里面只提取出来本项目使用的文件，并进行分类。使用前需要设置编码方式(不是所有的显卡都支持硬编码,默认使用软编码, MiedaWrapper.h-->use_nv_enc_flag_)，默认使用第0号GPU(MiedaWrapper.h-->device_id_), 需要安装cuda(版本无要求)
-* 通过设置宏的方式，使用者可以添加适配任意显卡的代码，只要保证类名和被调用的类方法一致即可，平台扩展性好。
+* 视觉感知(YOLO + ByteTrack):
+  * NVIDIA TensorRT
+    * `-DDETECTION_NVIDIA=ON`
+    * TensorRT-10.4.0.26
+  * Ascend CANN
+    * TODO
 * 支持格式，视频：H264/H265，音频：AAC。
 * 不适用jetson，jetson的编解码库和x86不一样。jetson编解码参考：https://github.com/BreakingY/jetpack-dec-enc
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
@@ -26,14 +31,15 @@
 ![1](https://github.com/user-attachments/assets/2dee0b7c-46c1-4161-9de9-3b0c7f270fc7)
 * Warpper实现了对四个模块的组合，如下图所示：
 ![2](https://github.com/user-attachments/assets/39082b4c-cba7-421d-b47e-e319c0d6a10b)
-* 采用模块化和接口化的管理方式，可自行组装扩展形成业务pipeline，比如添加视频处理模块、音频处理模块，对解码后的音视频进行处理，例如，AI检测、语音识别等。
+* 采用模块化、节点化和接口化的管理方式，可自行组装扩展形成业务pipeline。
 * 日志，地址：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
+* ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
 
 # 准备
-* ffmpeg版本==4.x 请根据安装位置修改CMakeLists.txt，把头文件和库路径添加进去。
+* ffmpeg版本==4.x。
 * 音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac。
-* 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; 驱动550.163.01; Video_Codec_SDK11.0.10。
+* 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; 驱动550.163.01; Video_Codec_SDK11.0.10；TensorRT-10.4.0.26。
 * Windows 软件安装参考：
   * https://sunkx.blog.csdn.net/article/details/146064215
 
@@ -49,10 +55,14 @@
    * cd build
    * cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..
    * mingw32-make -j
+3. 视觉感知
+  * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_NVIDIA=ON ..
+  * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_ASCEND=ON ..
 # 测试：
 1. 文件测试：./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4
 2. rtsp测试：./MediaCodec your_rtsp_url out.mp4
 3. 昇腾测试：./MediaCodec ../Test/dvpp_venc.mp4 out.mp4
+4. AI推理：./MediaCodec ../Test/Cognition.mp4 out.mp4
 
 
 # 技术交流

@@ -1,41 +1,46 @@
-[中文](./README_CN.md)
-# Media-Codec-Pipeline
-Audio and video packaging, depackaging, and codec pipeline
+# Media-Cognition-Pipeline
+Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO object detection + ByteTrack multi-object tracking) pipeline
 
-* Audio and video depackaging (MP4, RTSP), resampling, encoding/decoding, packaging (MP4), using modular and interface-based management.
-* Audio encoding and decoding uses a pure software solution.
-* Video encoding and decoding have three implementations:
-  * FFmpeg hardware codec (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
+* Audio/video unpackaging (MP4, RTSP), resampling, encoding/decoding, packaging (MP4), visual perception, managed using modular, node-based, and interface-based design.
+* Audio codec uses a pure software solution.
+* Video codec has four implementations:
+  * FFmpeg hardware encoder/decoder (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
     * `cmake -DFFMPEG_NVIDIA=ON ..`
-    * Only supports NVIDIA GPUs, support automatic switching between software and hardware codecs (prefer hardware codec; not all NVIDIA GPUs support encoding/decoding, if not supported, automatically switch to software codec. FFmpeg must be compiled and installed with NVIDIA hardware codec support). Blog: https://blog.csdn.net/weixin_43147845/article/details/136812735
+    * Only supports NVIDIA GPU, supports automatic switching between software and hardware encoding/decoding (prioritizes hardware decoding – not all NVIDIA GPUs support hardware codec; if not supported, automatically switches to software codec. FFmpeg must be compiled/installed with NVIDIA hardware codec support). Blog: https://blog.csdn.net/weixin_43147845/article/details/136812735
   * FFmpeg pure software codec (FFSoftDecoder.cpp, H264FFSoftEncoder.cpp)
     * `cmake -DFFMPEG_SOFT=ON ..`
-    * This code can run on any Linux/Windows environment, only requires FFmpeg installation.
+    * Can run in any Linux/Windows environment, only requires FFmpeg installation.
   * Ascend DVPP V2 codec (DVPPDecoder.cpp, H264DVPPEncoder.cpp, DVPP_utils)
-    * `cmake -DDVPP_MPI=ON ..`(first, execute `source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
-    * default uses NPU 0 (MiedaWrapper.h-->device_id_) 
-  * NVIDIA x86 codec(NVIDIADecoder.cpp, H264NVIDIAEncoder, Nvcodec_utils)
-    * `cmake -DNVIDIA_SDK_X86=ON ..` (first import environment variables `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
-    * Using NVIDIA x86 native SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11). The project uses Video_Codec_SDK_11.0.10, tested with driver version 550.163.01. Files in Nvcodec_utils are extracted from Video_Codec_SDK_11.0.10; not all files are needed, only those used by this project are categorized. Before use, set the encoding method (not all GPUs support hardware encoding, default uses software encoding, MiedaWrapper.h-->use_nv_enc_flag_), default uses GPU 0 (MiedaWrapper.h-->device_id_), requires CUDA installation (version not limited)
-* Users can add support for any GPU by defining macros, as long as class names and methods are consistent, offering good platform scalability.
-* Supported formats: Video: H264/H265, Audio: AAC.
-* Not suitable for Jetson; Jetson's codec library differs from x86. Jetson encoding/decoding reference: https://github.com/BreakingY/jetpack-dec-enc
-* Ascend DVPP has two versions: V1 and V2. V1 and V2 are for different platforms; please check the official site. Future Ascend GPUs should all support V2. 
-* Supports fetching audio and video from MP4 and RTSP. MP4 depackaging is done by FFmpeg; RTSP client is implemented in pure C++, https://github.com/BreakingY/simple-rtsp-client
-* The code includes four modules, as shown below:
+    * `cmake -DDVPP_MPI=ON ..` (first run `source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
+    * Uses NPU #0 by default (MiedaWrapper.h --> device_id_)
+  * NVIDIA x86 codec (NVIDIADecoder.cpp, H264NVIDIAEncoder, Nvcodec_utils)
+    * `cmake -DNVIDIA_SDK_X86=ON ..` (set environment variables first: `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
+    * Uses NVIDIA x86 native SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11), project uses Video_Codec_SDK_11.0.10, tested driver version 550.163.01. Files in Nvcodec_utils are extracted from Video_Codec_SDK_11.0.10, categorized, and only the files used in this project are included. You need to set the encoding mode (not all GPUs support hardware encoding; defaults to software encoding, MiedaWrapper.h --> use_nv_enc_flag_), default GPU #0 (MiedaWrapper.h --> device_id_). CUDA installation required (version not limited).
+* Visual perception (YOLO + ByteTrack):
+  * NVIDIA TensorRT
+    * `-DDETECTION_NVIDIA=ON`
+    * TensorRT-10.4.0.26
+  * Ascend CANN
+    * TODO
+* Supported formats: video: H264/H265, audio: AAC.
+* Not suitable for Jetson, Jetson codec libraries differ from x86. Reference for Jetson codec: https://github.com/BreakingY/jetpack-dec-enc
+* Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
+* Supports audio/video from MP4 and RTSP. MP4 unpackaging is done by FFmpeg; RTSP client is implemented in pure C++: https://github.com/BreakingY/simple-rtsp-client
+* Code contains four modules, as shown below:
 
 ![1](https://github.com/user-attachments/assets/2dee0b7c-46c1-4161-9de9-3b0c7f270fc7)
-* Wrapper combines the four modules, as shown below:
+* Warpper combines the four modules, as shown below:
 ![2](https://github.com/user-attachments/assets/39082b4c-cba7-421d-b47e-e319c0d6a10b)
-* Uses modular and interface-based management, allowing users to assemble and extend pipelines, e.g., adding video/audio processing modules to handle decoded media, such as AI detection, speech recognition, etc.
-* Log: https://github.com/gabime/spdlog
+* Managed using modular, node-based, and interface-based design, can be assembled and extended to form business pipelines.
+* Logging: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
+* ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 
-# Preparation
-* FFmpeg version == 4.x, please modify CMakeLists.txt according to the installation path, adding headers and library paths.
-* Audio uses fdk-aac encoding, ensure FFmpeg includes fdk-aac.
-* Test versions: FFmpeg 4.0.5, OpenCV 4.5.1, CANN 7.0.0/8.2.RC1 (Ascend SDK), NVIDIA: CUDA 12.4, Driver 550.163.01, Video_Codec_SDK 11.0.10.
-* Windows software installation reference:
+# Requirements
+* ffmpeg version == 4.x
+* Audio uses fdk-aac codec, ensure ffmpeg includes fdk-aac.
+* Tested versions: ffmpeg 4.0.5, opencv 4.5.1, CANN 7.0.0/8.2.RC1 (Ascend SDK), NVIDIA: cuda12.4; driver 550.163.01; Video_Codec_SDK 11.0.10; TensorRT-10.4.0.26.
+* Windows installation guide:
   * https://sunkx.blog.csdn.net/article/details/146064215
 
 # Build
@@ -50,12 +55,15 @@ Audio and video packaging, depackaging, and codec pipeline
    * cd build
    * cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..
    * mingw32-make -j
+3. Visual perception
+  * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_NVIDIA=ON ..
+  * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86>=ON -DDETECTION_ASCEND=ON ..
 
-# Test:
+# Test
 1. File test: `./MediaCodec ../Test/test1.mp4 out.mp4 && ./MediaCodec ../Test/test2.mp4 out.mp4`
 2. RTSP test: `./MediaCodec your_rtsp_url out.mp4`
 3. Ascend test: `./MediaCodec ../Test/dvpp_venc.mp4 out.mp4`
+4. AI inference: `./MediaCodec ../Test/Cognition.mp4 out.mp4`
 
-
-# Technical Contact
+# Contact
 * kxsun617@163.com

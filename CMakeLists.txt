@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 project (VIDEOCODECPROJ)
-set(CMAKE_CXX_STANDARD 14)
 option(FFMPEG_SOFT "Enable FFmpeg soft codec" OFF)
 option(FFMPEG_NVIDIA "Enable FFmpeg nvidia codec" OFF)
 option(DVPP_MPI "Enable Ascend DVPP V2 codec" OFF)
@@ -44,7 +43,7 @@ aux_source_directory(Media/Bitstream/h264/source BH264)
 aux_source_directory(Media/Bitstream/h265/src BH265)
 
 set(EXECUTABLE_OUTPUT_PATH ./)
-add_compile_options(-g -fpermissive -std=c++14) 
+add_compile_options(-g -fpermissive -std=c++17) 
 set(CMAKE_BUILD_TYPE Release)
 
 if(FFMPEG_NVIDIA)
@@ -76,16 +75,41 @@ elseif(NVIDIA_SDK_X86)
     set(CUDA_SOURCES HardCodec/Nvcodec_utils/CudaProc/ColorSpace.cu)  # Add all your .cu files here
 endif()
 
+# Cognition
+if(DETECTION_NVIDIA OR DETECTION_ASCEND)
+    message(STATUS "Enable detection")
+    include_directories(Cognition/Detection Cognition/ByteTrack-cpp/include)
+    include_directories(/usr/include/eigen3) # for ByteTrack
+    aux_source_directory(Cognition/Detection DETECTION)
+    aux_source_directory(Cognition/ByteTrack-cpp/src BYTETRACK)
+endif()
+if(DETECTION_NVIDIA)
+    add_definitions(-DDETECTION_NVIDIA)
+    include_directories(/data/sunkx/TensorRT-10.4.0.26/include)
+    link_directories(/data/sunkx/TensorRT-10.4.0.26/lib)
+    include_directories(/usr/local/cuda/include)
+    link_directories(/usr/local/cuda/lib64)
+    add_compile_options(-Wno-deprecated-declarations)
+elseif(DETECTION_ASCEND)
+    # TODO
+    add_definitions(-DDETECTION_ASCEND)
+endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC} ${DVPP_UTILS} 
-                        ${NVDEC} ${NVENC} ${CUDA_SOURCES})
+                        ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${DETECTION} ${BYTETRACK})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
 if(DVPP_MPI)
     target_link_libraries(mcp ascendcl acl_dvpp_mpi)
 endif()
 if(NVIDIA_SDK_X86)
     target_link_libraries(mcp nvcuvid nvidia-encode cudart cuda nppidei)
+endif()
+# Cognition
+if(DETECTION_NVIDIA)
+    target_link_libraries(mcp nvinfer cudart nppig nppidei nppial)
+elseif(DETECTION_ASCEND)
+    # TODO
 endif()
 if(WIN32)
     # Set the function stack size to 6MB
