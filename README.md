@@ -29,7 +29,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
 * Supports audio/video from MP4 and RTSP. MP4 unpackaging is done by FFmpeg; RTSP client is implemented in pure C++: https://github.com/BreakingY/simple-rtsp-client
 * The code module division is shown in the following figure:
-![MCP](https://github.com/user-attachments/assets/7f3047c2-424e-45b8-aba4-fcba478c75e4)
+![MCP](https://github.com/user-attachments/assets/a33735b7-22f8-42e0-9c84-83e68d854c58)
+
 
 * Managed using modular, node-based, and interface-based design, can be assembled and extended to form business pipelines.
 * Logging: https://github.com/gabime/spdlog
