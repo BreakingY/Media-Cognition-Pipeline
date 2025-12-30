@@ -28,7 +28,7 @@
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
 * 支持从MP4、RTSP获取音视频。MP4解封装由FFMPEG完成；RTSP客户端纯C++实现，地址：https://github.com/BreakingY/simple-rtsp-client
 * 代码模块划分如下图：
-![MCP](https://github.com/user-attachments/assets/7f3047c2-424e-45b8-aba4-fcba478c75e4)
+![MCP](https://github.com/user-attachments/assets/a33735b7-22f8-42e0-9c84-83e68d854c58)
 
 * 采用模块化、节点化和接口化的管理方式，可自行组装扩展形成业务pipeline。
 * 日志：https://github.com/gabime/spdlog
