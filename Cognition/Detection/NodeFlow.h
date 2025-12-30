@@ -16,7 +16,7 @@
 #include "TrackerNode.h"
 
 void DetectModelInit(std::string eng_path, int device_id);
-void* AddStream(InferDataListner* listener, int fps = 30);
+void* AddStream(InferDataListner* listener, int width, int height, int fps = 30);
 void EndStream(void* context);
 void StreamPushData(cv::Mat &img, void* context);
 #endif // NODE_FLOW_H

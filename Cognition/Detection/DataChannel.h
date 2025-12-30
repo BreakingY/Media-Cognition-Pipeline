@@ -14,6 +14,7 @@
 #include <unordered_map>
 
 #include <opencv2/opencv.hpp>
+#include <cuda_runtime.h>
 #include "DetectionInfo.h"
 #include "log_helpers.h"
 
@@ -31,50 +32,55 @@ public:
 struct QueueContext {
     int64_t stream_id{0};
     InferDataListner* listener{nullptr};
+    int width;
+    int height;
+#if defined(DETECTION_NVIDIA)
+    void *img_buffer{nullptr};
+    void *pu8_resized{nullptr}; // yolo  Letterbox_resize_GPU
+#endif
 };
 
-inline QueueContext* CreateContext(InferDataListner* listener) {
+inline QueueContext* CreateContext(InferDataListner* listener, int width, int height) {
     static std::atomic<int64_t> stream_id_init{-1};
     auto* ctx = new QueueContext;
     ctx->stream_id = ++stream_id_init;
     ctx->listener = listener;
+    ctx->width = width;
+    ctx->height = height;
     return ctx;
 }
-
+#if defined(DETECTION_NVIDIA)
+inline void MemAllocate(QueueContext* ctx, int pu8_resized_w, int pu8_resized_h, int channel){
+    if(ctx->img_buffer == nullptr){
+        CHECK_CUDA(cudaMalloc(&ctx->img_buffer, ctx->width * ctx->height * 3));
+    }
+    if(ctx->pu8_resized == nullptr){
+        CHECK_CUDA(cudaMalloc(&ctx->pu8_resized, pu8_resized_w * pu8_resized_h * channel));
+    }
+}
+#endif
 inline void DestroyContext(QueueContext* ctx) {
-    if(ctx)
+    if(ctx){
+#if defined(DETECTION_NVIDIA)
+        if(ctx->img_buffer){
+            CHECK_CUDA(cudaFree(ctx->img_buffer));
+        }
+        if(ctx->pu8_resized){
+            CHECK_CUDA(cudaFree(ctx->pu8_resized));
+        }
+#endif
         delete ctx;
+    }
 }
 
 /// =======================
 /// Image Packet
 /// =======================
-class ImgPacket {
-public:
-    /// rvalue cv::Mat (zero-copy)
-    ImgPacket(cv::Mat&& img, QueueContext* context)
-        : img_(std::move(img)), context_(context) {}
-
-    /// lvalue cv::Mat
-    ImgPacket(const cv::Mat& img, QueueContext* context)
-        : img_(img), context_(context) {}
-
-    ~ImgPacket() = default;
-
-    void SetDetectionInfo(DetectionInfo& info) {
-        info_ = info;
-    }
-
-    cv::Mat& GetImg() { return img_; }
-    DetectionInfo& GetDetectionInfo() { return info_; }
-    QueueContext* GetContext() { return context_; }
-
-private:
-    cv::Mat img_;
-    DetectionInfo info_;
-    QueueContext* context_{nullptr};
+struct ImgPacket{
+    cv::Mat img;
+    DetectionInfo info;
+    QueueContext* context{nullptr};
 };
-
 /// =======================
 /// Collector Node
 /// =======================
@@ -94,14 +100,20 @@ public:
     /// Prefer this: move cv::Mat
     inline void Push(cv::Mat&& img, QueueContext* context) {
         std::unique_lock<std::mutex> guard(mutex_);
-        img_list_.push_back(new ImgPacket(std::move(img), context));
+        ImgPacket *packet = new ImgPacket();
+        packet->img = std::move(img);
+        packet->context = context;
+        img_list_.push_back(packet);
         cond_.notify_one();
     }
 
     /// Fallback: copy cv::Mat
     inline void Push(const cv::Mat& img, QueueContext* context) {
         std::unique_lock<std::mutex> guard(mutex_);
-        img_list_.push_back(new ImgPacket(img, context));
+        ImgPacket *packet = new ImgPacket();
+        packet->img = img;
+        packet->context = context;
+        img_list_.push_back(packet);
         cond_.notify_one();
     }
     inline std::vector<ImgPacket*> GetBatch(size_t batch_size) {
@@ -164,10 +176,10 @@ public:
 
 
     inline void Push(ImgPacket* packet) {
-        if (!packet || !packet->GetContext()) 
+        if (!packet || !packet->context) 
             return;
 
-        int64_t sid = packet->GetContext()->stream_id;
+        int64_t sid = packet->context->stream_id;
         std::unique_lock<std::mutex> guard(mutex_);
         auto& entry = streams_[sid];
         if(entry.state != StreamState::ACTIVE){
@@ -370,11 +382,9 @@ private:
                 packet = img_list_.front();
                 img_list_.pop_front();
                 if (packet) {
-                    QueueContext* ctx = packet->GetContext();
+                    QueueContext* ctx = packet->context;
                     if (ctx && ctx->listener) {
-                        ctx->listener->OnInferData(
-                            packet->GetImg(),
-                            packet->GetDetectionInfo());
+                        ctx->listener->OnInferData(packet->img, packet->info);
                     }
                     delete packet;
                 }

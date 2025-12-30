@@ -22,7 +22,7 @@ static float IoU(const cv::Rect2f& a, const cv::Rect2f& b) {
     return uni <= 0.f ? 0.f : inter / uni;
 }
 void TrackerNode::TrackUpdate(ImgPacket *packet){
-    DetectionInfo info = packet->GetDetectionInfo();
+    DetectionInfo info = packet->info;
     std::vector<Detection> &dets = info.dets;
     std::vector<byte_track::Object> objects;
     for (auto& d : dets) {
@@ -53,7 +53,7 @@ void TrackerNode::TrackUpdate(ImgPacket *packet){
             dets[best_match_idx].track_id = track_id;
         }
     }
-    packet->SetDetectionInfo(info);
+    packet->info = info;
 }
 void TrackerNode::TrackThreadLoop(){
     thread_run_flag_ = true;

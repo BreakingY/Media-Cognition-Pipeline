@@ -22,11 +22,11 @@ void DetectModelInit(std::string eng_path, int device_id){
         detect->SetDataNode(collector, relayer1, nullptr);
     };
 }
-void* AddStream(InferDataListner* listener, int fps){
+void* AddStream(InferDataListner* listener, int width, int height, int fps){
     if(detect == nullptr){
         DetectModelInit(eng_path_g, device_id_g);
     }
-    QueueContext* context = CreateContext(listener);
+    QueueContext* context = CreateContext(listener, width, height);
     TrackerNode *tracker_node = new TrackerNode(fps);
     tracker_node->SetDataNode(context->stream_id, relayer1, nullptr, distributor);
     std::lock_guard<std::mutex> guard(flow_mutex_g);
