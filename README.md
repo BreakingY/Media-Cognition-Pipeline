@@ -23,6 +23,7 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
     * TensorRT-10.4.0.26
   * Ascend CANN
     * TODO
+  * model training: https://github.com/BreakingY/yolo-onnx-tensorrt
 * Supported formats: video: H264/H265, audio: AAC.
 * Not suitable for Jetson, Jetson codec libraries differ from x86. Reference for Jetson codec: https://github.com/BreakingY/jetpack-dec-enc
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.

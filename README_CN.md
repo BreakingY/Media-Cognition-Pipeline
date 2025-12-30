@@ -22,6 +22,7 @@
     * TensorRT-10.4.0.26
   * Ascend CANN
     * TODO
+  * 模型训练：https://github.com/BreakingY/yolo-onnx-tensorrt
 * 支持格式，视频：H264/H265，音频：AAC。
 * 不适用jetson，jetson的编解码库和x86不一样。jetson编解码参考：https://github.com/BreakingY/jetpack-dec-enc
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
@@ -30,7 +31,7 @@
 ![MCP](https://github.com/user-attachments/assets/7f3047c2-424e-45b8-aba4-fcba478c75e4)
 
 * 采用模块化、节点化和接口化的管理方式，可自行组装扩展形成业务pipeline。
-* 日志，地址：https://github.com/gabime/spdlog
+* 日志：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
 * ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
 
