@@ -39,6 +39,7 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * ffmpeg version == 4.x
 * Audio uses fdk-aac codec, ensure ffmpeg includes fdk-aac.
 * Tested versions: ffmpeg 4.0.5, opencv 4.5.1, CANN 7.0.0/8.2.RC1 (Ascend SDK), NVIDIA: cuda12.4; driver 550.163.01; Video_Codec_SDK 11.0.10; TensorRT-10.4.0.26.
+* `apt install libeigen3-dev` for ByteTrack
 * Windows installation guide:
   * https://sunkx.blog.csdn.net/article/details/146064215
 
