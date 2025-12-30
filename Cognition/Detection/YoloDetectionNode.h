@@ -19,16 +19,6 @@
 #include "DetectionInfo.h"
 #include "log_helpers.h"
 #include "DataChannel.h"
-#ifndef CHECK_CUDA
-#define CHECK_CUDA(callstr)\
-    {\
-        cudaError_t error_code = callstr;\
-        if (error_code != cudaSuccess) {\
-            std::cerr << "CUDA error " << error_code << " at " << __FILE__ << ":" << __LINE__;\
-            assert(0);\
-        }\
-    }
-#endif
 // version TensorRT-10.4.0.26
 // ultralytics/ultralytics
 class YoloDetectionNode{
@@ -62,6 +52,9 @@ private:
     std::shared_ptr<CollectorNode> collector_;
     std::shared_ptr<RelayNode> relayer_;
     std::shared_ptr<DistributorNode> distributor_;
+
+    Npp8u *pu8_rgb_ = nullptr;
+    float* buffer_chw_ = nullptr;
 }; 
 
 #endif // YOLO_DETECTION_NODE_H

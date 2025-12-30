@@ -349,7 +349,7 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     if(context_ == nullptr){
         DetectModelInit(eng_path_, device_id_);
-        context_ = AddStream(static_cast<InferDataListner *>(this), fps_);
+        context_ = AddStream(static_cast<InferDataListner *>(this), width_, height_, fps_);
     }
     StreamPushData(frame, context_);
     return;
