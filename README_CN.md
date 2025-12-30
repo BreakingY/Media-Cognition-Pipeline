@@ -38,6 +38,7 @@
 * ffmpeg版本==4.x。
 * 音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac。
 * 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; 驱动550.163.01; Video_Codec_SDK11.0.10；TensorRT-10.4.0.26。
+* ByteTrack依赖: `apt install libeigen3-dev`
 * Windows 软件安装参考：
   * https://sunkx.blog.csdn.net/article/details/146064215
 
