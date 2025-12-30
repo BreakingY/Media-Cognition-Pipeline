@@ -1,3 +1,4 @@
+[English](README.md) | [中文](README_CN.md)
 # Media-Cognition-Pipeline
 Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO object detection + ByteTrack multi-object tracking) pipeline
 
