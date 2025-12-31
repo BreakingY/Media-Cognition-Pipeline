@@ -241,11 +241,16 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     return 0;
 }
 #endif
-MiedaWrapper::MiedaWrapper(char *input, char *ouput)
+MiedaWrapper::MiedaWrapper(char *input, char *ouput, char *eng_path, int device_id)
 {
 #ifdef MP4MUXER
     mp4_muxer_ = new Muxer();
     mp4_muxer_->Init(ouput);
+#endif
+    device_id_ = device_id;
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+    eng_path_ = eng_path;
+    DetectModelInit(eng_path_, device_id_);
 #endif
     if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){ // rtsp
         rtsp_flag_ = true;
@@ -348,7 +353,6 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
     // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     if(context_ == nullptr){
-        DetectModelInit(eng_path_, device_id_);
         context_ = AddStream(static_cast<InferDataListner *>(this), width_, height_, fps_);
     }
     StreamPushData(frame, context_);

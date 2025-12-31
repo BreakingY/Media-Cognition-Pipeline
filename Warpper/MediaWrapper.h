@@ -21,7 +21,7 @@ class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public 
 {
 public:
     MiedaWrapper() = delete;
-    MiedaWrapper(char *input, char *ouput);
+    MiedaWrapper(char *input, char *ouput, char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend*/ = 0);
     virtual ~MiedaWrapper();
     // 音视频解封装接口
     void OnVideoData(VideoData data);
@@ -40,14 +40,11 @@ public:
     int WriteVideo2File(uint8_t *data, int len);
     int WriteAudio2File(uint8_t *data, int len);
 
-    // for nvpp nvidia
-    void SetDeviceId(int device_id) {device_id_ = device_id; return;}
     // for nvidia
     void UseNVEnc() {use_nv_enc_flag_ = true; return;}
 
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     void OnInferData(cv::Mat& img, DetectionInfo& info);
-    void SetEnginePath(std::string path){eng_path_ = path;}
 #endif
 
 public:
