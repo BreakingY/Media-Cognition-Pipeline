@@ -114,12 +114,26 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
     for (int i = 0; i < n_frame_returned; i++) {
         int64_t timestamp;
         p_frame = dec_->GetFrame(&timestamp);
-        Nv12ToColor32<BGRA32>(p_frame, width_, (uint8_t *)device_frame_, width_ * 4, width_, height_, i_matrix);
-        NppiSize roi_size = {width_, height_};
-        const int order[3] = {0, 1, 2};
-        NppStatus status = nppiSwapChannels_8u_C4C3R((const Npp8u*)device_frame_, width_ * 4, (Npp8u*)device_color_frame_, width_ * 3, roi_size, order);
-        if(status != NPP_SUCCESS){
-            log_error("NPP BGRA->BGR failed: {}", (int)status);
+        // Nv12ToColor32<BGRA32>(p_frame, width_, (uint8_t *)device_frame_, width_ * 4, width_, height_, i_matrix);
+        // NppiSize roi_size = {width_, height_};
+        // const int order[3] = {0, 1, 2};
+        // NppStatus status = nppiSwapChannels_8u_C4C3R((const Npp8u*)device_frame_, width_ * 4, (Npp8u*)device_color_frame_, width_ * 3, roi_size, order);
+        // if(status != NPP_SUCCESS){
+        //     log_error("NPP BGRA->BGR failed: {}", (int)status);
+        // }
+        // CHECK_CUDA(cudaMemcpy(host_frame_, device_color_frame_, width_ * height_ * 3, cudaMemcpyDeviceToHost));
+        const Npp8u* src_planes[2];
+        src_planes[0] = (const Npp8u*)p_frame;                     // Y
+        src_planes[1] = (const Npp8u*)p_frame + width_ * height_;  // UV
+
+        NppiSize roi_size;
+        roi_size.width  = width_;
+        roi_size.height = height_;
+
+        NppStatus status = nppiNV12ToBGR_8u_P2C3R(src_planes, width_, (Npp8u*)device_color_frame_, width_ * 3, roi_size);
+        if (status != NPP_SUCCESS) {
+            log_error("NPP NV12->BGR failed: {}", (int)status);
+            return;
         }
         CHECK_CUDA(cudaMemcpy(host_frame_, device_color_frame_, width_ * height_ * 3, cudaMemcpyDeviceToHost));
         cv::Mat frame_mat(height_, width_, CV_8UC3, host_frame_);

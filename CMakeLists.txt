@@ -45,7 +45,9 @@ aux_source_directory(Media/Bitstream/h265/src BH265)
 set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -fpermissive -std=c++17) 
 set(CMAKE_BUILD_TYPE Release)
-
+###############
+#### codec ####
+###############
 if(FFMPEG_NVIDIA)
     message(STATUS "USE_FFMPEG_NVIDIA OK")
     add_definitions(-DUSE_FFMPEG_NVIDIA)
@@ -73,9 +75,23 @@ elseif(NVIDIA_SDK_X86)
     aux_source_directory(HardCodec/Nvcodec_utils/NvDec NVDEC)
     aux_source_directory(HardCodec/Nvcodec_utils/NvEnc NVENC)
     set(CUDA_SOURCES HardCodec/Nvcodec_utils/CudaProc/ColorSpace.cu)  # Add all your .cu files here
+elseif(NVIDIA_SDK_ARM)
+     message(STATUS "USE_NVIDIA_ARM OK")
+    add_definitions(-DUSE_NVIDIA_ARM)
+    enable_language(CUDA)
+    # set(CMAKE_CUDA_ARCHITECTURES "AUTO")
+    # export PATH=$PATH:/usr/local/cuda/bin
+    # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+    include_directories(/usr/local/cuda/include)
+    include_directories(HardCodec/Jetson_utils HardCodec/Jetson_utils/include HardCodec/Jetson_utils/include/libjpeg-8b /usr/include/libdrm HardCodec/Jetson_utils/common/algorithm/cuda)
+    link_directories(/usr/lib/aarch64-linux-gnu/tegra /lib/aarch64-linux-gnu /usr/local/lib /usr/lib /usr/local/cuda/lib64)
+    aux_source_directory(HardCodec/Jetson_utils JETSON_UTILS)
+    aux_source_directory(HardCodec/Jetson_utils/common/classes JETSON_UTILS_COMMON)
+    aux_source_directory(HardCodec/Jetson_utils/common/algorithm/cuda JETSON_UTILS_COMMON_CUDA)
 endif()
-
-# Cognition
+###################
+#### Cognition ####
+###################
 if(DETECTION_NVIDIA OR DETECTION_ASCEND)
     message(STATUS "Enable detection")
     include_directories(Cognition/Detection Cognition/ByteTrack-cpp/include)
@@ -97,20 +113,30 @@ endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC} ${DVPP_UTILS} 
-                        ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${DETECTION} ${BYTETRACK})
+                        ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
+###############
+#### codec ####
+###############
 if(DVPP_MPI)
     target_link_libraries(mcp ascendcl acl_dvpp_mpi)
 endif()
 if(NVIDIA_SDK_X86)
-    target_link_libraries(mcp nvcuvid nvidia-encode cudart cuda nppidei)
+    target_link_libraries(mcp nvcuvid nvidia-encode cudart cuda nppidei nppicc)
 endif()
-# Cognition
+if(NVIDIA_SDK_ARM)
+    target_link_libraries(mcp cudart cuda nppidei nppicc v4l2 EGL GLESv2 X11 nvbufsurface nvbufsurftransform nvjpeg nvosd drm)
+endif()
+
+###################
+#### Cognition ####
+###################
 if(DETECTION_NVIDIA)
     target_link_libraries(mcp nvinfer cudart nppig nppidei nppial)
 elseif(DETECTION_ASCEND)
     # TODO
 endif()
+
 if(WIN32)
     # Set the function stack size to 6MB
     add_compile_options(-Wl,--stack,6000000)

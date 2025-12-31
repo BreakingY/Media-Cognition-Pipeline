@@ -299,7 +299,7 @@ void MiedaWrapper::OnVideoData(VideoData data)
         }
         hard_decoder_ = new HardVideoDecoder(type);
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
-#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86)
+#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86) || defined(USE_NVIDIA_ARM)
         hard_decoder_->Init(device_id_, width_, height_); // dvpp nvidia
 #endif
     }
@@ -364,6 +364,9 @@ void MiedaWrapper::OnRGBData(cv::Mat frame)
             hard_encoder_ =  new NVSoftVideoEncoder();
         }
         hard_encoder_->SetDevice(device_id_);
+#elif defined(USE_NVIDIA_ARM)
+        hard_encoder_ = new HardVideoEncoder();
+        hard_encoder_->SetDevice(device_id_);
 #elif defined(USE_DVPP_MPI)
         hard_encoder_ = new HardVideoEncoder();
         hard_encoder_->SetDevice(device_id_);
@@ -406,6 +409,9 @@ void MiedaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info){
         else{
             hard_encoder_ =  new NVSoftVideoEncoder();
         }
+        hard_encoder_->SetDevice(device_id_);
+#elif defined(USE_NVIDIA_ARM)
+        hard_encoder_ = new HardVideoEncoder();
         hard_encoder_->SetDevice(device_id_);
 #elif defined(USE_DVPP_MPI)
         hard_encoder_ = new HardVideoEncoder();

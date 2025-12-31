@@ -15,9 +15,9 @@ int main(int argc, char **argv)
 #endif
     MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2]);
 #if defined(DETECTION_NVIDIA)
-    test->SetEnginePath("../Test/yolo11s-best.engine");
+    test->SetEnginePath("../Test/yolo11s_best_4090.engine");
 #elif defined(DETECTION_ASCEND)
-    test->SetEnginePath("../Test/yolo11s-best.om");
+    test->SetEnginePath("../Test/yolo11s_best_300VPro.om");
 #endif
     while (!test->OverHandle()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

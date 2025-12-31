@@ -265,4 +265,39 @@ private:
     
 };
 #endif
+#ifdef USE_NVIDIA_ARM
+#include <cuda_runtime.h>
+#include "JetsonDec.h"
+class HardVideoDecoder : public JetsonDecListner
+{
+
+public:
+    HardVideoDecoder(CODEC_TYPE codec_type);
+    virtual ~HardVideoDecoder();
+    void SetFrameFetchCallback(DecDataCallListner *call_func);
+    void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+    void Init(int32_t device_id, int width, int height);
+
+private:
+    void OnJetsonDecData(unsigned char *data, int data_len, uint64_t timestamp);
+private:
+    CODEC_TYPE codec_type_;
+    DecDataCallListner *callback_ = nullptr;
+    uint32_t decoder_pixfmt_;
+    JetsonDec *jetson_dec_obj_ = nullptr;
+    unsigned char *jetson_addr_ = nullptr;
+    int width_;
+    int height_;
+    void *device_color_frame_ = nullptr;
+    void *device_frame_ = nullptr;
+    void* host_frame_ = nullptr;
+    int32_t device_id_ = 0;
+
+    int now_frames_;
+    int pre_frames_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    int time_inited_;
+};
+#endif
 #endif

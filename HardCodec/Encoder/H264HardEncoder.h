@@ -305,5 +305,40 @@ private:
     int pre_frames_;
 };
 #endif
+#ifdef USE_NVIDIA_ARM
+#include <cuda_runtime.h>
+#include "JetsonEnc.h"
+class HardVideoEncoder : public JetsonEncListner
+{
+public:
+    HardVideoEncoder();
+    ~HardVideoEncoder();
+    int AddVideoFrame(cv::Mat bgr_frame);
+    void SetDevice(int device_id){device_id_ = device_id;}
+    int Init(cv::Mat init_frame, int fps);
+    void SetDataCallback(EncDataCallListner *call_func);
+private:
+    void OnJetsonEncData(unsigned char *data, int data_len);
 
+private:
+    EncDataCallListner *callback_ = nullptr;
+    JetsonEnc *jetson_enc_obj_ = nullptr;
+    int width_;
+    int height_;
+    int32_t device_id_ = 0;
+    unsigned char *d_bgr_ = nullptr;
+    unsigned char *d_rgb_ = nullptr;
+    unsigned char *d_yuv_ = nullptr;
+    uint64_t nframe_counter_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    uint64_t time_ts_accum_;
+
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
+    int time_inited_;
+    int now_frames_;
+    int pre_frames_;
+};
+#endif
 #endif
