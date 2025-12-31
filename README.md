@@ -59,7 +59,7 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
   * https://sunkx.blog.csdn.net/article/details/146064215
 
 # Build
-* git clone --recursive https://github.com/BreakingY/Media-Codec-Pipeline.git
+* git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git
 1. Linux
    * mkdir build
    * cd build
