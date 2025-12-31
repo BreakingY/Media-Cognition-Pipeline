@@ -18,7 +18,7 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
     * `cmake -DNVIDIA_SDK_X86=ON ..` (set environment variables first: `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * Uses NVIDIA x86 native SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11), project uses Video_Codec_SDK_11.0.10, tested driver version 550.163.01. Files in Nvcodec_utils are extracted from Video_Codec_SDK_11.0.10, categorized, and only the files used in this project are included. You need to set the encoding mode (not all GPUs support hardware encoding; defaults to software encoding, MiedaWrapper.h --> use_nv_enc_flag_), default GPU #0 (MiedaWrapper.h --> device_id_). CUDA installation required (version not limited).
   * NVIDIA arm(Jetson) codec (JetsonDecoder.cpp, H264JetsonEncoder.cpp, Jetson_utils)
-    * There is a problem opening the include and common folders on Windows, so they were uploaded as compressed files and need to be decompressed on Linux.
+    * There is a problem opening the include and common(from /usr/src/jetson_multimedia_api/) folders on Windows, so they were uploaded as compressed files and need to be decompressed on Linux.
     * `cd HardCodec/Jetson_utils`
     * `tar -zxvf include.tar.gz`  
     * `tar -zxvf common.tar.gz`

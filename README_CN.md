@@ -17,7 +17,7 @@
     * `cmake -DNVIDIA_SDK_X86=ON ..`(先导入环境变量`export PATH=$PATH:/usr/local/cuda/bin`和`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * 使用NVIDIA x86原生SDK(https://developer.nvidia.com/video_codec_sdk/downloads/v11), 项目使用Video_Codec_SDK_11.0.10版本，测试驱动版本为550.163.01, Nvcodec_utils目录里的文件都是从Video_Codec_SDK_11.0.10中提取的，因为Video_Codec_SDK_11.0.10中文件很多，实际使用过程中并不是所有的都需要，Nvcodec_utils里面只提取出来本项目使用的文件，并进行分类。使用前需要设置编码方式(不是所有的显卡都支持硬编码,默认使用软编码, MiedaWrapper.h-->use_nv_enc_flag_)，默认使用第0号GPU(MiedaWrapper.h-->device_id_), 需要安装cuda(版本无要求)
   * NVIDIA arm(Jetson)编解码(JetsonDecoder.cpp、H264JetsonEncoder.cpp、Jetson_utils)
-    * include和common两个文件夹在windows上打开有问题，所以以压缩包的形式传上来的，需要在linux下解压。
+    * include和common(来自/usr/src/jetson_multimedia_api/)两个文件夹在windows上打开有问题，所以以压缩包的形式传上来的，需要在linux下解压。
     * `cd HardCodec/Jetson_utils`
     * `tar -zxvf include.tar.gz`  
     * `tar -zxvf common.tar.gz`
