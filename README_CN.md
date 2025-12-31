@@ -56,7 +56,7 @@
   * https://sunkx.blog.csdn.net/article/details/146064215
 
 # 编译
-* git clone --recursive https://github.com/BreakingY/Media-Codec-Pipeline.git
+* git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git
 1. Linux
    * mkdir build
    * cd build
