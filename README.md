@@ -36,7 +36,7 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
   * model training: https://github.com/BreakingY/yolo-onnx-tensorrt
   * The models provided in the project are converted on NVIDIA 4090 and Atlas 300V Pro(TODO).
 * Supported formats: video: H264/H265, audio: AAC.
-* Not suitable for Jetson, Jetson codec libraries differ from x86. Reference for Jetson codec: https://github.com/BreakingY/jetpack-dec-enc
+* Visual perception: YOLO11
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
 * Supports audio/video from MP4 and RTSP. MP4 unpackaging is done by FFmpeg; RTSP client is implemented in pure C++: https://github.com/BreakingY/simple-rtsp-client
 * The code module division is shown in the following figure:

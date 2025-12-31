@@ -35,7 +35,7 @@
   * 模型训练：https://github.com/BreakingY/yolo-onnx-tensorrt
   * 项目中提供的模型是在NVIDIA 4090和Atlas 300VPro(TODO)上转换的
 * 支持格式，视频：H264/H265，音频：AAC。
-* 不适用jetson，jetson的编解码库和x86不一样。jetson编解码参考：https://github.com/BreakingY/jetpack-dec-enc
+* 视觉感知：YOLO11
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
 * 支持从MP4、RTSP获取音视频。MP4解封装由FFMPEG完成；RTSP客户端纯C++实现，地址：https://github.com/BreakingY/simple-rtsp-client
 * 代码模块划分如下图：
