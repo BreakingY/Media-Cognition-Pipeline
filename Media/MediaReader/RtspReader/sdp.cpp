@@ -22,10 +22,10 @@ SDPParse::SDPParse(std::string sdp, std::string base_url){
             media_block = sdp_.substr(pos);
         }
         media_descriptions_.push_back(media_block);
-        if(media_block.find("video") != std::string::npos){
+        if(media_block.find("m=video") != std::string::npos){
             sdp_video_ = media_block;
         }
-        if(media_block.find("audio") != std::string::npos){
+        if(media_block.find("m=audio") != std::string::npos){
             sdp_audio_ = media_block;
         }
         pos = next_pos;
@@ -163,6 +163,10 @@ t=0 0
 a=control:*
 */
 int SDPParse::ParseSession(){
+    if(sdp_session_.find("a=control:") == std::string::npos){
+        sdp_info_.contorl = '*';
+        return 0;
+    }
     int start = sdp_session_.find("a=control:");
     int end = sdp_session_.find("\r\n", start);
     sdp_info_.contorl = sdp_session_.substr(start + strlen("a=control:"), end - start - strlen("a=control:"));
