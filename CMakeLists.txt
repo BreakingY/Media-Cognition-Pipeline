@@ -107,8 +107,10 @@ if(DETECTION_NVIDIA)
     link_directories(/usr/local/cuda/lib64)
     add_compile_options(-Wno-deprecated-declarations)
 elseif(DETECTION_ASCEND)
-    # TODO
     add_definitions(-DDETECTION_ASCEND)
+    add_definitions(-DENABLE_DVPP_INTERFACE) # for ACL Lib
+    include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp)
+    link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64)
 endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
@@ -134,7 +136,7 @@ endif()
 if(DETECTION_NVIDIA)
     target_link_libraries(mcp nvinfer cudart nppig nppidei nppial)
 elseif(DETECTION_ASCEND)
-    # TODO
+    target_link_libraries(mcp ascendcl acl_dvpp_mpi)
 endif()
 
 if(WIN32)

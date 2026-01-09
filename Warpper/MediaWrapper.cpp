@@ -241,7 +241,7 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     return 0;
 }
 #endif
-MiedaWrapper::MiedaWrapper(char *input, char *ouput, char *eng_path, int device_id)
+MiedaWrapper::MiedaWrapper(const char *input, const char *ouput, const char *eng_path, int device_id)
 {
 #ifdef MP4MUXER
     mp4_muxer_ = new Muxer();

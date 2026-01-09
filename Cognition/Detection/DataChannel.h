@@ -14,7 +14,15 @@
 #include <unordered_map>
 
 #include <opencv2/opencv.hpp>
+#if defined(DETECTION_NVIDIA)
 #include <cuda_runtime.h>
+#endif
+#if defined(DETECTION_ASCEND)
+#include <acl.h>
+#include <acl_rt.h>
+#include <hi_dvpp.h>
+#include <ops/acl_dvpp.h>
+#endif
 #include "DetectionInfo.h"
 #include "log_helpers.h"
 
@@ -38,6 +46,9 @@ struct QueueContext {
     void *img_buffer{nullptr};
     void *pu8_resized{nullptr}; // yolo  Letterbox_resize_GPU
 #endif
+#if defined(DETECTION_ASCEND)
+    void *img_buffer{nullptr};
+#endif
 };
 
 inline QueueContext* CreateContext(InferDataListner* listener, int width, int height) {
@@ -59,6 +70,13 @@ inline void MemAllocate(QueueContext* ctx, int pu8_resized_w, int pu8_resized_h,
     }
 }
 #endif
+#if defined(DETECTION_ASCEND)
+inline void MemAllocate(QueueContext* ctx){
+    if(ctx->img_buffer == nullptr){
+        CHECK_ACL(hi_mpi_dvpp_malloc(0, &ctx->img_buffer, ctx->width * ctx->height * 3));
+    }
+}
+#endif
 inline void DestroyContext(QueueContext* ctx) {
     if(ctx){
 #if defined(DETECTION_NVIDIA)
@@ -67,6 +85,12 @@ inline void DestroyContext(QueueContext* ctx) {
         }
         if(ctx->pu8_resized){
             CHECK_CUDA(cudaFree(ctx->pu8_resized));
+        }
+#endif
+#if defined(DETECTION_ASCEND)
+        if(ctx->img_buffer){
+            CHECK_DVPP_MPI(hi_mpi_dvpp_free(ctx->img_buffer));
+            ctx->img_buffer = NULL;
         }
 #endif
         delete ctx;

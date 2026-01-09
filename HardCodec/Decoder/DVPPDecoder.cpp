@@ -79,7 +79,7 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
     width_stride_ = ALIGN_UP16(width);
     height_stride_ = ALIGN_UP2(height);
     CHECK_ACL(aclrtSetDevice(device_id_));
-    CHECK_DVPP_MPI(hi_mpi_sys_init());
+    CHECK_DVPP_MPI(hi_mpi_sys_init()); // hi_mpi_sys_init 必须在aclrtSetDevice之后
     chn_attr_.mode = HI_VDEC_SEND_MODE_FRAME; // Only support frame mode
     chn_attr_.pic_width = width;
     chn_attr_.pic_height = height;

@@ -14,6 +14,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
   * Ascend DVPP V2 codec (DVPPDecoder.cpp, H264DVPPEncoder.cpp, DVPP_utils)
     * `cmake -DDVPP_MPI=ON ..` (first run `source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
     * Uses NPU #0 by default (MiedaWrapper.h --> device_id_)
+    * Considering real-time performance, decoding of B frames is not supported. If B frames are to be supported, please modify `DVPPDecoder.cpp-->HardVideoDecoder::Init` by increasing the value of `chn_attr_.video_attr.ref_frame_num`
+    * * Test/test2.mp4 does not contain B-frames. Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Ascend, please modify the code to support B-frames first, and then use the Cognition.mp4 for testing, or use soft decoding for testing).
   * NVIDIA x86 codec (NVIDIADecoder.cpp, H264NVIDIAEncoder.cpp, Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..` (set environment variables first: `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * Uses NVIDIA x86 native SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11), project uses Video_Codec_SDK_11.0.10, tested driver version 550.163.01. Files in Nvcodec_utils are extracted from Video_Codec_SDK_11.0.10, categorized, and only the files used in this project are included. You need to set the encoding mode (not all GPUs support hardware encoding; defaults to software encoding, MiedaWrapper.h --> use_nv_enc_flag_), default GPU #0 (MiedaWrapper.h --> device_id_). CUDA installation required (version not limited).
@@ -31,10 +33,13 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
   * NVIDIA TensorRT
     * `-DDETECTION_NVIDIA=ON`
     * TensorRT-10.4.0.26
+    * trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16
   * Ascend CANN
-    * TODO
+    * `-DDETECTION_ASCEND=ON`
+    * CANN7.0.0/8.2.RC1
+    * atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16
+  * yolo11s_best.onnx contains two categories:{"dog", "person"}
   * model training: https://github.com/BreakingY/yolo-onnx-tensorrt
-  * The models provided in the project are converted on NVIDIA 4090 and Atlas 300V Pro(TODO).
 * Supported formats: video: H264/H265, audio: AAC.
 * Visual perception: YOLO11
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.

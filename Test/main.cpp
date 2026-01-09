@@ -10,13 +10,13 @@ int main(int argc, char **argv)
         return -1;
     }
     av_log_set_level(AV_LOG_FATAL);
-#ifdef USE_DVPP_MPI
+#if defined(USE_DVPP_MPI) || defined(DETECTION_ASCEND)
     aclInit(NULL);
 #endif
 #if defined(DETECTION_NVIDIA)
-    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2], "../Test/yolo11s_best_4090.engine");
+    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2], "../Test/yolo11s_best.engine");
 #elif defined(DETECTION_ASCEND)
-    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2], "../Test/yolo11s_best_300VPro.om");
+    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2], "../Test/yolo11s_best.om");
 #else
     MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2]);
 #endif
@@ -24,7 +24,7 @@ int main(int argc, char **argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     delete test;
-#ifdef USE_DVPP_MPI
+#if defined(USE_DVPP_MPI) || defined(DETECTION_ASCEND)
     hi_mpi_sys_exit();
     aclFinalize();
 #endif
