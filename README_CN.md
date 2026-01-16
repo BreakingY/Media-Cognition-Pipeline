@@ -45,7 +45,7 @@
 * 代码模块划分如下图：
 ![MCP](https://github.com/user-attachments/assets/2375ffbb-9518-4650-8b09-fe1b0573c106)
 
-# 子模块。
+# 子模块
 * spdlog：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
 * ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
