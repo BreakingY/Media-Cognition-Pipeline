@@ -2,7 +2,7 @@
 # Media-Cognition-Pipeline
 Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO object detection + ByteTrack multi-object tracking) pipeline
 
-* Audio/video unpackaging (MP4, RTSP), resampling, encoding/decoding, packaging (MP4), visual perception, managed using modular, node-based, and interface-based design.
+* Audio/video unpackaging (MP4, RTSP), resampling, encoding/decoding, packaging (MP4, RTMP), visual perception, managed using modular, node-based, and interface-based design.
 * Audio codec uses a pure software solution.
 * Video codec has the following implementations:
   * FFmpeg hardware encoder/decoder (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
@@ -43,7 +43,6 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Supported formats: video: H264/H265, audio: AAC.
 * Visual perception: YOLO11
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
-* Supports audio/video from MP4 and RTSP. MP4 unpackaging is done by FFmpeg; RTSP client is implemented in pure C++: https://github.com/BreakingY/simple-rtsp-client
 * The code module division is shown in the following figure:
 ![MCP](https://github.com/user-attachments/assets/cc884883-fa0e-4a60-94ad-7336e1ae0e7c)
 
@@ -53,6 +52,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Logging: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
+* libflv: https://github.com/BreakingY/libflv
+* librtmp: git://git.ffmpeg.org/rtmpdump
 
 # Requirements
 * ffmpeg version == 4.x
@@ -60,6 +61,7 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Tested versions: ffmpeg 4.0.5, opencv 4.5.1, CANN 7.0.0/8.2.RC1 (Ascend SDK), NVIDIA: cuda12.4; driver 550.163.01; Video_Codec_SDK 11.0.10; Jetson5.0.2; TensorRT-10.4.0.26.
 * `apt install libeigen3-dev` for ByteTrack
 * v4l2 for Jetson
+* openssl for librtmp
 * Windows installation guide:
   * https://sunkx.blog.csdn.net/article/details/146064215
 

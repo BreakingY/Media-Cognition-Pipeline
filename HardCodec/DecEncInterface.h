@@ -21,7 +21,7 @@ public:
 class EncDataCallListner
 {
 public:
-    virtual void OnVideoEncData(unsigned char *data, int data_len, int64_t pts /*deprecated*/) = 0;
-    virtual void OnAudioEncData(unsigned char *data, int data_len) = 0;
+    virtual void OnVideoEncData(unsigned char *data, int data_len, int64_t pts) = 0;
+    virtual void OnAudioEncData(unsigned char *data, int data_len, int64_t pts) = 0;
 };
 #endif

@@ -85,5 +85,10 @@ private:
     int time_inited_;
     int now_frames_;
     int pre_frames_;
+
+    uint64_t nframe_counter_ = 0;
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
+    uint64_t time_ts_accum_;
 };
 #endif

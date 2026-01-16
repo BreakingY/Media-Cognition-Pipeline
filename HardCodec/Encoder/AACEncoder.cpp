@@ -219,9 +219,17 @@ void *AACEncoder::AACEncThread(void *arg)
                     av_packet_unref(&self->pkt_enc_);
                     continue;
                 }
+                self->time_now_1_ = std::chrono::steady_clock::now();
+                self->nframe_counter_++;
+                if (self->nframe_counter_ - 1 == 0) {
+                    self->time_pre_1_ = self->time_now_1_;
+                    self->time_ts_accum_ = 0;
+                }
+                uint64_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_1_ - self->time_pre_1_).count();
+                self->time_ts_accum_ += duration;
                 // 解码后的数据已经带了adts
                 if (self->callback_) {
-                    self->callback_->OnAudioEncData(self->pkt_enc_.data, self->pkt_enc_.size);
+                    self->callback_->OnAudioEncData(self->pkt_enc_.data, self->pkt_enc_.size, self->time_ts_accum_);
                 }
                 av_packet_unref(&self->pkt_enc_);
             }
@@ -246,8 +254,16 @@ void *AACEncoder::AACEncThread(void *arg)
             av_packet_unref(&self->pkt_enc_);
             continue;
         }
+        self->time_now_1_ = std::chrono::steady_clock::now();
+        self->nframe_counter_++;
+        if (self->nframe_counter_ - 1 == 0) {
+            self->time_pre_1_ = self->time_now_1_;
+            self->time_ts_accum_ = 0;
+        }
+        uint64_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_1_ - self->time_pre_1_).count();
+        self->time_ts_accum_ += duration;
         if (self->callback_) {
-            self->callback_->OnAudioEncData(self->pkt_enc_.data, self->pkt_enc_.size);
+            self->callback_->OnAudioEncData(self->pkt_enc_.data, self->pkt_enc_.size, self->time_ts_accum_);
         }
         av_packet_unref(&self->pkt_enc_);
     }

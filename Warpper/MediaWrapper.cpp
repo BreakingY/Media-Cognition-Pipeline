@@ -243,10 +243,15 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
 #endif
 MiedaWrapper::MiedaWrapper(const char *input, const char *ouput, const char *eng_path, int device_id)
 {
+    if( memcmp("rtmp://", ouput, strlen("rtmp://")) == 0 ){
+        rtmp_push_client_ = new RtmpPushClient(ouput);
+    }
+    else{
 #ifdef MP4MUXER
-    mp4_muxer_ = new Muxer();
-    mp4_muxer_->Init(ouput);
+        mp4_muxer_ = new Muxer();
+        mp4_muxer_->Init(ouput);
 #endif
+    }
     device_id_ = device_id;
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     eng_path_ = eng_path;
@@ -481,11 +486,15 @@ void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
 #ifdef MP4MUXER
     WriteVideo2File(data, data_len);
 #endif
+    if(rtmp_push_client_){
+        rtmp_push_client_->SetVideoInfo(VideoType::VIDEO_H264);
+        rtmp_push_client_->InputVideoData(data, data_len, pts);
+    }
     return;
 }
 static const char *enc_aac_filename = "out.aac";
 static FILE *enc_aac_fd = NULL;
-void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len)
+void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts)
 {
     if (enc_aac_fd == NULL) {
         enc_aac_fd = fopen(enc_aac_filename, "wb");
@@ -494,6 +503,10 @@ void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len)
 #ifdef MP4MUXER
     WriteAudio2File(data, data_len);
 #endif
+    if(rtmp_push_client_){
+        rtmp_push_client_->SetAudioInfo(AudioType::AUDIO_AAC);
+        rtmp_push_client_->InputAudioData(data, data_len, pts);
+    }
     return;
 }
 MiedaWrapper::~MiedaWrapper()
@@ -527,6 +540,10 @@ MiedaWrapper::~MiedaWrapper()
         mp4_muxer_->SendTrailer();
         delete mp4_muxer_;
         mp4_muxer_ = NULL;
+    }
+    if(rtmp_push_client_){
+        delete rtmp_push_client_;
+        rtmp_push_client_ = nullptr;
     }
     if (vps_) {
         free(vps_);

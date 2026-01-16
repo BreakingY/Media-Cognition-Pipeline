@@ -199,11 +199,11 @@ void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t
     packet_cond_.notify_one();
     return;
 }
-static uint64_t GetCurrentTimeUs()
+static uint64_t GetCurrentTimeMs()
 {
     auto now = std::chrono::steady_clock::now();
-    auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-    return static_cast<uint64_t>(time_us);
+    auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return static_cast<uint64_t>(time_ms);
 }
 
 void HardVideoDecoder::DecodeVideo(HardDataNode *data){
@@ -219,7 +219,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data){
         hi_mpi_vdec_send_stream(channel_id_, &stream, &out_pic_info, -1);
         return;
     }
-    stream.pts = GetCurrentTimeUs();
+    stream.pts = GetCurrentTimeMs();
     stream.addr = (hi_u8*)in_es_buffer_; // Configure input stream address
     CHECK_ACL(aclrtMemcpy(stream.addr, in_es_buffer_size_, data->es_data, data->es_data_len, ACL_MEMCPY_HOST_TO_DEVICE));
     stream.len = data->es_data_len; // Configure input stream size

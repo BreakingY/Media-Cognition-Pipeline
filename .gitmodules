@@ -7,3 +7,6 @@
 [submodule "Cognition/ByteTrack-cpp"]
 	path = Cognition/ByteTrack-cpp
 	url = https://github.com/Vertical-Beach/ByteTrack-cpp.git
+[submodule "Media/RtmpClient/libflv"]
+	path = Media/RtmpClient/libflv
+	url = https://github.com/BreakingY/libflv.git

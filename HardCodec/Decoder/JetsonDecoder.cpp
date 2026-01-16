@@ -60,15 +60,15 @@ void HardVideoDecoder::SetFrameFetchCallback(DecDataCallListner *call_func)
     callback_ = call_func;
     return;
 }
-static uint64_t GetCurrentTimeUs()
+static uint64_t GetCurrentTimeMs()
 {
     auto now = std::chrono::steady_clock::now();
-    auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-    return static_cast<uint64_t>(time_us);
+    auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return static_cast<uint64_t>(time_ms);
 }
 void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts)
 {
-    jetson_dec_obj_->AddEsData(data, data_len, GetCurrentTimeUs());
+    jetson_dec_obj_->AddEsData(data, data_len, GetCurrentTimeMs());
     return;
 }
 void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64_t timestamp){

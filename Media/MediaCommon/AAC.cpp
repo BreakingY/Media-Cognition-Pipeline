@@ -48,41 +48,41 @@ int ParseAdtsHeader(uint8_t *in, struct AdtsHeader *res)
     if ((in[0] == 0xFF) && ((in[1] & 0xF0) == 0xF0)) // syncword
     {
         res->id = ((unsigned int)in[1] & 0x08) >> 3;
-        log_debug("adts:id  {}", res->id);
+        // log_debug("adts:id  {}", res->id);
         res->layer = ((unsigned int)in[1] & 0x06) >> 1;
-        log_debug("adts:layer  {}", res->layer);
+        // log_debug("adts:layer  {}", res->layer);
         // 这里需要判断如果protectionAbsent=1 表示没有CRC校验，即头部一共7个字节，如果protectionAbsent=0，表示含有crc校验，则还应该跳过两个字节才是acc数据，aac_frame_length = (protection_absent == 1 ? 7 : 9) + size(AACFrame)
         res->protectionAbsent = (unsigned int)in[1] & 0x01;
-        log_debug("adts:protection_absent  {}", res->protectionAbsent);
+        // log_debug("adts:protection_absent  {}", res->protectionAbsent);
 
         res->profile = ((unsigned int)in[2] & 0xc0) >> 6;
-        log_debug("adts:profile  {}", res->profile);
+        // log_debug("adts:profile  {}", res->profile);
         res->samplingFreqIndex = ((unsigned int)in[2] & 0x3c) >> 2;
-        log_debug("adts:sf_index  {}", res->samplingFreqIndex);
+        // log_debug("adts:sf_index  {}", res->samplingFreqIndex);
         res->privateBit = ((unsigned int)in[2] & 0x02) >> 1;
-        log_debug("adts:pritvate_bit  {}", res->privateBit);
+        // log_debug("adts:pritvate_bit  {}", res->privateBit);
         res->channelCfg = ((((unsigned int)in[2] & 0x01) << 2) | (((unsigned int)in[3] & 0xc0) >> 6));
-        log_debug("adts:channel_configuration  {}", res->channelCfg);
+        // log_debug("adts:channel_configuration  {}", res->channelCfg);
         res->originalCopy = ((unsigned int)in[3] & 0x20) >> 5;
-        log_debug("adts:original  {}", res->originalCopy);
+        // log_debug("adts:original  {}", res->originalCopy);
         res->home = ((unsigned int)in[3] & 0x10) >> 4;
-        log_debug("adts:home  {}", res->home);
+        // log_debug("adts:home  {}", res->home);
 
         res->copyrightIdentificationBit = ((unsigned int)in[3] & 0x08) >> 3;
-        log_debug("adts:copyright_identification_bit  {}", res->copyrightIdentificationBit);
+        // log_debug("adts:copyright_identification_bit  {}", res->copyrightIdentificationBit);
         res->copyrightIdentificationStart = (unsigned int)in[3] & 0x04 >> 2;
-        log_debug("adts:copyright_identification_start  {}", res->copyrightIdentificationStart);
+        // log_debug("adts:copyright_identification_start  {}", res->copyrightIdentificationStart);
         // ADTS从低地址到高地址存放长度数值的高2位 中间8位，低5位
         // ADTS中标明13bit存放，一般存放数据长度这种大多是由低地址到高地址分别存放数值的高位到低位，这样符合人类的习惯
         res->aacFrameLength = (((((unsigned int)in[3]) & 0x03) << 11) |
                                (((unsigned int)in[4] & 0xFF) << 3) |
                                ((unsigned int)in[5] & 0xE0) >> 5);
-        log_debug("adts:aac_frame_length  {}", res->aacFrameLength);
+        // log_debug("adts:aac_frame_length  {}", res->aacFrameLength);
         res->adtsBufferFullness = (((unsigned int)in[5] & 0x1f) << 6 |
                                    ((unsigned int)in[6] & 0xfc) >> 2);
-        log_debug("adts:adts_buffer_fullness  {}", res->adtsBufferFullness);
+        // log_debug("adts:adts_buffer_fullness  {}", res->adtsBufferFullness);
         res->numberOfRawDataBlockInFrame = ((unsigned int)in[6] & 0x03);
-        log_debug("adts:no_raw_data_blocks_in_frame  {}", res->numberOfRawDataBlockInFrame);
+        // log_debug("adts:no_raw_data_blocks_in_frame  {}", res->numberOfRawDataBlockInFrame);
 
         return 0;
     } else {

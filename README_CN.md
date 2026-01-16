@@ -1,7 +1,7 @@
 # Media-Cognition-Pipeline
 音视频封装、解封装、编解码、视觉感知(YOLO目标检测 + ByteTrack多目标跟踪)pipeline
 
-* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4)，视觉感知, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4、RTMP)，视觉感知, 采用模块化、节点化和接口化管理。
 * 音频编解码使用纯软方案。
 * 视频编解码有以下实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -42,7 +42,6 @@
 * 支持格式，视频：H264/H265，音频：AAC。
 * 视觉感知：YOLO11
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
-* 支持从MP4、RTSP获取音视频。MP4解封装由FFMPEG完成；RTSP客户端纯C++实现，地址：https://github.com/BreakingY/simple-rtsp-client
 * 代码模块划分如下图：
 ![MCP](https://github.com/user-attachments/assets/cc884883-fa0e-4a60-94ad-7336e1ae0e7c)
 
@@ -50,6 +49,8 @@
 * 日志：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
 * ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
+* libflv: https://github.com/BreakingY/libflv
+* librtmp: git://git.ffmpeg.org/rtmpdump
 
 # 准备
 * ffmpeg版本==4.x。
@@ -57,6 +58,7 @@
 * 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; 驱动550.163.01; Video_Codec_SDK11.0.10；Jetson5.0.2; TensorRT-10.4.0.26。
 * ByteTrack依赖: `apt install libeigen3-dev`
 * Jetson依赖：v4l2
+* librtmp依赖：openssl
 * Windows 软件安装参考：
   * https://sunkx.blog.csdn.net/article/details/146064215
 

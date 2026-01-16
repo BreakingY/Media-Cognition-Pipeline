@@ -11,6 +11,7 @@
 #include "MediaReader.h"
 #include "log_helpers.h"
 #include "rtsp_client_proxy.h"
+#include "RtmpPushClient.h"
 #include <opencv2/opencv.hpp>
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
 #include "NodeFlow.h"
@@ -33,8 +34,9 @@ public:
     void OnPCMData(unsigned char **data, int data_len);
 
     // 编码后的数据接口
+    // 音视频接口中的pts是独立的，没有同步
     void OnVideoEncData(unsigned char *data, int data_len, int64_t pts);
-    void OnAudioEncData(unsigned char *data, int data_len);
+    void OnAudioEncData(unsigned char *data, int data_len, int64_t pts);
 
     bool OverHandle() { return over_flag_; }
     int WriteVideo2File(uint8_t *data, int len);
@@ -90,6 +92,8 @@ public:
     Muxer *mp4_muxer_ = NULL;
     int video_stream_ = -1;
     int audio_stream_ = -1;
+
+    RtmpPushClient *rtmp_push_client_ = nullptr;
 
     // NPU GPU
     int32_t device_id_ = 0;

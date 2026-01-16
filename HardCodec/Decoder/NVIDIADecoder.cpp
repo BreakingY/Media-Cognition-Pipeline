@@ -99,17 +99,17 @@ void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t
     packet_cond_.notify_one();
     return;
 }
-static uint64_t GetCurrentTimeUs()
+static uint64_t GetCurrentTimeMs()
 {
     auto now = std::chrono::steady_clock::now();
-    auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-    return static_cast<uint64_t>(time_us);
+    auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return static_cast<uint64_t>(time_ms);
 }
 void HardVideoDecoder::DecodeVideo(HardDataNode *data)
 {
     uint8_t *p_frame;
     int n_frame_returned = 0;
-    n_frame_returned = dec_->Decode(data->es_data, data->es_data_len, CUVID_PKT_ENDOFPICTURE | CUVID_PKT_TIMESTAMP, GetCurrentTimeUs()); // CUVID_PKT_ENDOFPICTURE解码器立即输出，没有缓存，没有解码缓存时延;CUVID_PKT_TIMESTAMP返回原始时间戳
+    n_frame_returned = dec_->Decode(data->es_data, data->es_data_len, CUVID_PKT_ENDOFPICTURE | CUVID_PKT_TIMESTAMP, GetCurrentTimeMs()); // CUVID_PKT_ENDOFPICTURE解码器立即输出，没有缓存，没有解码缓存时延;CUVID_PKT_TIMESTAMP返回原始时间戳
     int i_matrix = dec_->GetVideoFormatInfo().video_signal_description.matrix_coefficients;
     for (int i = 0; i < n_frame_returned; i++) {
         int64_t timestamp;

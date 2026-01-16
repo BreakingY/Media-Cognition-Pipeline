@@ -24,7 +24,8 @@ include_directories(Warpper Log Log/spdlog/include
                     Media/MediaCommon
                     Media/MediaMuxer
                     Media/Bitstream/h264/include Media/Bitstream/h265/include
-                    Media/MediaReader Media/MediaReader/FileReader Media/MediaReader/RtspReader Media/MediaReader/RtspReader/3rdparty Media/MediaReader/RtspReader/rtp)
+                    Media/MediaReader Media/MediaReader/FileReader Media/MediaReader/RtspReader Media/MediaReader/RtspReader/3rdparty Media/MediaReader/RtspReader/rtp
+                    Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp)
 
 aux_source_directory(Test TEST)
 aux_source_directory(Warpper WRAPPER)
@@ -42,8 +43,12 @@ aux_source_directory(Media/MediaReader/RtspReader/rtp RTP)
 aux_source_directory(Media/Bitstream/h264/source BH264)
 aux_source_directory(Media/Bitstream/h265/src BH265)
 
+aux_source_directory(Media/RtmpClient RTMPCLIENT)
+aux_source_directory(Media/RtmpClient/libflv/source LIBFLV)
+aux_source_directory(Media/RtmpClient/rtmpdump/librtmp LIBRTMP)
+
 set(EXECUTABLE_OUTPUT_PATH ./)
-add_compile_options(-g -fpermissive -std=c++17) 
+add_compile_options(-g -fpermissive -std=c++17 -Wno-deprecated-declarations)
 set(CMAKE_BUILD_TYPE Release)
 ###############
 #### codec ####
@@ -114,9 +119,9 @@ elseif(DETECTION_ASCEND)
 endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
-add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${DVPP_ENC} ${DVPP_UTILS} 
-                        ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
-target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS})
+add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
+                        ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
+target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS} ssl crypto)
 ###############
 #### codec ####
 ###############
