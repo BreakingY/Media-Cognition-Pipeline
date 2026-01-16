@@ -2,7 +2,7 @@
 # Media-Cognition-Pipeline
 Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO object detection + ByteTrack multi-object tracking) pipeline
 
-* Audio/video unpackaging (MP4, RTSP), resampling, encoding/decoding, packaging (MP4, RTMP), visual perception, managed using modular, node-based, and interface-based design.
+* Audio/video unpackaging (MP4, RTSP), resampling, encoding/decoding, packaging (MP4, RTMP(TODO)), visual perception, managed using modular, node-based, and interface-based design.
 * Audio codec uses a pure software solution.
 * Video codec has the following implementations:
   * FFmpeg hardware encoder/decoder (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
@@ -53,7 +53,6 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv
-* librtmp: git://git.ffmpeg.org/rtmpdump
 
 # Requirements
 * ffmpeg version == 4.x
@@ -82,10 +81,10 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
    * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
 
 # Test
-1. File test:   `./MediaCodec ../Test/test1.mp4 out.mp4` `./MediaCodec ../Test/test2.mp4 out.mp4` `./MediaCodec ../Test/Cognition.mp4 out.mp4`
-2. RTSP test:   `./MediaCodec <url> out.mp4`
-3. AI inference:`./MediaCodec ../Test/Cognition.mp4 out.mp4`
-4. Jetson:      `./MediaCodec ../Test/test2.mp4 out.mp4`
+1. File test:   `./MediaCodec ../Test/test1.mp4 out.mp4/<rtmp url>` `./MediaCodec ../Test/test2.mp4 out.mp4/<rtmp url>` `./MediaCodec ../Test/Cognition.mp4 out.mp4/<rtmp url>`
+2. RTSP test:   `./MediaCodec <rtsp url> out.mp4/<rtmp url>`
+3. AI inference:`./MediaCodec ../Test/Cognition.mp4 out.mp4/<rtmp url>`
+4. Jetson:      `./MediaCodec ../Test/test2.mp4 out.mp4/<rtmp url>`
 
 # Contact
 * kxsun617@163.com

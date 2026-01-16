@@ -1,7 +1,7 @@
 # Media-Cognition-Pipeline
 音视频封装、解封装、编解码、视觉感知(YOLO目标检测 + ByteTrack多目标跟踪)pipeline
 
-* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4、RTMP)，视觉感知, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、RTSP)、重采样、编解码、封装(MP4、RTMP(TODO))，视觉感知, 采用模块化、节点化和接口化管理。
 * 音频编解码使用纯软方案。
 * 视频编解码有以下实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -50,7 +50,6 @@
 * Bitstream：https://github.com/ireader/avcodec
 * ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv
-* librtmp: git://git.ffmpeg.org/rtmpdump
 
 # 准备
 * ffmpeg版本==4.x。
@@ -78,10 +77,10 @@
    * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..
    * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
 # 测试：
-1. 文件测试： `./MediaCodec ../Test/test1.mp4 out.mp4` `./MediaCodec ../Test/test2.mp4 out.mp4` `./MediaCodec ../Test/Cognition.mp4 out.mp4`
-2. rtsp测试： `./MediaCodec <url> out.mp4`
-3. AI推理：   `./MediaCodec ../Test/Cognition.mp4 out.mp4`
-4. Jetson：   `./MediaCodec ../Test/test2.mp4 out.mp4`
+1. 文件测试： `./MediaCodec ../Test/test1.mp4 out.mp4/<rtmp url>` `./MediaCodec ../Test/test2.mp4 out.mp4/<rtmp url>` `./MediaCodec ../Test/Cognition.mp4 out.mp4/<rtmp url>`
+2. rtsp测试： `./MediaCodec <rtsp url> out.mp4/<rtmp url>`
+3. AI推理：   `./MediaCodec ../Test/Cognition.mp4 out.mp4/<rtmp url>`
+4. Jetson：   `./MediaCodec ../Test/test2.mp4 out.mp4/<rtmp url>`
 
 
 # 技术交流

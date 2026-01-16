@@ -25,7 +25,7 @@ include_directories(Warpper Log Log/spdlog/include
                     Media/MediaMuxer
                     Media/Bitstream/h264/include Media/Bitstream/h265/include
                     Media/MediaReader Media/MediaReader/FileReader Media/MediaReader/RtspReader Media/MediaReader/RtspReader/3rdparty Media/MediaReader/RtspReader/rtp
-                    Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp)
+                    Media/RtmpClient Media/RtmpClient/libflv/include)
 
 aux_source_directory(Test TEST)
 aux_source_directory(Warpper WRAPPER)
@@ -45,7 +45,6 @@ aux_source_directory(Media/Bitstream/h265/src BH265)
 
 aux_source_directory(Media/RtmpClient RTMPCLIENT)
 aux_source_directory(Media/RtmpClient/libflv/source LIBFLV)
-aux_source_directory(Media/RtmpClient/rtmpdump/librtmp LIBRTMP)
 
 set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -fpermissive -std=c++17 -Wno-deprecated-declarations)

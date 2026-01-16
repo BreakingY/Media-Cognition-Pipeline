@@ -141,6 +141,7 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
         case WRITE_FLV_SCRIPT_TAG_DATA:
             memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
             client->send_buffer_len_ += data_len;
+            need_send = true;
             break;
         case WRITE_FLV_PREVIOUS_SIZE:
             // if(!client->skip_flv_header_){
@@ -156,10 +157,7 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
             break;
     }
     if(need_send && client->rtmp_connect_stat_ && !client->abort_){
-        if(RTMP_Write(client->rtmp_, (const char *)client->send_buffer_, client->send_buffer_len_)  <= 0){
-            client->rtmp_connect_stat_ = false;
-            log_error("RTMP_Write error");
-        }
+        // 发送数据
         client->send_buffer_len_ = 0;
         memset(client->send_buffer_, 0 , sizeof(client->send_buffer_));
     }
@@ -178,36 +176,12 @@ RtmpPushClient::RtmpPushClient(std::string rtmp_url){
     th_audio_ = std::thread(&RtmpPushClient::AudioStreamThread, this);
 }
 int RtmpPushClient::ConnectServer(){
-    rtmp_ = RTMP_Alloc();
-    RTMP_Init(rtmp_);
-    rtmp_->Link.timeout = 5; // seconds
-    rtmp_->Link.lFlags |= RTMP_LF_LIVE;
-    int ret = 0;
-    ret = RTMP_SetupURL(rtmp_, const_cast<char*>(rtmp_url_.c_str()));
-    if(!ret){
-        log_error("Couldn't set the specified url :{}", rtmp_url_);
-        return -1;
-    }
-    RTMP_EnableWrite(rtmp_);
-    ret = RTMP_Connect(rtmp_, nullptr);
-    if(!ret){
-        log_error("RTMP_Connect error :{}", rtmp_url_);
-        return -1;
-    }
-    ret = RTMP_ConnectStream(rtmp_, 0);
-    if(!ret){
-        log_error("RTMP_Connect error :{}", rtmp_url_);
-        return -1;
-    }
+    
     rtmp_connect_stat_ = true;
     return 0;
 }
 void RtmpPushClient::CloseConnect(){
-    if(rtmp_){
-        RTMP_Close(rtmp_);
-        RTMP_Free(rtmp_);
-        rtmp_ = nullptr;
-    }
+    
 }
 int RtmpPushClient::OpencvFLVHandle(){
     skip_flv_header_ = false;
@@ -485,7 +459,7 @@ void RtmpPushClient::AudioStreamThread(){
 void RtmpPushClient::RtmpReconnectThread(){
     int ret = 0;
     while (!abort_) {
-        if(rtmp_connect_stat_ == false || !RTMP_IsConnected(rtmp_)){
+        if(rtmp_connect_stat_ == false){
             video_ready_ = audio_ready_ = false;
             // CloseFLVHandle();
             CloseConnect();
