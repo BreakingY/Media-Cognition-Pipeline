@@ -45,8 +45,8 @@
 * 代码模块划分如下图：
 ![MCP](https://github.com/user-attachments/assets/2375ffbb-9518-4650-8b09-fe1b0573c106)
 
-* 采用模块化、节点化和接口化的管理方式，可自行组装扩展形成业务pipeline。
-* 日志：https://github.com/gabime/spdlog
+# 子模块。
+* spdlog：https://github.com/gabime/spdlog
 * Bitstream：https://github.com/ireader/avcodec
 * ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv

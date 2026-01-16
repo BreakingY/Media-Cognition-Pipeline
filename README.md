@@ -46,11 +46,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * The code module division is shown in the following figure:
 ![MCP](https://github.com/user-attachments/assets/2375ffbb-9518-4650-8b09-fe1b0573c106)
 
-
-
-
-* Managed using modular, node-based, and interface-based design, can be assembled and extended to form business pipelines.
-* Logging: https://github.com/gabime/spdlog
+# Submodule
+* spdlog：https: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv
