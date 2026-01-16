@@ -43,7 +43,7 @@
 * 视觉感知：YOLO11
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
 * 代码模块划分如下图：
-![MCP](https://github.com/user-attachments/assets/cc884883-fa0e-4a60-94ad-7336e1ae0e7c)
+![MCP](https://github.com/user-attachments/assets/2375ffbb-9518-4650-8b09-fe1b0573c106)
 
 * 采用模块化、节点化和接口化的管理方式，可自行组装扩展形成业务pipeline。
 * 日志：https://github.com/gabime/spdlog
