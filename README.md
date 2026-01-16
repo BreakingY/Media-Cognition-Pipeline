@@ -44,7 +44,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
 * Visual perception: YOLO11
 * Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
 * The code module division is shown in the following figure:
-![MCP](https://github.com/user-attachments/assets/cc884883-fa0e-4a60-94ad-7336e1ae0e7c)
+![MCP](https://github.com/user-attachments/assets/2375ffbb-9518-4650-8b09-fe1b0573c106)
+
 
 
 
