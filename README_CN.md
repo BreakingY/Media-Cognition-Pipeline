@@ -1,7 +1,7 @@
 # Media-Cognition-Pipeline
 音视频封装、解封装、编解码、视觉感知(YOLO目标检测 + ByteTrack多目标跟踪)pipeline
 
-* 音视频解封装(MP4、RTSP、RTMP(TODO))、重采样、编解码、封装(MP4、RTMP(TODO))，视觉感知, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、RTSP、RTMP(TODO))、重采样、编解码、封装(MP4、RTMP)，视觉感知, 采用模块化、节点化和接口化管理。
 * 音频编解码使用纯软方案。
 * 视频编解码有以下实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -50,6 +50,7 @@
 * Bitstream：https://github.com/ireader/avcodec
 * ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv
+* librtmp: https://git.ffmpeg.org/rtmpdump.git
 
 # 准备
 * ffmpeg版本==4.x。

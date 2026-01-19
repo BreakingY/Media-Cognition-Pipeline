@@ -88,7 +88,6 @@ static uint64_t GetCurrentTimeMs()
     auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     return static_cast<uint64_t>(time_ms);
 }
-static const char *flv_filename = "out.flv";
 static FILE *flv_fd = nullptr;
 void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, void* arg){
     if(flv_fd == nullptr)
@@ -131,33 +130,33 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
         case WRITE_FLV_HEADER:
             break;
         case WRITE_FLV_TAG_HEADER:
-            memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
-            client->send_buffer_len_ += data_len;
-            break;
-        case WRITE_FLV_AUDIO_CONFIG_TAG_DATA: 
+        case WRITE_FLV_AUDIO_CONFIG_TAG_DATA:
         case WRITE_FLV_AUDIO_TAG_DATA:
         case WRITE_FLV_VIDEO_CONFIG_TAG_DATA:
         case WRITE_FLV_VIDEO_TAG_DATA:
         case WRITE_FLV_SCRIPT_TAG_DATA:
             memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
             client->send_buffer_len_ += data_len;
-            need_send = true;
             break;
         case WRITE_FLV_PREVIOUS_SIZE:
-            // if(!client->skip_flv_header_){
-            //     client->skip_flv_header_ = true;
-            // }
-            // else{
-            //     memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
-            //     client->send_buffer_len_ += data_len;
-            //     need_send = true;
-            // }
+            if(!client->skip_flv_header_){
+                client->skip_flv_header_ = true;
+            }
+            else{
+                memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
+                client->send_buffer_len_ += data_len;
+                need_send = true;
+            }
             break;
         default:
             break;
     }
     if(need_send && client->rtmp_connect_stat_ && !client->abort_){
-        // 发送数据
+        int ret = RTMP_Write(client->rtmp_, (const char *)client->send_buffer_, client->send_buffer_len_);
+        if(ret < 0) {
+            client->rtmp_connect_stat_ = false;
+            log_debug("RTMP_Write error");
+        }
         client->send_buffer_len_ = 0;
         memset(client->send_buffer_, 0 , sizeof(client->send_buffer_));
     }
@@ -176,12 +175,36 @@ RtmpPushClient::RtmpPushClient(std::string rtmp_url){
     th_audio_ = std::thread(&RtmpPushClient::AudioStreamThread, this);
 }
 int RtmpPushClient::ConnectServer(){
-    
+    rtmp_ = RTMP_Alloc();
+    RTMP_Init(rtmp_);
+    rtmp_->Link.timeout = 5; // seconds
+    rtmp_->Link.lFlags |= RTMP_LF_LIVE;
+
+    if(!RTMP_SetupURL(rtmp_, const_cast<char*>(rtmp_url_.c_str()))) {
+        log_error("Couldn't set the specified url :{}", rtmp_url_);
+        return -1;
+    }
+
+    RTMP_EnableWrite(rtmp_);
+
+    if(!RTMP_Connect(rtmp_, nullptr)) {
+        log_error("RTMP_Connect error :{}", rtmp_url_);
+        return -1;
+    }
+
+    if(!RTMP_ConnectStream(rtmp_, 0)) {
+        log_error("RTMP_ConnectStream error :{}", rtmp_url_);
+        return -1;
+    }
     rtmp_connect_stat_ = true;
     return 0;
 }
 void RtmpPushClient::CloseConnect(){
-    
+    if(rtmp_) {
+        RTMP_Close(rtmp_);
+        RTMP_Free(rtmp_);
+        rtmp_ = nullptr;
+    }
 }
 int RtmpPushClient::OpencvFLVHandle(){
     skip_flv_header_ = false;
@@ -288,6 +311,7 @@ void RtmpPushClient::InputAudioData(uint8_t *data, int data_len, int64_t timesta
 }
 void RtmpPushClient::VideoStreamThread(){
     int ret = 0;
+    bool send_parameters_flag = false;
     while (!abort_) {
         std::unique_lock<std::mutex> unique(video_mtx_);
         if (!video_list_.empty()) {
@@ -365,8 +389,14 @@ void RtmpPushClient::VideoStreamThread(){
                     }
                 }
                 if (sps_len_ != 0 && pps_len_ != 0) {
-                    if(!video_ready_){
-                        std::unique_lock<std::mutex> unique_flv(flv_mtx_);
+                    video_ready_ = true;
+                }
+                if (!video_ready_) {
+                    goto NEXT;
+                }
+                if(!(nalu_type == 6 || nalu_type == 7 || nalu_type == 8 || nalu_type == 32 || nalu_type == 33 || nalu_type == 34)){
+                    std::unique_lock<std::mutex> unique_flv(flv_mtx_);
+                    if(!send_parameters_flag){
                         if(video_type_ == VideoType::VIDEO_H264){
                             setVideoMediaType(context_muxer_, FLV_VIDEO_H264);
                         }
@@ -380,18 +410,12 @@ void RtmpPushClient::VideoStreamThread(){
                         if(ret < 0){
                             log_error("setVideoParameters error");
                         }
-                        ret = writeVideoSpecificConfig(context_muxer_, packet.pts);
+                        ret = writeVideoSpecificConfig(context_muxer_, 0);
                         if(ret < 0){
                             log_error("writeVideoSpecificConfig error");
                         }
+                        send_parameters_flag = true;
                     }
-                    video_ready_ = true;
-                }
-                if (!video_ready_) {
-                    goto NEXT;
-                }
-                if(!(nalu_type == 6 || nalu_type == 7 || nalu_type == 8 || nalu_type == 32 || nalu_type == 33 || nalu_type == 34)){
-                    std::unique_lock<std::mutex> unique_flv(flv_mtx_);
                     ret = writeVideoData(context_muxer_, packet.pts, data + start_code, data_len - start_code);
                     if(ret < 0){
                         log_error("writeVideoData error");
@@ -426,15 +450,6 @@ void RtmpPushClient::AudioStreamThread(){
                 free(packet.data);
                 continue;
             }
-            if(!audio_ready_){
-                std::unique_lock<std::mutex> unique_flv(flv_mtx_);
-                setAudioMediaType(context_muxer_, FLV_AUDIO_AAC);
-                ret = writeAudioSpecificConfig(context_muxer_, packet.pts, res.profile, res.samplingFreqIndex, res.channelCfg);
-                if(ret < 0){
-                    log_error("writeAudioSpecificConfig error");
-                }
-                audio_ready_ = true;
-            }
             uint8_t *data = nullptr;
             int data_len = 0;
             int adts_header_len = (res.protectionAbsent == 1) ? 7 : 9;
@@ -442,6 +457,14 @@ void RtmpPushClient::AudioStreamThread(){
             data = packet.data + adts_header_len;
             data_len = packet.data_len - adts_header_len;
             std::unique_lock<std::mutex> unique_flv(flv_mtx_);
+            if(!audio_ready_){
+                setAudioMediaType(context_muxer_, FLV_AUDIO_AAC);
+                ret = writeAudioSpecificConfig(context_muxer_, 0, res.profile, res.samplingFreqIndex, res.channelCfg);
+                if(ret < 0){
+                    log_error("writeAudioSpecificConfig error");
+                }
+                audio_ready_ = true;
+            }
             ret = writeAudioData(context_muxer_, packet.pts, data, data_len);
             if(ret < 0){
                 log_error("writeAudioData error");
@@ -461,10 +484,11 @@ void RtmpPushClient::RtmpReconnectThread(){
     while (!abort_) {
         if(rtmp_connect_stat_ == false){
             video_ready_ = audio_ready_ = false;
-            // CloseFLVHandle();
             CloseConnect();
             ConnectServer();
-            // OpencvFLVHandle();
+            std::unique_lock<std::mutex> unique_flv(flv_mtx_);
+            CloseFLVHandle();
+            OpencvFLVHandle();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }

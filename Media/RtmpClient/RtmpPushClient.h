@@ -14,6 +14,7 @@
 extern "C" {
 #include "flv.h"
 #include "amf0.h"
+#include "rtmp.h"
 }
 void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, void* arg);
 class RtmpPushClient{
@@ -70,9 +71,10 @@ private:
     enum AudioType audio_type_;
     std::atomic<uint64_t> start_timestamp = {0};
 
+    RTMP *rtmp_ = nullptr;
     std::atomic<bool> rtmp_connect_stat_ = {false};
     std::thread th_rtmp_reconnect_;
-    uint8_t *send_buffer_[1024 * 1024 * 4];
+    uint8_t send_buffer_[1024 * 1024 * 4];
     int send_buffer_len_ = 0;
     bool skip_flv_header_ = false;
     

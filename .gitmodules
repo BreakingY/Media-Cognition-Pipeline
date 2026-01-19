@@ -10,3 +10,6 @@
 [submodule "Media/RtmpClient/libflv"]
 	path = Media/RtmpClient/libflv
 	url = https://github.com/BreakingY/libflv.git
+[submodule "Media/RtmpClient/rtmpdump"]
+	path = Media/RtmpClient/rtmpdump
+	url = https://git.ffmpeg.org/rtmpdump.git
