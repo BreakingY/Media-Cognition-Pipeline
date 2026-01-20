@@ -241,15 +241,19 @@ int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
     return 0;
 }
 #endif
-MiedaWrapper::MiedaWrapper(const char *input, const char *ouput, const char *eng_path, int device_id)
+MiedaWrapper::MiedaWrapper(const char *input, const char *output, const char *eng_path, int device_id)
 {
-    if( memcmp("rtmp://", ouput, strlen("rtmp://")) == 0 ){
-        rtmp_push_client_ = new RtmpPushClient(ouput);
+    size_t len = strlen(output);
+    if( memcmp("rtmp://", output, strlen("rtmp://")) == 0 ){
+        rtmp_push_client_ = new RtmpPushClient(output, FLV_RTMP);
     }
-    else{
+    else if( len >= 4 && memcmp(output + len - 4, ".flv", 4) == 0 ){
+        rtmp_push_client_ = new RtmpPushClient(output, FLV_FILE);
+    }
+    else if( len >= 4 && memcmp(output + len - 4, ".mp4", 4) == 0){
 #ifdef MP4MUXER
         mp4_muxer_ = new Muxer();
-        mp4_muxer_->Init(ouput);
+        mp4_muxer_->Init(output);
 #endif
     }
     device_id_ = device_id;

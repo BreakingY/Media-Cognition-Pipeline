@@ -2,7 +2,7 @@
 # Media-Cognition-Pipeline
 Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO object detection + ByteTrack multi-object tracking) pipeline
 
-* Audio/video unpackaging (MP4, RTSP、RTMP(TODO)), resampling, encoding/decoding, packaging (MP4, RTMP), visual perception, managed using modular, node-based, and interface-based design.
+* Audio/video unpackaging (MP4, RTSP, FLV(TODO), RTMP(TODO)), resampling, encoding/decoding, packaging (MP4, FLV, RTMP), visual perception, managed using modular, node-based, and interface-based design.
 * Audio codec uses a pure software solution.
 * Video codec has the following implementations:
   * FFmpeg hardware encoder/decoder (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
@@ -80,8 +80,8 @@ Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO o
    * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
 
 # Test
-1. pipeline:      `./MediaCodec <../Test/*.mp4>/<rtsp url>/<rtmp url> <mp4>/<rtmp url>`
-2. AI inference:  `./MediaCodec ../Test/Cognition.mp4 out.mp4/<rtmp url>`
+1. pipeline:      `./MediaCodec <../Test/test1.mp4(test2.mp4)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
+2. AI inference:  `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
 
 # Contact
 * kxsun617@163.com

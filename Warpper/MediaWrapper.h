@@ -22,7 +22,7 @@ class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public 
 {
 public:
     MiedaWrapper() = delete;
-    MiedaWrapper(const char *input, const char *ouput, const char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend*/ = 0);
+    MiedaWrapper(const char *input, const char *output, const char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend*/ = 0);
     virtual ~MiedaWrapper();
     // 音视频解封装接口
     void OnVideoData(VideoData data);

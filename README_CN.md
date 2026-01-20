@@ -1,7 +1,7 @@
 # Media-Cognition-Pipeline
 音视频封装、解封装、编解码、视觉感知(YOLO目标检测 + ByteTrack多目标跟踪)pipeline
 
-* 音视频解封装(MP4、RTSP、RTMP(TODO))、重采样、编解码、封装(MP4、RTMP)，视觉感知, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、RTSP、FLV(TODO)、RTMP(TODO))、重采样、编解码、封装(MP4、FLV、RTMP)，视觉感知, 采用模块化、节点化和接口化管理。
 * 音频编解码使用纯软方案。
 * 视频编解码有以下实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -78,8 +78,8 @@
    * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..
    * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
 # 测试：
-1. pipeline测试： `./MediaCodec <../Test/*.mp4>/<rtsp url>/<rtmp url> <mp4>/<rtmp url>`
-2. AI推理：       `./MediaCodec ../Test/Cognition.mp4 out.mp4/<rtmp url>`
+1. pipeline测试： `./MediaCodec <../Test/test1.mp4(test2.mp4)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
+2. AI推理：       `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
 
 
 # 技术交流

@@ -16,10 +16,15 @@ extern "C" {
 #include "amf0.h"
 #include "rtmp.h"
 }
+enum FLVOutMode {
+    FLV_FILE = 0,
+    FLV_RTMP
+};
+
 void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, void* arg);
 class RtmpPushClient{
 public:
-    RtmpPushClient(std::string rtmp_url);
+    RtmpPushClient(std::string url, FLVOutMode type = FLV_RTMP);
     ~RtmpPushClient();
     // h264/h265
     void SetVideoInfo(enum VideoType type);
@@ -43,9 +48,11 @@ private:
         int64_t dts;
     } MediaData;
     bool abort_ = false;
-    std::string rtmp_url_;
+    FLVOutMode type_;
+    std::string url_;
     FLVContext *context_muxer_ = nullptr; // libflv非线程安全
     std::mutex flv_mtx_;
+    FILE *flv_fd_ = nullptr;
 
     std::list<MediaData> video_list_;
     std::mutex video_mtx_;

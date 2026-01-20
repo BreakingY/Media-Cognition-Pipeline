@@ -88,11 +88,7 @@ static uint64_t GetCurrentTimeMs()
     auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     return static_cast<uint64_t>(time_ms);
 }
-static FILE *flv_fd = nullptr;
 void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, void* arg){
-    if(flv_fd == nullptr)
-        flv_fd = fopen("out.flv", "wb");
-    fwrite(data, 1, data_len, flv_fd);
     RtmpPushClient *client = (RtmpPushClient*)arg;
     bool need_send = false;
     // WriteCallBack调用顺序 WRITE_FLV_HEADER-->WRITE_FLV_PREVIOUS_SIZE; WRITE_FLV_TAG_HEADER-->WRITE_FLV_*_TAG_DATA-->WRITE_FLV_PREVIOUS_SIZE ...
@@ -151,7 +147,13 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
         default:
             break;
     }
-    if(need_send && client->rtmp_connect_stat_ && !client->abort_){
+    if(client->abort_){
+        return;
+    }
+    if(client->type_ == FLV_FILE &&  client->flv_fd_){
+        fwrite(data, 1, data_len, client->flv_fd_);
+    }
+    else if(client->type_ == FLV_RTMP && client->rtmp_connect_stat_ && need_send){
         int ret = RTMP_Write(client->rtmp_, (const char *)client->send_buffer_, client->send_buffer_len_);
         if(ret < 0) {
             client->rtmp_connect_stat_ = false;
@@ -159,15 +161,23 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
         }
         client->send_buffer_len_ = 0;
         memset(client->send_buffer_, 0 , sizeof(client->send_buffer_));
+        
     }
-    return;
 }
 
-RtmpPushClient::RtmpPushClient(std::string rtmp_url){
-    // rtmp
-    rtmp_url_ = rtmp_url;
-    ConnectServer();
-    th_rtmp_reconnect_ = std::thread(&RtmpPushClient::RtmpReconnectThread, this);
+RtmpPushClient::RtmpPushClient(std::string url, FLVOutMode type){
+    // rtmp flv
+    url_ = url;
+    type_ = type;
+    if(type == FLV_RTMP){
+        log_debug("rtmp stream");
+        ConnectServer();
+        th_rtmp_reconnect_ = std::thread(&RtmpPushClient::RtmpReconnectThread, this);
+    }
+    else{
+        log_debug("flv file");
+        flv_fd_ = fopen(url_.c_str(), "wb");
+    }
     // flv
     OpencvFLVHandle();
 
@@ -180,20 +190,20 @@ int RtmpPushClient::ConnectServer(){
     rtmp_->Link.timeout = 5; // seconds
     rtmp_->Link.lFlags |= RTMP_LF_LIVE;
 
-    if(!RTMP_SetupURL(rtmp_, const_cast<char*>(rtmp_url_.c_str()))) {
-        log_error("Couldn't set the specified url :{}", rtmp_url_);
+    if(!RTMP_SetupURL(rtmp_, const_cast<char*>(url_.c_str()))) {
+        log_error("Couldn't set the specified url :{}", url_);
         return -1;
     }
 
     RTMP_EnableWrite(rtmp_);
 
     if(!RTMP_Connect(rtmp_, nullptr)) {
-        log_error("RTMP_Connect error :{}", rtmp_url_);
+        log_error("RTMP_Connect error :{}", url_);
         return -1;
     }
 
     if(!RTMP_ConnectStream(rtmp_, 0)) {
-        log_error("RTMP_ConnectStream error :{}", rtmp_url_);
+        log_error("RTMP_ConnectStream error :{}", url_);
         return -1;
     }
     rtmp_connect_stat_ = true;
@@ -237,9 +247,16 @@ RtmpPushClient::~RtmpPushClient(){
     audio_cond_.notify_all();
     th_video_.join();
     th_audio_.join();
-    th_rtmp_reconnect_.join();
     CloseFLVHandle();
-    CloseConnect();
+    if(type_ == FLV_RTMP){
+        th_rtmp_reconnect_.join();
+        CloseConnect();
+    }
+    else{
+        if(flv_fd_){
+            fclose(flv_fd_);
+        }
+    }
     
     while (!video_list_.empty()) {
         MediaData packet = video_list_.front();
