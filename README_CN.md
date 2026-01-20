@@ -8,10 +8,10 @@
   * 使用ffmpeg实现
 * flv/rtmp
   * Media/RtmpClient
-  * libflv(https://github.com/BreakingY/libflv) + librtmp(https://git.ffmpeg.org/rtmpdump.git)
+  * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
 * rtsp
   * Media/RtspReader
-  * simple-rtsp-clinet(https://github.com/BreakingY/simple-rtsp-client)
+  * simple-rtsp-client (https://github.com/BreakingY/simple-rtsp-client)
 
 # 编解码
 * 音频编解码使用纯软方案。
@@ -47,7 +47,7 @@
   * 使用ffmpeg实现
 * flv/rtmp
   * Media/RtmpClient
-  * libflv(https://github.com/BreakingY/libflv) + librtmp(https://git.ffmpeg.org/rtmpdump.git)
+  * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
 
 # 视觉感知(YOLO + ByteTrack)
 * NVIDIA TensorRT
