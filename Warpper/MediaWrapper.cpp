@@ -30,7 +30,7 @@ static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_
     while (1) {
 
         if (((p - start) + 3) >= total)
-            return NULL;
+            return nullptr;
 
         info = find_start_code(p, 2);
         if (info == 1) {
@@ -40,7 +40,7 @@ static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_
         }
 
         if (((p - start) + 4) >= total)
-            return NULL;
+            return nullptr;
 
         info = find_start_code(p, 3);
         if (info == 1) {
@@ -102,14 +102,14 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
     uint64_t pts_t = time_ts_accum_;
     time_pre_ = time_now_;
 
-    uint8_t *p_video = NULL;
+    uint8_t *p_video = nullptr;
     uint32_t nal_len;
     uint8_t *buf_sffset = data_nalus;
     uint8_t prefix_len = 0;
     uint8_t *video_data = data_nalus;
     uint32_t video_len = len_nalus;
     p_video = get_nal(&nal_len, &buf_sffset, video_data, video_len, &prefix_len);
-    while (p_video != NULL) {
+    while (p_video != nullptr) {
         prefix_len = prefix_len + 1;
         uint8_t *data = p_video;
         int data_len = nal_len;
@@ -124,7 +124,7 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
             nalu_type = data[start_code] & 0x1f;
             if (!extra_ready_) {
                 if (nalu_type == 7) {
-                    if (sps_ == NULL || (sps_buffer_len_ < data_len - start_code)) {
+                    if (sps_ == nullptr || (sps_buffer_len_ < data_len - start_code)) {
                         sps_ = (uint8_t *)realloc(sps_, data_len - start_code);
                         sps_buffer_len_ = data_len - start_code;
                     }
@@ -132,7 +132,7 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
                     sps_len_ = data_len - start_code;
 
                 } else if (nalu_type == 8) {
-                    if (pps_ == NULL || (pps_buffer_len_ < data_len - start_code)) {
+                    if (pps_ == nullptr || (pps_buffer_len_ < data_len - start_code)) {
                         pps_ = (uint8_t *)realloc(pps_, data_len - start_code);
                         pps_buffer_len_ = data_len - start_code;
                     }
@@ -145,14 +145,14 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
             nalu_type = (data[start_code] >> 1) & 0x3f;
             if (!extra_ready_) {
                 if (nalu_type == 32) {
-                    if (vps_ == NULL || (vps_buffer_len_ < data_len - start_code)) {
+                    if (vps_ == nullptr || (vps_buffer_len_ < data_len - start_code)) {
                         vps_ = (uint8_t *)realloc(vps_, data_len - start_code);
                         vps_buffer_len_ = data_len - start_code;
                     }
                     memcpy(vps_, data + start_code, data_len - start_code);
                     vps_len_ = data_len - start_code;
                 } else if (nalu_type == 33) {
-                    if (sps_ == NULL || (sps_buffer_len_ < data_len - start_code)) {
+                    if (sps_ == nullptr || (sps_buffer_len_ < data_len - start_code)) {
                         sps_ = (uint8_t *)realloc(sps_, data_len - start_code);
                         sps_buffer_len_ = data_len - start_code;
                     }
@@ -160,7 +160,7 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
                     sps_len_ = data_len - start_code;
 
                 } else if (nalu_type == 34) {
-                    if (pps_ == NULL || (pps_buffer_len_ < data_len - start_code)) {
+                    if (pps_ == nullptr || (pps_buffer_len_ < data_len - start_code)) {
                         pps_ = (uint8_t *)realloc(pps_, data_len - start_code);
                         pps_buffer_len_ = data_len - start_code;
                     }
@@ -186,8 +186,9 @@ int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
             mp4_muxer_->AddVideo(90000, video_type_, extra, width_, height_, fps_);
         }
         // 音频
-        if( ((rtsp_flag_ == true) && (rtsp_client_proxy_->GetAudioType() != AudioType::AUDIO_NONE))
-            || (reader_->GetAudioType() != AudioType::AUDIO_NONE) ){
+        if( (rtsp_client_proxy_ && (rtsp_client_proxy_->GetAudioType() != AudioType::AUDIO_NONE))
+            || (rtmp_pull_client_ && (rtmp_pull_client_->GetAudioType() != AudioType::AUDIO_NONE))
+            || (reader_ && (reader_->GetAudioType() != AudioType::AUDIO_NONE)) ){
             if(audio_stream_ == -1){
                 int channels;
                 int samplerate;
@@ -261,14 +262,26 @@ MiedaWrapper::MiedaWrapper(const char *input, const char *output, const char *en
     eng_path_ = eng_path;
     DetectModelInit(eng_path_, device_id_);
 #endif
-    if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){ // rtsp
-        rtsp_flag_ = true;
+    len = strlen(input);
+    if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){
         rtsp_client_proxy_ = new RtspClientProxy(input);
         rtsp_client_proxy_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
         });
     }
-    else{ // file
+    else if( memcmp("rtmp://", input, strlen("rtmp://")) == 0 ){
+        rtmp_pull_client_ = new RtmpPullClient(input, FLV_RTMP);
+        rtmp_pull_client_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
+            return this->MediaOverhandle();
+        });
+    }
+    else if( len >= 4 && memcmp(input + len - 4, ".flv", 4) == 0 ){
+        rtmp_pull_client_ = new RtmpPullClient(input, FLV_FILE);
+        rtmp_pull_client_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
+            return this->MediaOverhandle();
+        });
+    }
+    else if( len >= 4 && memcmp(input + len - 4, ".mp4", 4) == 0 ){
         reader_ = new MediaReader(input);
         reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
@@ -286,7 +299,7 @@ void MiedaWrapper::MediaOverhandle()
 // with startcode
 void MiedaWrapper::OnVideoData(VideoData data)
 {
-    if(rtsp_flag_ == true){ // rtsp
+    if(rtsp_client_proxy_){ // rtsp
         video_type_ = rtsp_client_proxy_->GetVideoType();
         if (video_type_ == VIDEO_NONE) {
             log_error("only support H264/H265");
@@ -294,7 +307,15 @@ void MiedaWrapper::OnVideoData(VideoData data)
         }
         rtsp_client_proxy_->GetVideoCon(width_, height_, fps_);
     }
-    else{ // file 
+    else if(rtmp_pull_client_){ // rtmp flv
+        video_type_ = rtmp_pull_client_->GetVideoType();
+        if (video_type_ == VIDEO_NONE) {
+            log_error("only support H264/H265");
+            exit(1);
+        }
+        rtmp_pull_client_->GetVideoCon(width_, height_, fps_);
+    }
+    else if(reader_){ // mp4 
         video_type_ = reader_->GetVideoType();
         if (video_type_ == VIDEO_NONE) {
             log_error("only support H264/H265");
@@ -330,21 +351,28 @@ void MiedaWrapper::OnVideoData(VideoData data)
 // width adts
 void MiedaWrapper::OnAudioData(AudioData data)
 {
-    if(rtsp_flag_ == true){
+    if(rtsp_client_proxy_){ // rtsp
         audio_type_ = rtsp_client_proxy_->GetAudioType();
         if (audio_type_ != AUDIO_AAC) {
             log_error("only support AAC");
             exit(1);
         }
     }
-    else{
+    else if(rtmp_pull_client_){ // rtmp flv
+        audio_type_ = rtmp_pull_client_->GetAudioType();
+        if (audio_type_ != AUDIO_AAC) {
+            log_error("only support AAC");
+            exit(1);
+        }
+    }
+    else if(reader_){ // mp4
         audio_type_ = reader_->GetAudioType();
         if (audio_type_ != AUDIO_AAC) {
             log_error("only support AAC");
             exit(1);
         }
     }
-    if (aac_decoder_ == NULL) {
+    if (aac_decoder_ == nullptr) {
         log_debug("audio_type:AAC profile:{} samplerate:{} channels:{}", data.profile, data.samplerate, data.channels);
         aac_decoder_ = new AACDecoder();
         aac_decoder_->SetResampleArg(AV_SAMPLE_FMT_S16, 2, 44100); // 重采样输出格式，解码器会把解码后的PCM数据重采样成设定的格式
@@ -439,13 +467,13 @@ void MiedaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info){
     return;
 }
 #endif
-// FILE *fp_file = NULL;
+// FILE *fp_file = nullptr;
 // data_len是单通道当本个数 LC-AAC:1024 HE-AAC:2048
 void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
 {
     // 拿到解码后的PCM音频根据自己的业务需求进行处理，例如语音识别、语音合成等。
     // 之后再把处理后的音频进行编码
-    if (aac_encoder_ == NULL) {
+    if (aac_encoder_ == nullptr) {
         aac_encoder_ = new AACEncoder();
         // aac编码模块只接受packed模式的pcm数据
         // 和 aac_decoder_->SetResampleArg(AV_SAMPLE_FMT_S16,2,44100)保持一致即可，但如果aac_decoder_->SetResampleArg中指定了AV_SAMPLE_FMT_S16P,这里使用AV_SAMPLE_FMT_S16，数据就要转换成packed模型在送入队列
@@ -458,7 +486,7 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
     int dst_nb_channels = 2;
     int out_spb = av_get_bytes_per_sample(dst_sample_fmt);
     int buf_len = data_len * out_spb * dst_nb_channels;
-    if (buffer_pcm_ == NULL || (buffer_pcm_len_ < buf_len)) {
+    if (buffer_pcm_ == nullptr || (buffer_pcm_len_ < buf_len)) {
         buffer_pcm_ = (unsigned char *)realloc(buffer_pcm_, buf_len);
         buffer_pcm_len_ = buf_len;
     }
@@ -473,17 +501,17 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
         memcpy(buffer_pcm_, data[0], data_len * out_spb * dst_nb_channels);
     }
     aac_encoder_->AddPCMFrame(buffer_pcm_, buf_len);
-    // if (fp_file == NULL) {
+    // if (fp_file == nullptr) {
     //     fp_file = fopen("test.pcm", "wb+");
     // }
     // fwrite(buffer_pcm_, 1, buf_len, fp_file); // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
     return;
 }
 static const char *enc_h264_filename = "out.h264";
-static FILE *enc_h264_fd = NULL;
+static FILE *enc_h264_fd = nullptr;
 void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
 {
-    if (enc_h264_fd == NULL) {
+    if (enc_h264_fd == nullptr) {
         enc_h264_fd = fopen(enc_h264_filename, "wb");
     }
     fwrite(data, 1, data_len, enc_h264_fd);
@@ -497,10 +525,10 @@ void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
     return;
 }
 static const char *enc_aac_filename = "out.aac";
-static FILE *enc_aac_fd = NULL;
+static FILE *enc_aac_fd = nullptr;
 void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts)
 {
-    if (enc_aac_fd == NULL) {
+    if (enc_aac_fd == nullptr) {
         enc_aac_fd = fopen(enc_aac_filename, "wb");
     }
     fwrite(data, 1, data_len, enc_aac_fd);
@@ -518,32 +546,36 @@ MiedaWrapper::~MiedaWrapper()
 
     if (reader_) {
         delete reader_;
-        reader_ = NULL;
+        reader_ = nullptr;
     }
     if(rtsp_client_proxy_){
         delete rtsp_client_proxy_;
-        rtsp_client_proxy_ = NULL;
+        rtsp_client_proxy_ = nullptr;
+    }
+    if(rtmp_pull_client_){
+        delete rtmp_pull_client_;
+        rtmp_pull_client_ = nullptr;
     }
     if (hard_decoder_) {
         delete hard_decoder_;
-        hard_decoder_ = NULL;
+        hard_decoder_ = nullptr;
     }
     if (hard_encoder_) {
         delete hard_encoder_;
-        hard_encoder_ = NULL;
+        hard_encoder_ = nullptr;
     }
     if (aac_decoder_) {
         delete aac_decoder_;
-        aac_decoder_ = NULL;
+        aac_decoder_ = nullptr;
     }
     if (aac_encoder_) {
         delete aac_encoder_;
-        aac_encoder_ = NULL;
+        aac_encoder_ = nullptr;
     }
     if (mp4_muxer_) {
         mp4_muxer_->SendTrailer();
         delete mp4_muxer_;
-        mp4_muxer_ = NULL;
+        mp4_muxer_ = nullptr;
     }
     if(rtmp_push_client_){
         delete rtmp_push_client_;
@@ -551,19 +583,19 @@ MiedaWrapper::~MiedaWrapper()
     }
     if (vps_) {
         free(vps_);
-        vps_ = NULL;
+        vps_ = nullptr;
     }
     if (sps_) {
         free(sps_);
-        sps_ = NULL;
+        sps_ = nullptr;
     }
     if (pps_) {
         free(pps_);
-        pps_ = NULL;
+        pps_ = nullptr;
     }
     if (buffer_pcm_) {
         free(buffer_pcm_);
-        buffer_pcm_ = NULL;
+        buffer_pcm_ = nullptr;
     }
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     EndStream(context_);

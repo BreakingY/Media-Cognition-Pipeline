@@ -7,19 +7,15 @@
 #include <chrono>
 #include <atomic>
 #include <thread>
-#include "MediaInterface.h"
 #include "log_helpers.h"
 #include "TypeDef.h"
 #include "AAC.h"
+#include "RtmpCommon.h"
 extern "C" {
 #include "flv.h"
 #include "amf0.h"
 #include "rtmp.h"
 }
-enum FLVOutMode {
-    FLV_FILE = 0,
-    FLV_RTMP
-};
 
 void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, void* arg);
 class RtmpPushClient{
@@ -76,7 +72,7 @@ private:
     std::thread th_audio_;
     bool audio_ready_ = false;
     enum AudioType audio_type_;
-    std::atomic<uint64_t> start_timestamp = {0};
+    std::atomic<uint64_t> start_timestamp_ = {0};
 
     RTMP *rtmp_ = nullptr;
     std::atomic<bool> rtmp_connect_stat_ = {false};

@@ -131,17 +131,21 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
         case WRITE_FLV_VIDEO_CONFIG_TAG_DATA:
         case WRITE_FLV_VIDEO_TAG_DATA:
         case WRITE_FLV_SCRIPT_TAG_DATA:
-            memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
-            client->send_buffer_len_ += data_len;
-            break;
-        case WRITE_FLV_PREVIOUS_SIZE:
-            if(!client->skip_flv_header_){
-                client->skip_flv_header_ = true;
-            }
-            else{
+            if(client->type_ == FLVOutMode::FLV_RTMP){
                 memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
                 client->send_buffer_len_ += data_len;
-                need_send = true;
+            }
+            break;
+        case WRITE_FLV_PREVIOUS_SIZE:
+            if(client->type_ == FLVOutMode::FLV_RTMP){
+                if(!client->skip_flv_header_){
+                    client->skip_flv_header_ = true;
+                }
+                else{
+                    memcpy(client->send_buffer_ + client->send_buffer_len_, data, data_len);
+                    client->send_buffer_len_ += data_len;
+                    need_send = true;
+                }
             }
             break;
         default:
@@ -150,10 +154,10 @@ void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, voi
     if(client->abort_){
         return;
     }
-    if(client->type_ == FLV_FILE &&  client->flv_fd_){
+    if(client->type_ == FLVOutMode::FLV_FILE &&  client->flv_fd_){
         fwrite(data, 1, data_len, client->flv_fd_);
     }
-    else if(client->type_ == FLV_RTMP && client->rtmp_connect_stat_ && need_send){
+    else if(client->type_ == FLVOutMode::FLV_RTMP && client->rtmp_connect_stat_ && need_send){
         int ret = RTMP_Write(client->rtmp_, (const char *)client->send_buffer_, client->send_buffer_len_);
         if(ret < 0) {
             client->rtmp_connect_stat_ = false;
@@ -169,7 +173,7 @@ RtmpPushClient::RtmpPushClient(std::string url, FLVOutMode type){
     // rtmp flv
     url_ = url;
     type_ = type;
-    if(type == FLV_RTMP){
+    if(type == FLVOutMode::FLV_RTMP){
         log_debug("rtmp stream");
         ConnectServer();
         th_rtmp_reconnect_ = std::thread(&RtmpPushClient::RtmpReconnectThread, this);
@@ -248,7 +252,7 @@ RtmpPushClient::~RtmpPushClient(){
     th_video_.join();
     th_audio_.join();
     CloseFLVHandle();
-    if(type_ == FLV_RTMP){
+    if(type_ == FLVOutMode::FLV_RTMP){
         th_rtmp_reconnect_.join();
         CloseConnect();
     }
@@ -298,8 +302,8 @@ void RtmpPushClient::InputVideoData(uint8_t *data, int data_len, int64_t timesta
     packet.data_len = data_len;
     uint64_t now = GetCurrentTimeMs();
     uint64_t expected = 0;
-    start_timestamp.compare_exchange_strong(expected, now, std::memory_order_relaxed);
-    packet.dts = packet.pts = now - start_timestamp.load(std::memory_order_relaxed);
+    start_timestamp_.compare_exchange_strong(expected, now, std::memory_order_relaxed);
+    packet.dts = packet.pts = now - start_timestamp_.load(std::memory_order_relaxed);
     std::unique_lock<std::mutex> unique(video_mtx_);
     video_list_.push_back(packet);
     unique.unlock();
@@ -319,8 +323,8 @@ void RtmpPushClient::InputAudioData(uint8_t *data, int data_len, int64_t timesta
     packet.data_len = data_len;
     uint64_t now = GetCurrentTimeMs();
     uint64_t expected = 0;
-    start_timestamp.compare_exchange_strong(expected, now, std::memory_order_relaxed);
-    packet.dts = packet.pts = now - start_timestamp.load(std::memory_order_relaxed);
+    start_timestamp_.compare_exchange_strong(expected, now, std::memory_order_relaxed);
+    packet.dts = packet.pts = now - start_timestamp_.load(std::memory_order_relaxed);
     std::unique_lock<std::mutex> unique(audio_mtx_);
     audio_list_.push_back(packet);
     unique.unlock();

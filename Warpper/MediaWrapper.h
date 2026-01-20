@@ -12,6 +12,7 @@
 #include "log_helpers.h"
 #include "rtsp_client_proxy.h"
 #include "RtmpPushClient.h"
+#include "RtmpPullClient.h"
 #include <opencv2/opencv.hpp>
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
 #include "NodeFlow.h"
@@ -62,25 +63,25 @@ public:
     uint64_t nframe_counter_1_ = 0;
     uint64_t time_ts_accum_1_ = 0;
 
-    MediaReader *reader_ = NULL;
-    RtspClientProxy *rtsp_client_proxy_ = NULL;
-    bool rtsp_flag_ = false;
+    MediaReader *reader_ = nullptr;
+    RtspClientProxy *rtsp_client_proxy_ = nullptr;
+    RtmpPullClient *rtmp_pull_client_ = nullptr;
     int width_;
     int height_;
     int fps_ = 25;
     enum VideoType video_type_;
     enum AudioType audio_type_;
-    unsigned char *buffer_pcm_ = NULL;
+    unsigned char *buffer_pcm_ = nullptr;
     int buffer_pcm_len_ = 0;
 
-    HardVideoDecoder *hard_decoder_ = NULL;
-    HardVideoEncoder *hard_encoder_ = NULL;
-    AACDecoder *aac_decoder_ = NULL;
-    AACEncoder *aac_encoder_ = NULL;
+    HardVideoDecoder *hard_decoder_ = nullptr;
+    HardVideoEncoder *hard_encoder_ = nullptr;
+    AACDecoder *aac_decoder_ = nullptr;
+    AACEncoder *aac_encoder_ = nullptr;
 
-    uint8_t *vps_ = NULL;
-    uint8_t *sps_ = NULL;
-    uint8_t *pps_ = NULL;
+    uint8_t *vps_ = nullptr;
+    uint8_t *sps_ = nullptr;
+    uint8_t *pps_ = nullptr;
     int vps_buffer_len_ = 0;
     int sps_buffer_len_ = 0;
     int pps_buffer_len_ = 0;
@@ -89,11 +90,12 @@ public:
     int pps_len_ = 0;
     bool extra_ready_ = false;
 
-    Muxer *mp4_muxer_ = NULL;
+    Muxer *mp4_muxer_ = nullptr;
     int video_stream_ = -1;
     int audio_stream_ = -1;
 
     RtmpPushClient *rtmp_push_client_ = nullptr;
+    
 
     // NPU GPU
     int32_t device_id_ = 0;

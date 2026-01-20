@@ -1,7 +1,19 @@
 # Media-Cognition-Pipeline
-音视频封装、解封装、编解码、视觉感知(YOLO目标检测 + ByteTrack多目标跟踪)pipeline
+流媒体及深度学习推理加速通用处理框架，支持MP4、FLV、RTSP、RTMP、YOLO。
+* 音视频解封装(MP4、RTSP、FLV、RTMP(TODO))、重采样、编解码(NVIDIA、晟腾)、封装(MP4、FLV、RTMP)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪，NVIDIA、晟腾)pipeline, 采用模块化、节点化和接口化管理。
 
-* 音视频解封装(MP4、RTSP、FLV(TODO)、RTMP(TODO))、重采样、编解码、封装(MP4、FLV、RTMP)，视觉感知, 采用模块化、节点化和接口化管理。
+# 解封装
+* mp4
+  * Media/FileReader
+  * 使用ffmpeg实现
+* flv/rtmp
+  * Media/RtmpClient
+  * libflv(https://github.com/BreakingY/libflv) + librtmp(https://git.ffmpeg.org/rtmpdump.git)
+* rtsp
+  * Media/RtspReader
+  * simple-rtsp-clinet(https://github.com/BreakingY/simple-rtsp-client)
+
+# 编解码
 * 音频编解码使用纯软方案。
 * 视频编解码有以下实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -28,39 +40,51 @@
     * 实现参考：jetson_multimedia_api/samples/02_video_dec_cuda、jetson_multimedia_api/samples/01_video_encode
     * 考虑到Jetson一般作为边缘设备，为了降低时延，Jetson默认不支持解码B帧，解码B帧会出现画面倒退的情况，如果要支持B帧请修改`Jetson_utils-->JetsonDec.cpp`，注释掉`JetsonDec::decode_pro`中的`ret = ctx.dec->disableDPB();`
     * Test/test2.mp4不包含B帧 Test/test1.mp4和Test/Cognition.mp4包含B帧(如果要在Jetson上测试视觉感知，请先修改代码支持B帧，然后再使用Cognition.mp4进行测试，或者使用软解码测试)
-* 视觉感知(YOLO + ByteTrack):
-  * NVIDIA TensorRT
-    * `-DDETECTION_NVIDIA=ON`
-    * TensorRT-10.4.0.26
-    * trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16
-  * Ascend CANN
-    * `-DDETECTION_ASCEND=ON`
-    * CANN7.0.0/8.2.RC1
-    * atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16
-  * yolo11s_best.onnx 包含两个类别：{"dog", "person"}
-  * 模型训练：https://github.com/BreakingY/yolo-onnx-tensorrt
+
+# 封装
+* mp4
+  * Media/MediaMuxer
+  * 使用ffmpeg实现
+* flv/rtmp
+  * Media/RtmpClient
+  * libflv(https://github.com/BreakingY/libflv) + librtmp(https://git.ffmpeg.org/rtmpdump.git)
+
+# 视觉感知(YOLO + ByteTrack)
+* NVIDIA TensorRT
+  * `-DDETECTION_NVIDIA=ON`
+  * TensorRT-10.4.0.26
+  * trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16
+* Ascend CANN
+  * `-DDETECTION_ASCEND=ON`
+  * CANN7.0.0/8.2.RC1
+  * atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16
+* yolo11s_best.onnx 包含两个类别：{"dog", "person"}
+* 模型训练：https://github.com/BreakingY/yolo-onnx-tensorrt
+
+# 框架搭建
+* Warpper
+* 基于解封装、编解码、封装、视觉感知模块搭建通用媒体处理及感知框架。
+* 因为mp4需要在程序结束的时候写入尾数据，对于rtsp/rtmp实时流不适用，所以代码中这部分是注释掉的，有需要请打开`MediaWrapper.cpp`中的`#define MP4MUXER`，实时流写文件推荐使用flv。
+
+# 说明
 * 支持格式，视频：H264/H265，音频：AAC。
 * 视觉感知：YOLO11
 * 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
-* 代码模块划分如下图：
-![MCP](https://github.com/user-attachments/assets/bdb98d02-eaa6-4ad8-b30b-e2d3da399056)
-
-# 子模块
-* spdlog：https://github.com/gabime/spdlog
-* Bitstream：https://github.com/ireader/avcodec
-* ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
-* libflv: https://github.com/BreakingY/libflv
-* librtmp: https://git.ffmpeg.org/rtmpdump.git
-
-# 准备
-* ffmpeg版本==4.x。
-* 音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac。
-* 测试版本 ffmpeg4.0.5、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; 驱动550.163.01; Video_Codec_SDK11.0.10；Jetson5.0.2; TensorRT-10.4.0.26。
+* 测试版本：ffmpeg4.0.5(要求ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; NVIDIA驱动550.163.01; Video_Codec_SDK11.0.10；Jetson5.0.2; TensorRT-10.4.0.26。
 * ByteTrack依赖: `apt install libeigen3-dev`
 * Jetson依赖：v4l2
 * librtmp依赖：openssl
 * Windows 软件安装参考：
   * https://sunkx.blog.csdn.net/article/details/146064215
+* 代码模块划分如下图：
+![MCP](https://github.com/user-attachments/assets/bdb98d02-eaa6-4ad8-b30b-e2d3da399056)
+
+# 感谢以下作者(.gitmodules子模块)
+* spdlog：https://github.com/gabime/spdlog
+* Bitstream：https://github.com/ireader/avcodec
+* ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
+* libflv: https://github.com/BreakingY/libflv
+* librtmp: https://git.ffmpeg.org/rtmpdump.git
 
 # 编译
 * git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git
@@ -78,11 +102,8 @@
    * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..
    * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
 # 测试：
-1. pipeline测试： `./MediaCodec <../Test/test1.mp4(test2.mp4)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
+1. pipeline测试： `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
 2. AI推理：       `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
-
 
 # 技术交流
 * kxsun617@163.com
-
-

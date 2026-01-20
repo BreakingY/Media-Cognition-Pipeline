@@ -1,87 +1,118 @@
 [English](README.md) | [中文](README_CN.md)
 # Media-Cognition-Pipeline
-Audio/video packaging, unpackaging, encoding/decoding, visual perception (YOLO object detection + ByteTrack multi-object tracking) pipeline
+A general-purpose streaming media and deep learning inference acceleration framework, supporting MP4, FLV, RTSP, RTMP, and YOLO.
+* Audio/video demuxing (MP4, RTSP, FLV, RTMP (TODO)), resampling, encoding/decoding (NVIDIA, Ascend), muxing (MP4, FLV, RTMP), and visual perception (YOLO object detection + ByteTrack multi-object tracking, NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
 
-* Audio/video unpackaging (MP4, RTSP, FLV(TODO), RTMP(TODO)), resampling, encoding/decoding, packaging (MP4, FLV, RTMP), visual perception, managed using modular, node-based, and interface-based design.
-* Audio codec uses a pure software solution.
-* Video codec has the following implementations:
-  * FFmpeg hardware encoder/decoder (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
+# Demuxing
+* mp4
+  * Media/FileReader
+  * Implemented using FFmpeg
+* flv/rtmp
+  * Media/RtmpClient
+  * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
+* rtsp
+  * Media/RtspReader
+  * simple-rtsp-client (https://github.com/BreakingY/simple-rtsp-client)
+
+# Encoding / Decoding
+* Audio encoding/decoding uses a pure software solution.
+* Video encoding/decoding implementations include:
+  * FFmpeg hardware-accelerated encoding/decoding (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
     * `cmake -DFFMPEG_NVIDIA=ON ..`
-    * Only supports NVIDIA GPU, supports automatic switching between software and hardware encoding/decoding (prioritizes hardware decoding – not all NVIDIA GPUs support hardware codec; if not supported, automatically switches to software codec. FFmpeg must be compiled/installed with NVIDIA hardware codec support). Blog: https://blog.csdn.net/weixin_43147845/article/details/136812735
-  * FFmpeg pure software codec (FFSoftDecoder.cpp, H264FFSoftEncoder.cpp)
+    * NVIDIA GPU only, supports automatic switching between software and hardware encoding/decoding (hardware is preferred — not all NVIDIA GPUs support hardware codecs; if unsupported, it automatically falls back to software. FFmpeg must be compiled with NVIDIA hardware codec support enabled).  
+      Blog: https://blog.csdn.net/weixin_43147845/article/details/136812735
+  * FFmpeg pure software encoding/decoding (FFSoftDecoder.cpp, H264FFSoftEncoder.cpp)
     * `cmake -DFFMPEG_SOFT=ON ..`
-    * Can run in any Linux/Windows environment, only requires FFmpeg installation.
-  * Ascend DVPP V2 codec (DVPPDecoder.cpp, H264DVPPEncoder.cpp, DVPP_utils)
-    * `cmake -DDVPP_MPI=ON ..` (first run `source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
-    * Uses NPU #0 by default (MiedaWrapper.h --> device_id_)
-    * Considering real-time performance, decoding of B frames is not supported. If B frames are to be supported, please modify `DVPPDecoder.cpp-->HardVideoDecoder::Init` by increasing the value of `chn_attr_.video_attr.ref_frame_num`
-    * Test/test2.mp4 does not contain B-frames. Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Ascend, please modify the code to support B-frames first, and then use the Cognition.mp4 for testing, or use soft decoding for testing).
-  * NVIDIA x86 codec (NVIDIADecoder.cpp, H264NVIDIAEncoder.cpp, Nvcodec_utils)
-    * `cmake -DNVIDIA_SDK_X86=ON ..` (set environment variables first: `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
-    * Uses NVIDIA x86 native SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11), project uses Video_Codec_SDK_11.0.10, tested driver version 550.163.01. Files in Nvcodec_utils are extracted from Video_Codec_SDK_11.0.10, categorized, and only the files used in this project are included. You need to set the encoding mode (not all GPUs support hardware encoding; defaults to software encoding, MiedaWrapper.h --> use_nv_enc_flag_), default GPU #0 (MiedaWrapper.h --> device_id_). CUDA installation required (version not limited).
-  * NVIDIA arm(Jetson) codec (JetsonDecoder.cpp, H264JetsonEncoder.cpp, Jetson_utils)
-    * There is a problem opening the include and common(from /usr/src/jetson_multimedia_api/) folders on Windows, so they were uploaded as compressed files and need to be decompressed on Linux.
+    * Can run on any Linux/Windows environment, only requires FFmpeg to be installed.
+  * Ascend DVPP V2 encoding/decoding (DVPPDecoder.cpp, H264DVPPEncoder.cpp, DVPP_utils)
+    * `cmake -DDVPP_MPI=ON ..` (execute `source /usr/local/Ascend/ascend-toolkit/set_env.sh` first)
+    * Uses NPU device 0 by default (MiedaWrapper.h → device_id_)
+    * For real-time performance, B-frame decoding is not supported by default. To enable B-frame support, modify `DVPPDecoder.cpp → HardVideoDecoder::Init` and increase `chn_attr_.video_attr.ref_frame_num`.
+    * Test/test2.mp4 contains no B-frames; Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Ascend, first modify the code to support B-frames, then use Cognition.mp4, or use software decoding instead).
+  * NVIDIA x86 encoding/decoding (NVIDIADecoder.cpp, H264NVIDIAEncoder.cpp, Nvcodec_utils)
+    * `cmake -DNVIDIA_SDK_X86=ON ..` (set environment variables `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
+    * Uses the native NVIDIA x86 SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11).  
+      This project uses Video_Codec_SDK_11.0.10, tested with driver version 550.163.01.  
+      The files in the Nvcodec_utils directory are extracted from Video_Codec_SDK_11.0.10. Since the SDK contains many files, only those required by this project are included and categorized.  
+      Before use, you need to set the encoding mode (not all GPUs support hardware encoding; software encoding is used by default, MiedaWrapper.h → use_nv_enc_flag_).  
+      GPU device 0 is used by default (MiedaWrapper.h → device_id_). CUDA must be installed (version not restricted).
+  * NVIDIA ARM (Jetson) encoding/decoding (JetsonDecoder.cpp, H264JetsonEncoder.cpp, Jetson_utils)
+    * The include and common directories (from /usr/src/jetson_multimedia_api/) may not open correctly on Windows, so they are uploaded as compressed archives and must be extracted on Linux.
     * `cd HardCodec/Jetson_utils`
     * `tar -zxvf include.tar.gz`  
     * `tar -zxvf common.tar.gz`
-    * `cmake -DNVIDIA_SDK_ARM=ON ..` (set environment variables first: `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
-    * Jetpack version: 5.0.2, Jetpack 5. x codec is universal, but the libraries compiled from 5.0.2 cannot be directly used on other 5. x versions. Simply recompile the code on the target machine (without replacing the jetson_maultimedia.api header file)
-    * Implement reference:jetson_multimedia_api/samples/02_video_dec_cuda、jetson_multimedia_api/samples/01_video_encode
-    * Considering that Jetson is generally used as an edge device, in order to reduce latency, Jetson disables B-frame decoding by default. Decoding B-frames may cause frame reordering, which can result in frames being displayed out of order (frame rollback). If B-frame support is required, please modify `Jetson_utils --> JetsonDec.cpp` and comment out `ret = ctx.dec->disableDPB();` in `JetsonDec::decode_pro`.
-    * Test/test2.mp4 does not contain B-frames. Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Jetson, please modify the code to support B-frames first, and then use the Cognition.mp4 for testing).
-* Visual perception (YOLO + ByteTrack):
-  * NVIDIA TensorRT
-    * `-DDETECTION_NVIDIA=ON`
-    * TensorRT-10.4.0.26
-    * trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16
-  * Ascend CANN
-    * `-DDETECTION_ASCEND=ON`
-    * CANN7.0.0/8.2.RC1
-    * atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16
-  * yolo11s_best.onnx contains two categories:{"dog", "person"}
-  * model training: https://github.com/BreakingY/yolo-onnx-tensorrt
-* Supported formats: video: H264/H265, audio: AAC.
-* Visual perception: YOLO11
-* Ascend DVPP has two versions: V1 and V2. They support different platforms, please check the official website. Most future Ascend GPUs should support V2.
-* The code module division is shown in the following figure:
+    * `cmake -DNVIDIA_SDK_ARM=ON ..` (set environment variables `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
+    * JetPack version: 5.0.2. JetPack 5.x encoding/decoding is generally compatible, but libraries compiled on 5.0.2 cannot be directly used on other 5.x versions. Recompile the code on the target machine (no need to replace jetson_multimedia_api headers).
+    * Reference implementations: jetson_multimedia_api/samples/02_video_dec_cuda, jetson_multimedia_api/samples/01_video_encode
+    * Considering Jetson is usually used as an edge device and to reduce latency, B-frame decoding is disabled by default. Enabling B-frames may cause frame reordering issues. To enable B-frame decoding, modify `Jetson_utils → JetsonDec.cpp` and comment out `ret = ctx.dec->disableDPB();` in `JetsonDec::decode_pro`.
+    * Test/test2.mp4 contains no B-frames; Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Jetson, first modify the code to support B-frames, then use Cognition.mp4, or use software decoding instead).
+
+# Muxing
+* mp4
+  * Media/MediaMuxer
+  * Implemented using FFmpeg
+* flv/rtmp
+  * Media/RtmpClient
+  * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
+
+# Visual Perception (YOLO + ByteTrack)
+* NVIDIA TensorRT
+  * `-DDETECTION_NVIDIA=ON`
+  * TensorRT-10.4.0.26
+  * `trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16`
+* Ascend CANN
+  * `-DDETECTION_ASCEND=ON`
+  * CANN 7.0.0 / 8.2.RC1
+  * `atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3 --precision_mode_v2=mixed_float16`
+* yolo11s_best.onnx contains two classes: {"dog", "person"}
+* Model training: https://github.com/BreakingY/yolo-onnx-tensorrt
+
+# Framework Construction
+* Wrapper
+* A general media processing and perception framework built on demuxing, encoding/decoding, muxing, and visual perception modules.
+* Since MP4 requires writing trailer data at program termination, it is not suitable for RTSP/RTMP real-time streams. Therefore, this part of the code is commented out. If needed, enable `#define MP4MUXER` in `MediaWrapper.cpp`. For real-time streaming, FLV is recommended for file output.
+
+# Notes
+* Supported formats: Video: H264/H265, Audio: AAC.
+* Visual perception: YOLO11.
+* Ascend DVPP has two versions: V1 and V2. V1 and V2 apply to different platforms. Please refer to the official documentation. Newer Ascend cards generally support V2.
+* Tested versions: FFmpeg 4.0.5 (requires FFmpeg 4.x; audio uses fdk-aac encoding, ensure FFmpeg is built with fdk-aac), OpenCV 4.5.1, CANN 7.0.0 / 8.2.RC1 (Ascend SDK), NVIDIA: CUDA 12.4; NVIDIA driver 550.163.01; Video_Codec_SDK 11.0.10; Jetson 5.0.2; TensorRT 10.4.0.26.
+* ByteTrack dependency: `apt install libeigen3-dev`
+* Jetson dependency: v4l2
+* librtmp dependency: openssl
+* Windows software installation reference:
+  * https://sunkx.blog.csdn.net/article/details/146064215
+* Code module structure is shown below:
 ![MCP](https://github.com/user-attachments/assets/bdb98d02-eaa6-4ad8-b30b-e2d3da399056)
 
-# Submodule
-* spdlog：https: https://github.com/gabime/spdlog
+# Acknowledgements (.gitmodules submodules)
+* spdlog: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv
 * librtmp: https://git.ffmpeg.org/rtmpdump.git
 
-# Requirements
-* ffmpeg version == 4.x
-* Audio uses fdk-aac codec, ensure ffmpeg includes fdk-aac.
-* Tested versions: ffmpeg 4.0.5, opencv 4.5.1, CANN 7.0.0/8.2.RC1 (Ascend SDK), NVIDIA: cuda12.4; driver 550.163.01; Video_Codec_SDK 11.0.10; Jetson5.0.2; TensorRT-10.4.0.26.
-* `apt install libeigen3-dev` for ByteTrack
-* v4l2 for Jetson
-* openssl for librtmp
-* Windows installation guide:
-  * https://sunkx.blog.csdn.net/article/details/146064215
-
 # Build
-* git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git
+* `git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git`
 1. Linux
-   * mkdir build
-   * cd build
-   * cmake -DFFMPEG_SOFT=ON ..
-   * make -j
-2. Windows (MinGW + cmake)
-   * mkdir build
-   * cd build
-   * cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..
-   * mingw32-make -j
-3. Visual perception
-   * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..
-   * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
+   * `mkdir build`
+   * `cd build`
+   * `cmake -DFFMPEG_SOFT=ON ..`
+   * `make -j`
+2. Windows (MinGW + CMake)
+   * `mkdir build`
+   * `cd build`
+   * `cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..`
+   * `mingw32-make -j`
+3. Visual Perception
+   * NVIDIA: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..`
+   * ASCEND: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..`
 
-# Test
-1. pipeline:      `./MediaCodec <../Test/test1.mp4(test2.mp4)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
-2. AI inference:  `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
+# Testing
+1. Pipeline test:  
+   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
+2. AI inference:  
+   `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
 
-# Contact
+# Technical Contact
 * kxsun617@163.com
