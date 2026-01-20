@@ -53,11 +53,11 @@
 * NVIDIA TensorRT
   * `-DDETECTION_NVIDIA=ON`
   * TensorRT-10.4.0.26
-  * trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16
+  * `trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16`
 * Ascend CANN
   * `-DDETECTION_ASCEND=ON`
   * CANN7.0.0/8.2.RC1
-  * atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16
+  * `atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16`
 * yolo11s_best.onnx 包含两个类别：{"dog", "person"}
 * 模型训练：https://github.com/BreakingY/yolo-onnx-tensorrt
 
@@ -87,20 +87,20 @@
 * librtmp: https://git.ffmpeg.org/rtmpdump.git
 
 # 编译
-* git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git
+* `git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git`
 1. Linux
-   * mkdir build
-   * cd build
-   * cmake -DFFMPEG_SOFT=ON ..
-   * make -j
+   * `mkdir build`
+   * `cd build`
+   * `cmake -DFFMPEG_SOFT=ON ..`
+   * `make -j`
 2. Windows(MinGW + cmake)
-   * mkdir build
-   * cd build
-   * cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..
-   * mingw32-make -j
+   * `mkdir build`
+   * `cd build`
+   * `cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..`
+   * `mingw32-make -j`
 3. 视觉感知
-   * NVIDIA: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..
-   * ASCEND: cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..
+   * NVIDIA: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..`
+   * ASCEND: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..`
 # 测试：
 1. pipeline测试： `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
 2. AI推理：       `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
