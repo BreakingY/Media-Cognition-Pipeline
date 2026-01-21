@@ -504,12 +504,20 @@ void RtmpPushClient::RtmpReconnectThread(){
     int ret = 0;
     while (!abort_) {
         if(rtmp_connect_stat_ == false){
+            log_debug("{} reconnecting ...", url_);
             video_ready_ = audio_ready_ = false;
             CloseConnect();
             ConnectServer();
             std::unique_lock<std::mutex> unique_flv(flv_mtx_);
             CloseFLVHandle();
             OpencvFLVHandle();
+            if(rtmp_connect_stat_){
+                log_debug("{} connection successful", url_);
+            }
+            else{
+                log_debug("{} connection failed", url_);
+            }
+            
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
