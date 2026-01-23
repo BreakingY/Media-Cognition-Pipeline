@@ -31,6 +31,9 @@ public:
     void SetDataListner(MediaDataListner *lisnter, CloseCallbackFunc cb){data_listner_ = lisnter; colse_cb_ = cb; return;}
 private:
     void FLVStreamReadThread();
+    void RtmpReconnectThread();
+    int ConnectServer();
+    void CloseConnect();
 private:
     std::string url_;
     FLVOutMode type_;
@@ -62,6 +65,13 @@ private:
     int64_t last_timestamp_ = -1;
     int64_t interval_sum_ = 0;
     int probe_cnt_ = 0;
+
+    RTMP *rtmp_ = nullptr;
+    std::atomic<bool> rtmp_connect_stat_ = {false};
+    std::thread th_rtmp_reconnect_;
+    bool video_ready_ = false;
+    uint8_t recv_buffer_[1024 * 1024 * 4];
+    bool read_flv_header_ = false;
      
     friend void audioCallBack(enum FLVAudioType type, int profile, int sample_rate_index, int channel, int64_t timestamp, uint8_t* data, uint32_t data_len, void* arg);
     friend void videoCallBack(enum FLVVideoType type, int64_t timestamp, uint8_t* data, uint32_t data_len, void* arg);

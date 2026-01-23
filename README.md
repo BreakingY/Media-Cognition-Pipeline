@@ -1,7 +1,7 @@
 [English](README.md) | [中文](README_CN.md)
 # Media-Cognition-Pipeline
 A general-purpose streaming media and deep learning inference acceleration framework, supporting H264, H265, AAC, MP4, FLV, RTSP, RTMP, and YOLO.
-* Audio/video demuxing (MP4, RTSP, FLV, RTMP (TODO)), resampling, encoding/decoding (H264, H265, AAC; NVIDIA, Ascend), muxing (MP4, FLV, RTMP), and visual perception (YOLO object detection + ByteTrack multi-object tracking; NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
+* Audio/video demuxing (MP4, RTSP, FLV, RTMP), resampling, encoding/decoding (H264, H265, AAC; NVIDIA, Ascend), muxing (MP4, FLV, RTMP), and visual perception (YOLO object detection + ByteTrack multi-object tracking; NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
 
 # Demuxing
 * mp4
