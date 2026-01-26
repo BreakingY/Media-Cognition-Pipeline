@@ -90,7 +90,8 @@ A general-purpose streaming media and deep learning inference acceleration frame
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 * libflv: https://github.com/BreakingY/libflv
-* librtmp: https://git.ffmpeg.org/rtmpdump.git
+* librtmp: https://git.ffmpeg.org/rtmpdump
+* simple-rtsp-client: https://github.com/BreakingY/simple-rtsp-client
 
 # Build
 * `git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git`

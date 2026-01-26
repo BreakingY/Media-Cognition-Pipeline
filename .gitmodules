@@ -13,3 +13,6 @@
 [submodule "Media/RtmpClient/rtmpdump"]
 	path = Media/RtmpClient/rtmpdump
 	url = https://git.ffmpeg.org/rtmpdump.git
+[submodule "Media/MediaReader/RtspReader/simple-rtsp-client"]
+	path = Media/MediaReader/RtspReader/simple-rtsp-client
+	url = https://github.com/BreakingY/simple-rtsp-client

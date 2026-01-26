@@ -97,7 +97,7 @@ static double R2d(AVRational r)
 {
     return r.den == 0 ? 0 : (double)r.num / (double)r.den;
 }
-void MediaReader::VideoInit(char *filename)
+void MediaReader::VideoInit(const char *filename)
 {
     int ret;
     char errors[1024];
@@ -178,7 +178,7 @@ enum AudioType MediaReader::GetAudioType()
     return AUDIO_NONE;
 }
 
-MediaReader::MediaReader(char *file_path)
+MediaReader::MediaReader(const char *file_path)
 {
     file_ = file_path;
 

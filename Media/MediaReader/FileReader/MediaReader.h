@@ -48,7 +48,7 @@ class MediaReader
 {
 public:
     MediaReader() = delete;
-    MediaReader(char *file_path);
+    MediaReader(const char *file_path);
     enum VideoType GetVideoType();
     enum AudioType GetAudioType();
     virtual ~MediaReader();
@@ -64,7 +64,7 @@ private:
     static void *AudioSyncThread(void *arg);
     static void *CheckThread(void *arg);
     void PraseFrame();
-    void VideoInit(char *filename);
+    void VideoInit(const char *filename);
 
 private:
     std::string file_;

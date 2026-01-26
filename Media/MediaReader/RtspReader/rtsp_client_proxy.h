@@ -13,7 +13,7 @@
 #define PROBEFRAME 50 // 探测帧数，用于计算视频fps
 class RtspClientProxy:public RtspMediaInterface{
 public:
-    RtspClientProxy(char *rtsp_url);
+    RtspClientProxy(const char *rtsp_url);
     ~RtspClientProxy();
     void GetVideoCon(int &width, int &height, int &fps);
     void GetAudioCon(int &sample_rate_index, int &channels, int &profile);

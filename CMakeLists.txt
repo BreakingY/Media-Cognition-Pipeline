@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project (VIDEOCODECPROJ)
+set(CMAKE_CXX_STANDARD 17)
 option(FFMPEG_SOFT "Enable FFmpeg soft codec" OFF)
 option(FFMPEG_NVIDIA "Enable FFmpeg nvidia codec" OFF)
 option(DVPP_MPI "Enable Ascend DVPP V2 codec" OFF)
@@ -24,7 +25,8 @@ include_directories(Warpper Log Log/spdlog/include
                     Media/MediaCommon
                     Media/MediaMuxer
                     Media/Bitstream/h264/include Media/Bitstream/h265/include
-                    Media/MediaReader Media/MediaReader/FileReader Media/MediaReader/RtspReader Media/MediaReader/RtspReader/3rdparty Media/MediaReader/RtspReader/rtp
+                    Media/MediaReader Media/MediaReader/FileReader 
+                    Media/MediaReader/RtspReader Media/MediaReader/RtspReader/simple-rtsp-client Media/MediaReader/RtspReader/simple-rtsp-client/3rdparty Media/MediaReader/RtspReader/simple-rtsp-client/rtp
                     Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp)
 
 aux_source_directory(Test TEST)
@@ -37,8 +39,9 @@ aux_source_directory(Media/MediaCommon MEDIACOMMON)
 aux_source_directory(Media/MediaMuxer MUXER)
 aux_source_directory(Media/MediaReader/FileReader FILEREADER)
 aux_source_directory(Media/MediaReader/RtspReader RTSPREADER)
-aux_source_directory(Media/MediaReader/RtspReader/3rdparty RTSP3Rd)
-aux_source_directory(Media/MediaReader/RtspReader/rtp RTP)
+aux_source_directory(Media/MediaReader/RtspReader/simple-rtsp-client RTSPSRC)
+aux_source_directory(Media/MediaReader/RtspReader/simple-rtsp-client/3rdparty RTSP3Rd)
+aux_source_directory(Media/MediaReader/RtspReader/simple-rtsp-client/rtp RTP)
 
 aux_source_directory(Media/Bitstream/h264/source BH264)
 aux_source_directory(Media/Bitstream/h265/src BH265)
@@ -48,7 +51,7 @@ aux_source_directory(Media/RtmpClient/libflv/source LIBFLV)
 aux_source_directory(Media/RtmpClient/rtmpdump/librtmp LIBRTMP)
 
 set(EXECUTABLE_OUTPUT_PATH ./)
-add_compile_options(-g -fpermissive -std=c++17 -Wno-deprecated-declarations)
+add_compile_options(-g -Wno-deprecated-declarations)
 set(CMAKE_BUILD_TYPE Release)
 ###############
 #### codec ####
@@ -119,7 +122,7 @@ elseif(DETECTION_ASCEND)
 endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
-add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
+add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSPSRC} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
                         ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS} ssl crypto)
 ###############

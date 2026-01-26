@@ -3,7 +3,7 @@ extern "C" {
     #include "h264-sps.h"
     #include "h265-sps.h"
 }
-RtspClientProxy::RtspClientProxy(char *rtsp_url){
+RtspClientProxy::RtspClientProxy(const char *rtsp_url){
     rtsp_url_ = rtsp_url;
     client_ =  new RtspClient(transport_); 
     client_->Connect(rtsp_url); 
