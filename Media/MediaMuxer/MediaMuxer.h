@@ -39,19 +39,19 @@ public:
      */
     // h264/h265 aac
     void SetMediaInfo(enum VideoType video_type, enum AudioType audio_type);
-    int WriteVideo2File(uint8_t *data_nalus, int len_nalus); 
-    int WriteAudio2File(uint8_t *data, int len);
+    int WriteVideo2File(uint8_t *data_nalus, int len_nalus); // h264/h265 with startcode
+    int WriteAudio2File(uint8_t *data, int len);// aac with adts
 public:
     /**
      * non-thread-safe
      * AddVideo/AddAudio-->Open-->SendHeader-->SendPacket-->SendTrailer
      */
-    int AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height); // H264 h265
-    int AddAudio(int channels, int sample_rate, int profile, AudioType type);            // AAC
+    int AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height); // h264 h265
+    int AddAudio(int channels, int sample_rate, int profile, AudioType type);            // aac
     int Open();
 
     int SendHeader();
-    int SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, int stream_index); // video:one NALU without startCodes audio:aac without adts
+    int SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, int stream_index); // video:one NALU without startcode; audio:aac without adts
     int SendTrailer();
 
     int GetAudioStreamIndex();
