@@ -106,5 +106,7 @@
 1. pipeline测试： `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
 2. AI推理：       `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
 
+   https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
+
 # 技术交流
 * kxsun617@163.com
