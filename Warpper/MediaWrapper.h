@@ -16,15 +16,15 @@
 #include <opencv2/opencv.hpp>
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
 #include "NodeFlow.h"
-class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner, public InferDataListner
+class MediaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner, public InferDataListner
 #else
-class MiedaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner
+class MediaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner
 #endif
 {
 public:
-    MiedaWrapper() = delete;
-    MiedaWrapper(const char *input, const char *output, const char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend*/ = 0);
-    virtual ~MiedaWrapper();
+    MediaWrapper() = delete;
+    MediaWrapper(const char *input, const char *output, const char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend*/ = 0);
+    virtual ~MediaWrapper();
     // 音视频解封装接口
     void OnVideoData(VideoData data);
     void OnAudioData(AudioData data);

@@ -1,5 +1,5 @@
 #include "MediaWrapper.h"
-MiedaWrapper::MiedaWrapper(const char *input, const char *output, const char *eng_path, int device_id)
+MediaWrapper::MediaWrapper(const char *input, const char *output, const char *eng_path, int device_id)
 {
     device_id_ = device_id;
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
@@ -43,7 +43,7 @@ MiedaWrapper::MiedaWrapper(const char *input, const char *output, const char *en
         mp4_muxer_ = new Muxer(output);
     }
 }
-void MiedaWrapper::MediaOverhandle()
+void MediaWrapper::MediaOverhandle()
 {
     over_flag_ = true;
     return;
@@ -52,7 +52,7 @@ void MiedaWrapper::MediaOverhandle()
  * 音视频解封装、解码
  */
 // with startcode
-void MiedaWrapper::OnVideoData(VideoData data)
+void MediaWrapper::OnVideoData(VideoData data)
 {
     if(rtsp_client_proxy_){ // rtsp
         video_type_ = rtsp_client_proxy_->GetVideoType();
@@ -104,7 +104,7 @@ void MiedaWrapper::OnVideoData(VideoData data)
     return;
 }
 // width adts
-void MiedaWrapper::OnAudioData(AudioData data)
+void MediaWrapper::OnAudioData(AudioData data)
 {
     if(rtsp_client_proxy_){ // rtsp
         audio_type_ = rtsp_client_proxy_->GetAudioType();
@@ -140,7 +140,7 @@ void MiedaWrapper::OnAudioData(AudioData data)
 /**
  * 解码后音视频数据
  */
-void MiedaWrapper::OnRGBData(cv::Mat frame)
+void MediaWrapper::OnRGBData(cv::Mat frame)
 {
     // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
@@ -195,7 +195,7 @@ static void DetectDraw(cv::Mat& img, DetectionInfo& info) {
         cv::putText(img, label, text, cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
     }
 }
-void MiedaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info){
+void MediaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info){
     DetectDraw(img, info);
     if (!hard_encoder_) {
 #if defined(USE_NVIDIA_X86)
@@ -224,7 +224,7 @@ void MiedaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info){
 #endif
 // FILE *fp_file = nullptr;
 // data_len是单通道当本个数 LC-AAC:1024 HE-AAC:2048
-void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
+void MediaWrapper::OnPCMData(unsigned char **data, int data_len)
 {
     // 拿到解码后的PCM音频根据自己的业务需求进行处理，例如语音识别、语音合成等。
     // 之后再把处理后的音频进行编码
@@ -264,7 +264,7 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
 }
 // static const char *enc_h264_filename = "out.h264";
 // static FILE *enc_h264_fd = nullptr;
-bool MiedaWrapper::SetMP4MediaInfo(){
+bool MediaWrapper::SetMP4MediaInfo(){
     if(set_mp4_info_over_ == true){
         return true;
     }
@@ -325,7 +325,7 @@ bool MiedaWrapper::SetMP4MediaInfo(){
     }
     return set_flag;
 }
-void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
+void MediaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
 {
     // if (enc_h264_fd == nullptr) {
     //     enc_h264_fd = fopen(enc_h264_filename, "wb");
@@ -348,7 +348,7 @@ void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
 }
 // static const char *enc_aac_filename = "out.aac";
 // static FILE *enc_aac_fd = nullptr;
-void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts)
+void MediaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts)
 {
     // if (enc_aac_fd == nullptr) {
     //     enc_aac_fd = fopen(enc_aac_filename, "wb");
@@ -369,7 +369,7 @@ void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts
     }
     return;
 }
-MiedaWrapper::~MiedaWrapper()
+MediaWrapper::~MediaWrapper()
 {
 
     if (reader_) {
@@ -415,5 +415,5 @@ MiedaWrapper::~MiedaWrapper()
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     EndStream(context_);
 #endif
-    log_debug("~MiedaWrapper");
+    log_debug("~MediaWrapper");
 }

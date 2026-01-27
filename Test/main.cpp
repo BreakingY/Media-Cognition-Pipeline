@@ -14,11 +14,11 @@ int main(int argc, char **argv)
     aclInit(NULL);
 #endif
 #if defined(DETECTION_NVIDIA)
-    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2], "../Test/yolo11s_best.engine");
+    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.engine");
 #elif defined(DETECTION_ASCEND)
-    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2], "../Test/yolo11s_best.om");
+    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.om");
 #else
-    MiedaWrapper *test = new MiedaWrapper(argv[1], argv[2]);
+    MediaWrapper *test = new MediaWrapper(argv[1], argv[2]);
 #endif
     while (!test->OverHandle()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
