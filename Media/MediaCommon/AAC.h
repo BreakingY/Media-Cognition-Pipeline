@@ -47,6 +47,7 @@ struct AdtsHeader {
     unsigned int numberOfRawDataBlockInFrame; // 2 bit
 };
 int GetSampleRateIndex(int freq);
+int GetSampleRate(int sample_rate_idx);
 void GenerateAdtsHeader(char *adts_header_buffer, int data_len, int profile, int sample_rate_index, int channels);
 // 解析头部,in是带有adts的aac数据
 int ParseAdtsHeader(uint8_t *in, struct AdtsHeader *res);

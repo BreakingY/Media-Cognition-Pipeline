@@ -1,268 +1,12 @@
 #include "MediaWrapper.h"
-// #define MP4MUXER
-
-#ifdef MP4MUXER
-static uint32_t find_start_code(uint8_t *buf, uint32_t zeros_in_startcode)
-{
-    uint32_t info;
-    uint32_t i;
-
-    info = 1;
-    if ((info = (buf[zeros_in_startcode] != 1) ? 0 : 1) == 0)
-        return 0;
-
-    for (i = 0; i < zeros_in_startcode; i++)
-        if (buf[i] != 0) {
-            info = 0;
-            break;
-        };
-
-    return info;
-}
-static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_t total, uint8_t *prefix_len)
-{
-    uint32_t info;
-    uint8_t *q;
-    uint8_t *p = *offset;
-    uint8_t prefix_len_z = 0;
-    *len = 0;
-    *prefix_len = 0;
-    while (1) {
-
-        if (((p - start) + 3) >= total)
-            return nullptr;
-
-        info = find_start_code(p, 2);
-        if (info == 1) {
-            prefix_len_z = 2;
-            *prefix_len = prefix_len_z;
-            break;
-        }
-
-        if (((p - start) + 4) >= total)
-            return nullptr;
-
-        info = find_start_code(p, 3);
-        if (info == 1) {
-            prefix_len_z = 3;
-            *prefix_len = prefix_len_z;
-            break;
-        }
-        p++;
-    }
-    q = p;
-    p = q + prefix_len_z + 1;
-    prefix_len_z = 0;
-    while (1) {
-        if (((p - start) + 3) >= total) {
-            *len = (start + total - q);
-            *offset = start + total;
-            return q;
-        }
-
-        info = find_start_code(p, 2);
-        if (info == 1) {
-            prefix_len_z = 2;
-            break;
-        }
-
-        if (((p - start) + 4) >= total) {
-            *len = (start + total - q);
-            *offset = start + total;
-            return q;
-        }
-
-        info = find_start_code(p, 3);
-        if (info == 1) {
-            prefix_len_z = 3;
-            break;
-        }
-
-        p++;
-    }
-
-    *len = (p - q);
-    *offset = p;
-    return q;
-}
-/**
- * 编码后音视频数据
- */
-int MiedaWrapper::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
-{
-    // 这里不使用编码器传过来的时间戳，根据当前时间重新生成
-    time_now_ = std::chrono::steady_clock::now();
-    nframe_counter_++;
-    if (nframe_counter_ == 1) {
-        time_pre_ = time_now_;
-        time_ts_accum_ = 0;
-    }
-    uint64_t duration_t = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_ - time_pre_).count();
-    time_ts_accum_ += duration_t;
-    uint64_t pts_t = time_ts_accum_;
-    time_pre_ = time_now_;
-
-    uint8_t *p_video = nullptr;
-    uint32_t nal_len;
-    uint8_t *buf_sffset = data_nalus;
-    uint8_t prefix_len = 0;
-    uint8_t *video_data = data_nalus;
-    uint32_t video_len = len_nalus;
-    p_video = get_nal(&nal_len, &buf_sffset, video_data, video_len, &prefix_len);
-    while (p_video != nullptr) {
-        prefix_len = prefix_len + 1;
-        uint8_t *data = p_video;
-        int data_len = nal_len;
-        int nalu_type;
-        int start_code = 0;
-        if (data[0] == 0 && data[1] == 0 && data[2] == 1) {
-            start_code = 3;
-        } else if (data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) {
-            start_code = 4;
-        }
-        if (video_type_ == VIDEO_H264) {
-            nalu_type = data[start_code] & 0x1f;
-            if (!extra_ready_) {
-                if (nalu_type == 7) {
-                    if (sps_ == nullptr || (sps_buffer_len_ < data_len - start_code)) {
-                        sps_ = (uint8_t *)realloc(sps_, data_len - start_code);
-                        sps_buffer_len_ = data_len - start_code;
-                    }
-                    memcpy(sps_, data + start_code, data_len - start_code);
-                    sps_len_ = data_len - start_code;
-
-                } else if (nalu_type == 8) {
-                    if (pps_ == nullptr || (pps_buffer_len_ < data_len - start_code)) {
-                        pps_ = (uint8_t *)realloc(pps_, data_len - start_code);
-                        pps_buffer_len_ = data_len - start_code;
-                    }
-                    memcpy(pps_, data + start_code, data_len - start_code);
-                    pps_len_ = data_len - start_code;
-                }
-            }
-
-        } else if (video_type_ == VIDEO_H265) {
-            nalu_type = (data[start_code] >> 1) & 0x3f;
-            if (!extra_ready_) {
-                if (nalu_type == 32) {
-                    if (vps_ == nullptr || (vps_buffer_len_ < data_len - start_code)) {
-                        vps_ = (uint8_t *)realloc(vps_, data_len - start_code);
-                        vps_buffer_len_ = data_len - start_code;
-                    }
-                    memcpy(vps_, data + start_code, data_len - start_code);
-                    vps_len_ = data_len - start_code;
-                } else if (nalu_type == 33) {
-                    if (sps_ == nullptr || (sps_buffer_len_ < data_len - start_code)) {
-                        sps_ = (uint8_t *)realloc(sps_, data_len - start_code);
-                        sps_buffer_len_ = data_len - start_code;
-                    }
-                    memcpy(sps_, data + start_code, data_len - start_code);
-                    sps_len_ = data_len - start_code;
-
-                } else if (nalu_type == 34) {
-                    if (pps_ == nullptr || (pps_buffer_len_ < data_len - start_code)) {
-                        pps_ = (uint8_t *)realloc(pps_, data_len - start_code);
-                        pps_buffer_len_ = data_len - start_code;
-                    }
-                    memcpy(pps_, data + start_code, data_len - start_code);
-                    pps_len_ = data_len - start_code;
-                }
-            }
-        }
-        if (sps_len_ != 0 && pps_len_ != 0) {
-            extra_ready_ = true;
-        }
-        if (!extra_ready_) {
-            goto NEXT;
-        }
-        if (video_stream_ == -1) {
-            ExtraData extra;
-            extra.vps = vps_;
-            extra.vps_len = vps_len_;
-            extra.sps = sps_;
-            extra.sps_len = sps_len_;
-            extra.pps = pps_;
-            extra.pps_len = pps_len_;
-            mp4_muxer_->AddVideo(90000, video_type_, extra, width_, height_, fps_);
-        }
-        // 音频
-        if( (rtsp_client_proxy_ && (rtsp_client_proxy_->GetAudioType() != AudioType::AUDIO_NONE))
-            || (rtmp_pull_client_ && (rtmp_pull_client_->GetAudioType() != AudioType::AUDIO_NONE))
-            || (reader_ && (reader_->GetAudioType() != AudioType::AUDIO_NONE)) ){
-            if(audio_stream_ == -1){
-                int channels;
-                int samplerate;
-                int profile;
-                aac_encoder_->GetAudioCon(channels, samplerate, profile); // 获取AAC编码器输出信息
-                mp4_muxer_->AddAudio(channels, samplerate, profile, AUDIO_AAC);
-            }
-        }
-        if (video_stream_ == -1) {
-            mp4_muxer_->Open();
-            mp4_muxer_->SendHeader();
-            audio_stream_ = mp4_muxer_->GetAudioStreamIndex();
-            video_stream_ = mp4_muxer_->GetVideoStreamIndex();
-        }
-        AVRational time_base = mp4_muxer_->fmt_ctx_->streams[mp4_muxer_->video_index_]->time_base;
-        AVRational time_base_q = {1, AV_TIME_BASE};                             // 微妙
-        int64_t video_pts = av_rescale_q(pts_t * 1000, time_base_q, time_base); // 转换到ffmpeg时间基
-        mp4_muxer_->SendPacket(data + start_code, data_len - start_code, video_pts, video_pts, video_stream_);
-    NEXT:
-        p_video = get_nal(&nal_len, &buf_sffset, video_data, video_len, &prefix_len);
-    }
-
-    return 0;
-}
-int MiedaWrapper::WriteAudio2File(uint8_t *data, int len)
-{
-    if (audio_stream_ == -1) {
-        return 0;
-    }
-#if 0
-    struct AdtsHeader res;
-    ParseAdtsHeader((uint8_t*)data, &res);
-    log_info("channelCfg:{} rate:{}",res.channelCfg,sampling_frequencies[res.samplingFreqIndex]);
-#endif
-    time_now_1_ = std::chrono::steady_clock::now();
-    nframe_counter_1_++;
-    if (nframe_counter_1_ == 1) {
-        time_pre_1_ = time_now_1_;
-        time_ts_accum_1_ = 0;
-    }
-    uint64_t duration_t = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_1_ - time_pre_1_).count();
-    time_ts_accum_1_ += duration_t;
-    uint64_t pts_t = time_ts_accum_1_;
-    // 模拟实时流，所以这里面的pts重新生成
-    time_pre_1_ = time_now_1_;
-
-    AVRational time_base = mp4_muxer_->fmt_ctx_->streams[mp4_muxer_->audio_index_]->time_base;
-    AVRational time_base_q = {1, AV_TIME_BASE};                             // 微妙
-    int64_t audio_pts = av_rescale_q(pts_t * 1000, time_base_q, time_base); // 转换到ffmpeg时间基
-    mp4_muxer_->SendPacket(data + 7, len - 7, audio_pts, audio_pts, audio_stream_);
-    return 0;
-}
-#endif
 MiedaWrapper::MiedaWrapper(const char *input, const char *output, const char *eng_path, int device_id)
 {
-    size_t len = strlen(output);
-    if( memcmp("rtmp://", output, strlen("rtmp://")) == 0 ){
-        rtmp_push_client_ = new RtmpPushClient(output, FLV_RTMP);
-    }
-    else if( len >= 4 && memcmp(output + len - 4, ".flv", 4) == 0 ){
-        rtmp_push_client_ = new RtmpPushClient(output, FLV_FILE);
-    }
-    else if( len >= 4 && memcmp(output + len - 4, ".mp4", 4) == 0){
-#ifdef MP4MUXER
-        mp4_muxer_ = new Muxer();
-        mp4_muxer_->Init(output);
-#endif
-    }
     device_id_ = device_id;
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
     eng_path_ = eng_path;
     DetectModelInit(eng_path_, device_id_);
 #endif
-    len = strlen(input);
+    size_t len = strlen(input);
     if( memcmp("rtsp://", input, strlen("rtsp://")) == 0 ){
         rtsp_client_proxy_ = new RtspClientProxy(input);
         rtsp_client_proxy_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
@@ -286,6 +30,17 @@ MiedaWrapper::MiedaWrapper(const char *input, const char *output, const char *en
         reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
             return this->MediaOverhandle();
         });
+    }
+
+    len = strlen(output);
+    if( memcmp("rtmp://", output, strlen("rtmp://")) == 0 ){
+        rtmp_push_client_ = new RtmpPushClient(output, FLV_RTMP);
+    }
+    else if( len >= 4 && memcmp(output + len - 4, ".flv", 4) == 0 ){
+        rtmp_push_client_ = new RtmpPushClient(output, FLV_FILE);
+    }
+    else if( len >= 4 && memcmp(output + len - 4, ".mp4", 4) == 0){
+        mp4_muxer_ = new Muxer(output);
     }
 }
 void MiedaWrapper::MediaOverhandle()
@@ -507,34 +262,107 @@ void MiedaWrapper::OnPCMData(unsigned char **data, int data_len)
     // fwrite(buffer_pcm_, 1, buf_len, fp_file); // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
     return;
 }
-static const char *enc_h264_filename = "out.h264";
-static FILE *enc_h264_fd = nullptr;
+// static const char *enc_h264_filename = "out.h264";
+// static FILE *enc_h264_fd = nullptr;
+bool MiedaWrapper::SetMP4MediaInfo(){
+    if(set_mp4_info_over_ == true){
+        return true;
+    }
+    std::unique_lock<std::mutex> unique(mp4_mtx_);
+    if((video_type_ == VIDEO_H264 || video_type_ == VIDEO_H265) && audio_type_ == AUDIO_AAC){
+        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_AAC);
+        return true;
+    }
+    bool have_video = false;
+    bool have_audio = false;
+    bool set_flag = false;
+    if(reader_){
+        // for file
+        if(reader_->GetVideoType() == VIDEO_H264 || reader_->GetVideoType() == VIDEO_H265){
+            have_video = true;
+        }
+        if(reader_->GetAudioType() == AUDIO_AAC){
+            have_audio = true;
+        }
+        set_flag = true;
+    }
+    else if(rtsp_client_proxy_){
+        // for sdp
+        if(rtsp_client_proxy_->GetVideoType() == VIDEO_H264 || rtsp_client_proxy_->GetVideoType() == VIDEO_H265){
+            have_video = true;
+        }
+        if(rtsp_client_proxy_->GetAudioType() == AUDIO_AAC){
+            have_audio = true;
+        }
+        set_flag = true;
+    }
+    else if(rtmp_pull_client_){
+        // need to probe
+        time_now_ = std::chrono::steady_clock::now();
+        nframe_counter_++;
+        if (nframe_counter_ == 1) {
+            time_pre_ = time_now_;
+        }
+        int64_t duration_t = std::chrono::duration_cast<std::chrono::seconds>(time_now_ - time_pre_).count();
+        if(duration_t > 2){
+            if(rtmp_pull_client_->GetVideoType() == VIDEO_H264 || rtmp_pull_client_->GetVideoType() == VIDEO_H265){
+                have_video = true;
+            }
+            if(rtmp_pull_client_->GetAudioType() == AUDIO_AAC){
+                have_audio = true;
+            }
+            set_flag = true;
+        }
+    }
+    if(have_video && have_audio){
+        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_AAC);
+    }
+    else if(have_video && !have_audio){
+        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_NONE);
+    }
+    else if(!have_video && have_audio){
+        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_NONE, AudioType::AUDIO_AAC);
+    }
+    return set_flag;
+}
 void MiedaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts)
 {
-    if (enc_h264_fd == nullptr) {
-        enc_h264_fd = fopen(enc_h264_filename, "wb");
+    // if (enc_h264_fd == nullptr) {
+    //     enc_h264_fd = fopen(enc_h264_filename, "wb");
+    // }
+    // fwrite(data, 1, data_len, enc_h264_fd);
+    if(mp4_muxer_){
+        if(!set_mp4_info_over_){
+            if(!SetMP4MediaInfo()){
+                return;
+            }
+            set_mp4_info_over_ = true;
+        }
+        mp4_muxer_->WriteVideo2File(data, data_len);
     }
-    fwrite(data, 1, data_len, enc_h264_fd);
-#ifdef MP4MUXER
-    WriteVideo2File(data, data_len);
-#endif
     if(rtmp_push_client_){
         rtmp_push_client_->SetVideoInfo(VideoType::VIDEO_H264);
         rtmp_push_client_->InputVideoData(data, data_len, pts);
     }
     return;
 }
-static const char *enc_aac_filename = "out.aac";
-static FILE *enc_aac_fd = nullptr;
+// static const char *enc_aac_filename = "out.aac";
+// static FILE *enc_aac_fd = nullptr;
 void MiedaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts)
 {
-    if (enc_aac_fd == nullptr) {
-        enc_aac_fd = fopen(enc_aac_filename, "wb");
+    // if (enc_aac_fd == nullptr) {
+    //     enc_aac_fd = fopen(enc_aac_filename, "wb");
+    // }
+    // fwrite(data, 1, data_len, enc_aac_fd);
+    if(mp4_muxer_){
+        if(!set_mp4_info_over_){
+            if(!SetMP4MediaInfo()){
+                return;
+            }
+            set_mp4_info_over_ = true;
+        }
+        mp4_muxer_->WriteAudio2File(data, data_len);
     }
-    fwrite(data, 1, data_len, enc_aac_fd);
-#ifdef MP4MUXER
-    WriteAudio2File(data, data_len);
-#endif
     if(rtmp_push_client_){
         rtmp_push_client_->SetAudioInfo(AudioType::AUDIO_AAC);
         rtmp_push_client_->InputAudioData(data, data_len, pts);
@@ -573,25 +401,12 @@ MiedaWrapper::~MiedaWrapper()
         aac_encoder_ = nullptr;
     }
     if (mp4_muxer_) {
-        mp4_muxer_->SendTrailer();
         delete mp4_muxer_;
         mp4_muxer_ = nullptr;
     }
     if(rtmp_push_client_){
         delete rtmp_push_client_;
         rtmp_push_client_ = nullptr;
-    }
-    if (vps_) {
-        free(vps_);
-        vps_ = nullptr;
-    }
-    if (sps_) {
-        free(sps_);
-        sps_ = nullptr;
-    }
-    if (pps_) {
-        free(pps_);
-        pps_ = nullptr;
     }
     if (buffer_pcm_) {
         free(buffer_pcm_);

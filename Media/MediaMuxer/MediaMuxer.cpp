@@ -1,10 +1,121 @@
 #include "MediaMuxer.h"
-Muxer::Muxer()
-{
+#include "AAC.h"
+extern "C" {
+    #include "h264-sps.h"
+    #include "h265-sps.h"
 }
+static uint32_t find_start_code(uint8_t *buf, uint32_t zeros_in_startcode)
+{
+    uint32_t info;
+    uint32_t i;
 
+    info = 1;
+    if ((info = (buf[zeros_in_startcode] != 1) ? 0 : 1) == 0)
+        return 0;
+
+    for (i = 0; i < zeros_in_startcode; i++)
+        if (buf[i] != 0) {
+            info = 0;
+            break;
+        };
+
+    return info;
+}
+static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_t total, uint8_t *prefix_len)
+{
+    uint32_t info;
+    uint8_t *q;
+    uint8_t *p = *offset;
+    uint8_t prefix_len_z = 0;
+    *len = 0;
+    *prefix_len = 0;
+    while (1) {
+
+        if (((p - start) + 3) >= total)
+            return nullptr;
+
+        info = find_start_code(p, 2);
+        if (info == 1) {
+            prefix_len_z = 2;
+            *prefix_len = prefix_len_z;
+            break;
+        }
+
+        if (((p - start) + 4) >= total)
+            return nullptr;
+
+        info = find_start_code(p, 3);
+        if (info == 1) {
+            prefix_len_z = 3;
+            *prefix_len = prefix_len_z;
+            break;
+        }
+        p++;
+    }
+    q = p;
+    p = q + prefix_len_z + 1;
+    prefix_len_z = 0;
+    while (1) {
+        if (((p - start) + 3) >= total) {
+            *len = (start + total - q);
+            *offset = start + total;
+            return q;
+        }
+
+        info = find_start_code(p, 2);
+        if (info == 1) {
+            prefix_len_z = 2;
+            break;
+        }
+
+        if (((p - start) + 4) >= total) {
+            *len = (start + total - q);
+            *offset = start + total;
+            return q;
+        }
+
+        info = find_start_code(p, 3);
+        if (info == 1) {
+            prefix_len_z = 3;
+            break;
+        }
+
+        p++;
+    }
+
+    *len = (p - q);
+    *offset = p;
+    return q;
+}
+static std::string GetVideoTypeStr(VideoType type){
+    switch (type){
+        case VIDEO_H264:
+            return "VIDEO_H264";
+        case VIDEO_H265:
+            return "VIDEO_H265";
+        default:
+            return "VIDEO_NONE";
+    }
+}
+static std::string GetAudioTypeStr(AudioType type){
+    switch (type){
+        case AUDIO_AAC:
+            return "AUDIO_AAC";
+        case AUDIO_PCMA:
+            return "AUDIO_PCMA";
+        default:
+            return "AUDIO_NONE";
+    }
+}
+Muxer::Muxer(const char *url)
+{
+    Init(url);
+}
 Muxer::~Muxer()
 {
+    if(!write_trailer_){
+        SendTrailer();
+    }
     if (audio_index_ != -1 || video_index_ != -1)
         DeInit();
     for (int i = 0; i < vps_number_; i++) {
@@ -16,6 +127,195 @@ Muxer::~Muxer()
     for (int i = 0; i < pps_number_; i++) {
         free(pps_buf_[i]);
     }
+    if(vps_last_){
+        free(vps_last_);
+    }
+    if(sps_last_){
+        free(sps_last_);
+    }
+    if(pps_last_){
+        free(pps_last_);
+    }
+}
+void Muxer::SetMediaInfo(enum VideoType video_type, enum AudioType audio_type){
+    video_type_ = video_type;
+    audio_type_ = audio_type;
+    log_debug("video_type:{} audio_type:{}", GetVideoTypeStr(video_type), GetAudioTypeStr(audio_type_));
+    if(video_type_ != VIDEO_H264 && video_type_ != VIDEO_H265){
+        video_ready_ = true;
+        have_video_ = false;
+    }
+    if(audio_type_ != AUDIO_AAC){
+        audio_ready_ = true;
+        have_audio_ = false;
+    }
+}
+int Muxer::WriteVideo2File(uint8_t *data_nalus, int len_nalus)
+{   
+    if((video_type_ != VIDEO_H264 && video_type_ != VIDEO_H265 ) || !have_video_){
+        return -1;
+    }
+    std::unique_lock<std::mutex> unique(mtx_);
+    time_now_video_ = std::chrono::steady_clock::now();
+    nframe_counter_video_++;
+    if (nframe_counter_video_ == 1) {
+        time_pre_video_ = time_now_video_;
+        time_ts_accum_video_ = 0;
+    }
+    uint64_t duration_t = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_video_ - time_pre_video_).count();
+    time_ts_accum_video_ += duration_t;
+    uint64_t pts_t = time_ts_accum_video_;
+    time_pre_video_ = time_now_video_;
+    AVRational time_base;
+    AVRational time_base_q = {1, AV_TIME_BASE};  
+    int64_t video_pts;
+
+    uint8_t *p_video = nullptr;
+    uint32_t nal_len;
+    uint8_t *buf_sffset = data_nalus;
+    uint8_t prefix_len = 0;
+    uint8_t *video_data = data_nalus;
+    uint32_t video_len = len_nalus;
+    p_video = get_nal(&nal_len, &buf_sffset, video_data, video_len, &prefix_len);
+    while (p_video != nullptr) {
+        prefix_len = prefix_len + 1;
+        uint8_t *data = p_video;
+        int data_len = nal_len;
+        int nalu_type;
+        int start_code = 0;
+        if (data[0] == 0 && data[1] == 0 && data[2] == 1) {
+            start_code = 3;
+        } else if (data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) {
+            start_code = 4;
+        }
+        if (video_type_ == VIDEO_H264) {
+            nalu_type = data[start_code] & 0x1f;
+            if (!video_ready_) {
+                if (nalu_type == 7) {
+                    if (sps_last_  == nullptr || (sps_last_buffer_len_ < data_len - start_code)) {
+                        sps_last_  = (uint8_t *)realloc(sps_last_ , data_len - start_code);
+                        sps_last_buffer_len_ = data_len - start_code;
+                    }
+                    memcpy(sps_last_ , data + start_code, data_len - start_code);
+                    sps_last_len_ = data_len - start_code;
+                    struct h264_sps_t sps;
+                    h264_sps_parse(data, data_len, &sps);
+                    int x, y;
+                    h264_display_rect(&sps, &x, &y, &width_, &height_);
+
+                } else if (nalu_type == 8) {
+                    if (pps_last_  == nullptr || (pps_last_buffer_len_ < data_len - start_code)) {
+                        pps_last_  = (uint8_t *)realloc(pps_last_ , data_len - start_code);
+                        pps_last_buffer_len_ = data_len - start_code;
+                    }
+                    memcpy(pps_last_, data + start_code, data_len - start_code);
+                    pps_last_len_ = data_len - start_code;
+                }
+            }
+
+        } else if (video_type_ == VIDEO_H265) {
+            nalu_type = (data[start_code] >> 1) & 0x3f;
+            if (!video_ready_) {
+                if (nalu_type == 32) {
+                    if (vps_last_ == nullptr || (vps_last_buffer_len_ < data_len - start_code)) {
+                        vps_last_ = (uint8_t *)realloc(vps_last_, data_len - start_code);
+                        vps_last_buffer_len_ = data_len - start_code;
+                    }
+                    memcpy(vps_last_, data + start_code, data_len - start_code);
+                    vps_last_len_ = data_len - start_code;
+                } else if (nalu_type == 33) {
+                    if (sps_last_ == nullptr || (sps_last_buffer_len_ < data_len - start_code)) {
+                        sps_last_ = (uint8_t *)realloc(sps_last_, data_len - start_code);
+                        sps_last_buffer_len_ = data_len - start_code;
+                    }
+                    memcpy(sps_last_, data + start_code, data_len - start_code);
+                    sps_last_len_ = data_len - start_code;
+                    struct h265_sps_t sps;
+                    h265_sps_parse(data, data_len, &sps);
+                    int x, y;
+                    h265_display_rect(&sps, &x, &y, &width_, &height_);
+
+                } else if (nalu_type == 34) {
+                    if (pps_last_ == nullptr || (pps_last_buffer_len_ < data_len - start_code)) {
+                        pps_last_ = (uint8_t *)realloc(pps_last_, data_len - start_code);
+                        pps_last_buffer_len_ = data_len - start_code;
+                    }
+                    memcpy(pps_last_, data + start_code, data_len - start_code);
+                    pps_last_len_ = data_len - start_code;
+                }
+            }
+        }
+        if (sps_last_len_ != 0 && pps_last_len_ != 0) {
+            video_ready_ = true;
+            if (video_index_ == -1) {
+                ExtraData extra;
+                extra.vps = vps_last_;
+                extra.vps_len = vps_last_len_;
+                extra.sps = sps_last_;
+                extra.sps_len = sps_last_len_;
+                extra.pps = pps_last_;
+                extra.pps_len = pps_last_len_;
+                AddVideo(90000, video_type_, extra, width_, height_);
+            }
+            if (!write_header_flag_ && video_ready_ && audio_ready_) {
+                Open();
+                SendHeader();
+                write_header_flag_ = true;
+            }
+        }
+        if (!video_ready_ || !write_header_flag_) {
+            goto NEXT;
+        }
+        
+        time_base = fmt_ctx_->streams[video_index_]->time_base;
+        time_base_q = {1, AV_TIME_BASE};                             // 微妙
+        video_pts = av_rescale_q(pts_t * 1000, time_base_q, time_base); // 转换到ffmpeg时间基
+        SendPacket(data + start_code, data_len - start_code, video_pts, video_pts, video_index_);
+    NEXT:
+        p_video = get_nal(&nal_len, &buf_sffset, video_data, video_len, &prefix_len);
+    }
+
+    return 0;
+}
+int Muxer::WriteAudio2File(uint8_t *data, int len)
+{
+    if(audio_type_ != AUDIO_AAC || !have_audio_){
+        return -1;
+    }
+    std::unique_lock<std::mutex> unique(mtx_);
+    if(audio_index_ == -1){
+        struct AdtsHeader res;
+        ParseAdtsHeader(data, &res);
+        AddAudio(res.channelCfg, GetSampleRate(res.samplingFreqIndex), res.profile, AUDIO_AAC);
+        audio_ready_ = true;
+    }
+    if (!write_header_flag_ && video_ready_ && audio_ready_) {
+        Open();
+        SendHeader();
+        write_header_flag_ = true;
+    }
+    if(!write_header_flag_){
+        return 0;
+    }
+    time_now_audio_ = std::chrono::steady_clock::now();
+    nframe_counter_audio_++;
+    if (nframe_counter_audio_ == 1) {
+        time_pre_audio_ = time_now_audio_;
+        time_ts_accum_audio_ = 0;
+    }
+    uint64_t duration_t = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_audio_ - time_pre_audio_).count();
+    time_ts_accum_audio_ += duration_t;
+    uint64_t pts_t = time_ts_accum_audio_;
+    time_pre_audio_ = time_now_audio_;
+
+    AVRational time_base = fmt_ctx_->streams[audio_index_]->time_base;
+    AVRational time_base_q = {1, AV_TIME_BASE};                             // 微妙
+    int64_t audio_pts = av_rescale_q(pts_t * 1000, time_base_q, time_base); // 转换到ffmpeg时间基
+    struct AdtsHeader res;
+    ParseAdtsHeader(data, &res);
+    int adts_header_len = (res.protectionAbsent == 1) ? 7 : 9;
+    SendPacket(data + adts_header_len, len - adts_header_len, audio_pts, audio_pts, audio_index_);
+    return 0;
 }
 
 int Muxer::Init(const char *url)
@@ -202,7 +502,7 @@ bool Muxer::ParametersChange(unsigned char *vps, int vps_len, unsigned char *sps
     }
     return false;
 }
-int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height, int fps)
+int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height)
 {
     if (!fmt_ctx_) {
         log_error("fmt ctx is NULL");
@@ -233,7 +533,6 @@ int Muxer::AddVideo(int time_base, VideoType type, ExtraData &extra, int width, 
     }
     st->time_base.num = 1;
     st->time_base.den = time_base;
-    log_debug("width:{} height:{}", width, height);
     sps_buf_[0] = (uint8_t *)malloc(extra.sps_len);
     memcpy(sps_buf_[0], extra.sps, extra.sps_len);
     sps_len_[0] = extra.sps_len;
@@ -330,8 +629,8 @@ void Muxer::AACWriteExtra(int channels, int sample_rate, int profile, AVCodecPar
 
     uint8_t profile_dec = (aac_extradata[0] >> 3) & 0x1F;
     uint8_t sampling_frequency_fndex = ((aac_extradata[0] & 0x07) << 1) | ((aac_extradata[1] >> 7) & 0x01);
-    log_debug("profile_dec:{} profile:{}", profile_dec, profile);
-    log_debug("sampling_frequency_fndex:{},sample_rate:{}", sampling_frequency_fndex, sample_rate);
+    // log_debug("profile_dec:{} profile:{}", profile_dec, profile);
+    // log_debug("sampling_frequency_fndex:{},sample_rate:{}", sampling_frequency_fndex, sample_rate);
 
     params->extradata = (uint8_t *)av_mallocz(aac_extradata_size);
     if (!params->extradata) {
@@ -427,13 +726,16 @@ void Muxer::RewriteVideoExtraData()
 // 音视频同时写入需要加锁
 int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, int stream_index)
 {
-    std::lock_guard<std::mutex> guard(mtx_);
-    pkt_.stream_index = stream_index;
-    pkt_.duration = 0; // 0 if unknown.
-    pkt_.pos = -1;     //-1 if unknown
+    AVPacket pkt;
+    av_init_packet(&pkt);
+    pkt.data = nullptr;
+    pkt.size = 0;
+    pkt.stream_index = stream_index;
+    pkt.duration = 0; // 0 if unknown.
+    pkt.pos = -1;     //-1 if unknown
     if (size <= 0) {
         log_warn("packet size:{}", size);
-        av_packet_unref(&pkt_);
+        av_packet_unref(&pkt);
         return -1;
     }
     int nal_type;
@@ -467,19 +769,19 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
                         log_debug("rewrite pps ok");
                     }
                 }
-                av_packet_unref(&pkt_);
+                av_packet_unref(&pkt);
                 return 0;
             }
-            auto data_copy = (uint8_t *)av_malloc(size + 4 + AV_INPUT_BUFFER_PADDING_SIZE);
+            int total_size = size + 4;
+            auto data_copy = (uint8_t *)av_malloc(total_size);
             memcpy(data_copy + 4, data, size);
             data_copy[0] = (size) >> 24;
             data_copy[1] = (size) >> 16;
             data_copy[2] = (size) >> 8;
             data_copy[3] = size & 0xff;
-            av_packet_from_data(&pkt_, data_copy, size);
-            pkt_.size = size + 4;
+            av_packet_from_data(&pkt, data_copy, total_size);
             if (nal_type == 5) {
-                pkt_.flags |= AV_PKT_FLAG_KEY;
+                pkt.flags |= AV_PKT_FLAG_KEY;
             }
         } else if (video_type_ == VIDEO_H265) {
             nal_type = (data[0] >> 1) & 0x3f;
@@ -520,24 +822,24 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
                         log_debug("rewrite pps ok");
                     }
                 }
-                av_packet_unref(&pkt_);
+                av_packet_unref(&pkt);
                 return 0;
             }
-            auto data_copy = (uint8_t *)av_malloc(size + 4 + AV_INPUT_BUFFER_PADDING_SIZE);
+            int total_size = size + 4;
+            auto data_copy = (uint8_t *)av_malloc(total_size);
             memcpy(data_copy + 4, data, size);
             data_copy[0] = (size) >> 24;
             data_copy[1] = (size) >> 16;
             data_copy[2] = (size) >> 8;
             data_copy[3] = size & 0xff;
-            av_packet_from_data(&pkt_, data_copy, size);
-            pkt_.size = size + 4;
+            av_packet_from_data(&pkt, data_copy, total_size);
             if (nal_type == 19) {
-                pkt_.flags |= AV_PKT_FLAG_KEY;
+                pkt.flags |= AV_PKT_FLAG_KEY;
             }
         }
         if (!found_idr_) {
-            log_warn("not found_idr_ nal_type:{}", nal_type);
-            av_packet_unref(&pkt_);
+            // log_warn("not found_idr_ nal_type:{}", nal_type);
+            av_packet_unref(&pkt);
             return 0;
         }
         if (frames_video_ == 0) {
@@ -545,29 +847,29 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
             start_dts_video_ = dts;
         }
         frames_video_++;
-        pkt_.pts = pts - start_pts_video_;
-        pkt_.dts = dts - start_dts_video_;
-        if (last_pts_video_ >= pkt_.pts) {
+        pkt.pts = pts - start_pts_video_;
+        pkt.dts = dts - start_dts_video_;
+        if (last_pts_video_ >= pkt.pts) {
             // log_error("video pts error last_pts_video_:{} now pts:{}",last_pts_video_,pkt.pts);
-            pkt_.pts = last_pts_video_ + 1;
+            pkt.pts = last_pts_video_ + 1;
         }
-        if (last_dts_video_ >= pkt_.dts) {
+        if (last_dts_video_ >= pkt.dts) {
             // log_error("video dts error last_dts_video_:{} now dts:{}",last_dts_video_,pkt.dts);
-            pkt_.dts = last_dts_video_ + 1;
+            pkt.dts = last_dts_video_ + 1;
         }
         if (find_first_frame_) {
-            pkt_.pts += start_media_pts_;
-            pkt_.dts += start_media_pts_;
+            pkt.pts += start_media_pts_;
+            pkt.dts += start_media_pts_;
         }
-        last_pts_video_ = pkt_.pts;
-        last_dts_video_ = pkt_.dts;
+        last_pts_video_ = pkt.pts;
+        last_dts_video_ = pkt.dts;
 
         if (!find_first_frame_) {
-            start_media_pts_ = pkt_.pts;
+            start_media_pts_ = pkt.pts;
             find_first_frame_ = true;
         }
-        int ret = av_interleaved_write_frame(fmt_ctx_, &pkt_);
-        av_packet_unref(&pkt_);
+        int ret = av_interleaved_write_frame(fmt_ctx_, &pkt);
+        av_packet_unref(&pkt);
         if (ret == 0) {
             return 0;
         } else {
@@ -582,32 +884,31 @@ int Muxer::SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, i
             start_dts_audio_ = dts;
         }
         frames_audio_++;
-        pkt_.pts = pts - start_pts_audio_;
-        pkt_.dts = dts - start_dts_audio_;
-        if (last_pts_audio_ >= pkt_.pts) {
-            // log_error("audio pts error last_pts_video_:{} now pts:{}",last_pts_audio_,pkt_.pts);
-            pkt_.pts = last_pts_audio_ + 1;
+        pkt.pts = pts - start_pts_audio_;
+        pkt.dts = dts - start_dts_audio_;
+        if (last_pts_audio_ >= pkt.pts) {
+            // log_error("audio pts error last_pts_video_:{} now pts:{}",last_pts_audio_,pkt.pts);
+            pkt.pts = last_pts_audio_ + 1;
         }
-        if (last_dts_audio_ >= pkt_.dts) {
-            // log_error("audio dts error last_dts_video_:{} now dts:{}",last_dts_audio_,pkt_.dts);
-            pkt_.dts = last_dts_audio_ + 1;
+        if (last_dts_audio_ >= pkt.dts) {
+            // log_error("audio dts error last_dts_video_:{} now dts:{}",last_dts_audio_,pkt.dts);
+            pkt.dts = last_dts_audio_ + 1;
         }
         if (find_first_frame_) {
-            pkt_.pts += start_media_pts_;
-            pkt_.dts += start_media_pts_;
+            pkt.pts += start_media_pts_;
+            pkt.dts += start_media_pts_;
         }
-        last_pts_audio_ = pkt_.pts;
-        last_dts_audio_ = pkt_.dts;
+        last_pts_audio_ = pkt.pts;
+        last_dts_audio_ = pkt.dts;
         if (!find_first_frame_) {
-            start_media_pts_ = pkt_.pts;
+            start_media_pts_ = pkt.pts;
             find_first_frame_ = true;
         }
         auto data_copy = (uint8_t *)av_malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
         memcpy(data_copy, data, size);
-        av_packet_from_data(&pkt_, data_copy, size);
-        pkt_.size = size;
-        int ret = av_interleaved_write_frame(fmt_ctx_, &pkt_);
-        av_packet_unref(&pkt_);
+        av_packet_from_data(&pkt, data_copy, size);
+        int ret = av_interleaved_write_frame(fmt_ctx_, &pkt);
+        av_packet_unref(&pkt);
         if (ret == 0) {
             return 0;
         } else {
@@ -634,6 +935,7 @@ int Muxer::SendTrailer()
         return -1;
     }
     log_debug("{}:SendTrailer ok", url_);
+    write_trailer_ = true;
     return 0;
 }
 

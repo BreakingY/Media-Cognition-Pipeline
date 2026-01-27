@@ -13,6 +13,16 @@ int GetSampleRateIndex(int freq){
     }
     return 4;//默认是44100
 }
+int GetSampleRate(int sample_rate_idx){
+    if(sample_rate_idx > 12){
+        return 44100;
+    }
+    int freq_arr[13] = {
+        96000, 88200, 64000, 48000, 44100, 32000,
+        24000, 22050, 16000, 12000, 11025, 8000, 7350
+    };
+    return freq_arr[sample_rate_idx];
+}
 void GenerateAdtsHeader(char *adts_header_buffer, int data_len, int profile, int sample_rate_index, int channels){
     int adts_len = data_len + 7;
 

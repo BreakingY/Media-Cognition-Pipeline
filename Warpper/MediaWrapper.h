@@ -52,16 +52,6 @@ public:
 
 public:
     bool over_flag_ = false;
-    // video
-    std::chrono::steady_clock::time_point time_now_;
-    std::chrono::steady_clock::time_point time_pre_;
-    uint64_t nframe_counter_ = 0;
-    uint64_t time_ts_accum_ = 0;
-    // audio
-    std::chrono::steady_clock::time_point time_now_1_;
-    std::chrono::steady_clock::time_point time_pre_1_;
-    uint64_t nframe_counter_1_ = 0;
-    uint64_t time_ts_accum_1_ = 0;
 
     MediaReader *reader_ = nullptr;
     RtspClientProxy *rtsp_client_proxy_ = nullptr;
@@ -74,28 +64,20 @@ public:
     unsigned char *buffer_pcm_ = nullptr;
     int buffer_pcm_len_ = 0;
 
-    HardVideoDecoder *hard_decoder_ = nullptr;
-    HardVideoEncoder *hard_encoder_ = nullptr;
-    AACDecoder *aac_decoder_ = nullptr;
-    AACEncoder *aac_encoder_ = nullptr;
-
-    uint8_t *vps_ = nullptr;
-    uint8_t *sps_ = nullptr;
-    uint8_t *pps_ = nullptr;
-    int vps_buffer_len_ = 0;
-    int sps_buffer_len_ = 0;
-    int pps_buffer_len_ = 0;
-    int vps_len_ = 0;
-    int sps_len_ = 0;
-    int pps_len_ = 0;
-    bool extra_ready_ = false;
-
-    Muxer *mp4_muxer_ = nullptr;
-    int video_stream_ = -1;
-    int audio_stream_ = -1;
-
-    RtmpPushClient *rtmp_push_client_ = nullptr;
+    HardVideoDecoder *hard_decoder_ = nullptr; // h264/h265
+    HardVideoEncoder *hard_encoder_ = nullptr; // h264
+    AACDecoder *aac_decoder_ = nullptr; // aac
+    AACEncoder *aac_encoder_ = nullptr; // aac
     
+    Muxer *mp4_muxer_ = nullptr; // MP4 requires knowing whether audio/video tracks exist in advance
+    bool SetMP4MediaInfo();
+    std::mutex mp4_mtx_;
+    std::atomic<bool> set_mp4_info_over_ = {false};
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    uint64_t nframe_counter_ = 0;
+
+    RtmpPushClient *rtmp_push_client_ = nullptr; // RTMP/FLV does not require knowing whether audio/video streams exist in advance
 
     // NPU GPU
     int32_t device_id_ = 0;

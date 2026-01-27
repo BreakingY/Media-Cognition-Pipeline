@@ -70,7 +70,7 @@ A general-purpose streaming media and deep learning inference acceleration frame
 # Framework Construction
 * Wrapper
 * A general media processing and perception framework built on demuxing, encoding/decoding, muxing, and visual perception modules.
-* Since MP4 requires writing trailer data at program termination, it is not suitable for RTSP/RTMP real-time streams. Therefore, this part of the code is commented out. If needed, enable `#define MP4MUXER` in `MediaWrapper.cpp`. For real-time streaming, FLV is recommended for file output.
+* Since MP4 requires writing trailer data at program termination, it is not suitable for RTSP/RTMP real-time streams. For real-time streaming, FLV is recommended for file output.
 
 # Notes
 * Supported formats: Video: H264/H265, Audio: AAC.

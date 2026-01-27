@@ -19,10 +19,6 @@ extern "C" {
 };
 #include "TypeDef.h"
 #include "log_helpers.h"
-/**
- *   Init-> AddVideo/AddAudio->Open->SendHeader->SendPacket->SendTrailer
- *   input without startCode
- */
 typedef struct ExtraDataSt {
     uint8_t *vps = NULL;
     uint8_t *sps = NULL;
@@ -34,31 +30,43 @@ typedef struct ExtraDataSt {
 class Muxer
 {
 public:
-    Muxer();
+    Muxer(const char *url);
     ~Muxer();
-
-    int Init(const char *url);
-    void DeInit();
-
-    int AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height, int fps); // H264 h265
+public:
+    /**
+     * thread-safe
+     * SetMediaInfo-->WriteVideo2File/WriteAudio2File
+     */
+    // h264/h265 aac
+    void SetMediaInfo(enum VideoType video_type, enum AudioType audio_type);
+    int WriteVideo2File(uint8_t *data_nalus, int len_nalus); 
+    int WriteAudio2File(uint8_t *data, int len);
+public:
+    /**
+     * non-thread-safe
+     * AddVideo/AddAudio-->Open-->SendHeader-->SendPacket-->SendTrailer
+     */
+    int AddVideo(int time_base, VideoType type, ExtraData &extra, int width, int height); // H264 h265
     int AddAudio(int channels, int sample_rate, int profile, AudioType type);            // AAC
     int Open();
 
     int SendHeader();
-    int SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, int stream_index); // video:one NALU without startCodes
+    int SendPacket(unsigned char *data, int size, int64_t pts, int64_t dts, int stream_index); // video:one NALU without startCodes audio:aac without adts
     int SendTrailer();
 
     int GetAudioStreamIndex();
     int GetVideoStreamIndex();
-
 private:
+    int Init(const char *url);
+    void DeInit();
+
     void H264WriteExtra(unsigned char *extra_data, int &extra_data_size);
     void H265WriteExtra(unsigned char *extra_data, int &extra_data_size);
     void RewriteVideoExtraData();
     void AACWriteExtra(int channels, int sample_rate, int profile, AVCodecParameters *params);
     bool ParametersChange(unsigned char *vps, int vps_len, unsigned char *sps, int sps_len, unsigned char *pps, int pps_len);
 
-public:
+private:
     AVFormatContext *fmt_ctx_ = NULL;
     AVOutputFormat *ofmt_ = NULL;
     std::string url_ = "";
@@ -72,7 +80,7 @@ public:
     int64_t last_dts_video_ = 0;
 
     AVStream *vid_stream_ = NULL;
-    VideoType video_type_;
+    enum VideoType video_type_;
     int frames_audio_ = 0;
     int64_t start_pts_audio_ = 0;
     int64_t start_dts_audio_ = 0;
@@ -94,11 +102,42 @@ public:
     int vps_number_ = 0;
     int sps_number_ = 0;
     int pps_number_ = 0;
+    int width_;
+    int height_;
+
+    uint8_t *vps_last_ = nullptr;
+    uint8_t *sps_last_  = nullptr;
+    uint8_t *pps_last_  = nullptr;
+    int vps_last_buffer_len_ = 0;
+    int sps_last_buffer_len_ = 0;
+    int pps_last_buffer_len_ = 0;
+    int vps_last_len_ = 0;
+    int sps_last_len_ = 0;
+    int pps_last_len_ = 0;
+    bool video_ready_ = false;
+    bool audio_ready_ = false;
+    bool have_video_ = true;
+    bool have_audio_ = true;
+    // video
+    std::chrono::steady_clock::time_point time_now_video_;
+    std::chrono::steady_clock::time_point time_pre_video_;
+    uint64_t nframe_counter_video_ = 0;
+    uint64_t time_ts_accum_video_ = 0;
+    // audio
+    std::chrono::steady_clock::time_point time_now_audio_;
+    std::chrono::steady_clock::time_point time_pre_audio_;
+    uint64_t nframe_counter_audio_ = 0;
+    uint64_t time_ts_accum_audio_ = 0;
+
+    int video_stream_ = -1;
+    int audio_stream_ = -1;
 
     std::mutex mtx_;
+    bool write_header_flag_ = false;
     bool found_idr_ = false;
     AVPacket pkt_;
     bool global_header_ = false;
+    bool write_trailer_ = false;
 };
 
 #endif

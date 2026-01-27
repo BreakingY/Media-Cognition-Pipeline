@@ -14,13 +14,13 @@ void audioCallBack(enum FLVAudioType type, int profile, int sample_rate_index, i
         return;
     }
     RtmpPullClient *client = (RtmpPullClient*)arg;
-    if(!client->probe_over_flag_){
-        return;
-    }
     client->audio_type_ = AudioType::AUDIO_AAC;
     client->profile_ = profile;
     client->sample_rate_index_ = sample_rate_index;
     client->channels_ = channel;
+    if(!client->probe_over_flag_){
+        return;
+    }
 
     unsigned char *data_withadts= (unsigned char *)malloc(data_len + 7);
     char adts_header_buffer[7];
@@ -185,15 +185,15 @@ RtmpPullClient::RtmpPullClient(std::string url, FLVOutMode type){
             log_error("demuxerFLVFile error");
         }
         destroyFLVContext(context_demuxer_);
+        // start reading
+        context_demuxer_ = createFLVContext();
+        setReadCallBack(context_demuxer_, audioCallBack, videoCallBack, scriptDataCallBack, this);
     }
     else{
         ConnectServer();
         th_rtmp_reconnect_ = std::thread(&RtmpPullClient::RtmpReconnectThread, this);
 
     }
-    // start reading
-    context_demuxer_ = createFLVContext();
-    setReadCallBack(context_demuxer_, audioCallBack, videoCallBack, scriptDataCallBack, this);
     th_flv_handle_ = std::thread(&RtmpPullClient::FLVStreamReadThread, this);
 }
 RtmpPullClient::~RtmpPullClient(){
