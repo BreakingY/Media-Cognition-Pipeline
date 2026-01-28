@@ -296,6 +296,7 @@ void RtmpPullClient::RtmpReconnectThread(){
         if(rtmp_connect_stat_ == false){
             log_debug("{} reconnecting ...", url_);
             video_ready_ = false;
+            read_flv_header_ = false;
             CloseConnect();
             ConnectServer();
             if(rtmp_connect_stat_){
