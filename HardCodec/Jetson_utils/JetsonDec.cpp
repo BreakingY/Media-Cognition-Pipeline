@@ -376,8 +376,8 @@ void *JetsonDec::dec_capture_loop_fcn(void *arg)
             } else {
                 cerr << "Error in dequeueing decoder event" << endl;
             }
-            abort(ctx);
-            break;
+            // abort(ctx);
+            // break;
         }
     } while (!self->m_abort_cap && ev.type != V4L2_EVENT_RESOLUTION_CHANGE);
     printf("query_and_set_capture bre dec_buffer:%p ptr:%p\n", self->dec_buffer, ptr);
