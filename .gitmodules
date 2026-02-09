@@ -16,3 +16,6 @@
 [submodule "Media/MediaReader/RtspReader/simple-rtsp-client"]
 	path = Media/MediaReader/RtspReader/simple-rtsp-client
 	url = https://github.com/BreakingY/simple-rtsp-client
+[submodule "Media/TsTransport/libmpeg2core"]
+	path = Media/TsTransport/libmpeg2core
+	url = https://github.com/BreakingY/libmpeg2core

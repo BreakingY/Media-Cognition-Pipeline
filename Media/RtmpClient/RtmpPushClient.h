@@ -20,7 +20,7 @@ extern "C" {
 void WriteCallBack(enum FLVWriteType type, uint8_t* data, uint32_t data_len, void* arg);
 class RtmpPushClient{
 public:
-    RtmpPushClient(std::string url, FLVOutMode type = FLV_RTMP);
+    RtmpPushClient(std::string url, FLVMode type = FLV_RTMP);
     ~RtmpPushClient();
     // h264/h265
     void SetVideoInfo(enum VideoType type);
@@ -31,7 +31,7 @@ public:
 private:
     int ConnectServer();
     void CloseConnect();
-    int OpencvFLVHandle();
+    int OpenFLVHandle();
     void CloseFLVHandle();
     void VideoStreamThread();
     void AudioStreamThread();
@@ -44,7 +44,7 @@ private:
         int64_t dts;
     } MediaData;
     bool abort_ = false;
-    FLVOutMode type_;
+    FLVMode type_;
     std::string url_;
     FLVContext *context_muxer_ = nullptr; // libflv非线程安全
     std::mutex flv_mtx_;

@@ -25,6 +25,18 @@ MediaWrapper::MediaWrapper(const char *input, const char *output, const char *en
             return this->MediaOverhandle();
         });
     }
+    else if( memcmp("srt://", input, strlen("srt://")) == 0 ){
+        ts_demuxer_client_ = new TsDemuxerClient(input, TS_SRT);
+        ts_demuxer_client_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
+            return this->MediaOverhandle();
+        });
+    }
+    else if( len >= 3 && memcmp(input + len - 3, ".ts", 3) == 0 ){
+        ts_demuxer_client_ = new TsDemuxerClient(input, TS_FILE);
+        ts_demuxer_client_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
+            return this->MediaOverhandle();
+        });
+    }
     else if( len >= 4 && memcmp(input + len - 4, ".mp4", 4) == 0 ){
         reader_ = new MediaReader(input);
         reader_->SetDataListner(static_cast<MediaDataListner *>(this), [this]() {
@@ -39,8 +51,14 @@ MediaWrapper::MediaWrapper(const char *input, const char *output, const char *en
     else if( len >= 4 && memcmp(output + len - 4, ".flv", 4) == 0 ){
         rtmp_push_client_ = new RtmpPushClient(output, FLV_FILE);
     }
-    else if( len >= 4 && memcmp(output + len - 4, ".mp4", 4) == 0){
+    else if( len >= 4 && memcmp(output + len - 4, ".mp4", 4) == 0 ){
         mp4_muxer_ = new Muxer(output);
+    }
+    else if( len >= 3 && memcmp(output + len - 3, ".ts", 3) == 0 ){
+        ts_muxer_client_ = new TsMuxerClient(output, TS_FILE);
+    }
+    else if( memcmp("srt://", output, strlen("srt://")) == 0 ){
+        ts_muxer_client_ = new TsMuxerClient(output, TS_SRT);
     }
 }
 void MediaWrapper::MediaOverhandle()
@@ -69,6 +87,14 @@ void MediaWrapper::OnVideoData(VideoData data)
             exit(1);
         }
         rtmp_pull_client_->GetVideoCon(width_, height_, fps_);
+    }
+    else if(ts_demuxer_client_){ // srt ts
+        video_type_ = ts_demuxer_client_->GetVideoType();
+        if (video_type_ == VIDEO_NONE) {
+            log_error("only support H264/H265");
+            exit(1);
+        }
+        ts_demuxer_client_->GetVideoCon(width_, height_, fps_);
     }
     else if(reader_){ // mp4 
         video_type_ = reader_->GetVideoType();
@@ -115,6 +141,13 @@ void MediaWrapper::OnAudioData(AudioData data)
     }
     else if(rtmp_pull_client_){ // rtmp flv
         audio_type_ = rtmp_pull_client_->GetAudioType();
+        if (audio_type_ != AUDIO_AAC) {
+            log_error("only support AAC");
+            exit(1);
+        }
+    }
+    else if(ts_demuxer_client_){ // srt ts
+        audio_type_ = ts_demuxer_client_->GetAudioType();
         if (audio_type_ != AUDIO_AAC) {
             log_error("only support AAC");
             exit(1);
@@ -264,13 +297,17 @@ void MediaWrapper::OnPCMData(unsigned char **data, int data_len)
 }
 // static const char *enc_h264_filename = "out.h264";
 // static FILE *enc_h264_fd = nullptr;
-bool MediaWrapper::SetMP4MediaInfo(){
-    if(set_mp4_info_over_ == true){
-        return true;
-    }
-    std::unique_lock<std::mutex> unique(mp4_mtx_);
+bool MediaWrapper::SetMediaInfo(){
+    std::unique_lock<std::mutex> unique(media_info_mtx_);
     if((video_type_ == VIDEO_H264 || video_type_ == VIDEO_H265) && audio_type_ == AUDIO_AAC){
-        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_AAC);
+        if(mp4_muxer_){
+            mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_AAC);
+        }
+        else if(ts_muxer_client_){
+            ts_muxer_client_->SetVideoInfo(VideoType::VIDEO_H264);
+            ts_muxer_client_->SetAudioInfo(AudioType::AUDIO_AAC);
+
+        }
         return true;
     }
     bool have_video = false;
@@ -314,14 +351,51 @@ bool MediaWrapper::SetMP4MediaInfo(){
             set_flag = true;
         }
     }
+    else if(ts_demuxer_client_){
+        // need to probe
+        time_now_ = std::chrono::steady_clock::now();
+        nframe_counter_++;
+        if (nframe_counter_ == 1) {
+            time_pre_ = time_now_;
+        }
+        int64_t duration_t = std::chrono::duration_cast<std::chrono::seconds>(time_now_ - time_pre_).count();
+        if(duration_t > 2){
+            if(ts_demuxer_client_->GetVideoType() == VIDEO_H264 || ts_demuxer_client_->GetVideoType() == VIDEO_H265){
+                have_video = true;
+            }
+            if(ts_demuxer_client_->GetAudioType() == AUDIO_AAC){
+                have_audio = true;
+            }
+            set_flag = true;
+        }
+    }
     if(have_video && have_audio){
-        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_AAC);
+        if(mp4_muxer_){
+            mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_AAC);
+        }
+        else if(ts_muxer_client_){
+            ts_muxer_client_->SetVideoInfo(VideoType::VIDEO_H264);
+            ts_muxer_client_->SetAudioInfo(AudioType::AUDIO_AAC);
+
+        }
     }
     else if(have_video && !have_audio){
-        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_NONE);
+        if(mp4_muxer_){
+            mp4_muxer_->SetMediaInfo(VideoType::VIDEO_H264, AudioType::AUDIO_NONE);
+        }
+        else if(ts_muxer_client_){
+            ts_muxer_client_->SetVideoInfo(VideoType::VIDEO_H264);
+
+        }
     }
     else if(!have_video && have_audio){
-        mp4_muxer_->SetMediaInfo(VideoType::VIDEO_NONE, AudioType::AUDIO_AAC);
+        if(mp4_muxer_){
+            mp4_muxer_->SetMediaInfo(VideoType::VIDEO_NONE, AudioType::AUDIO_AAC);
+        }
+        else if(ts_muxer_client_){
+            ts_muxer_client_->SetAudioInfo(AudioType::AUDIO_AAC);
+
+        }
     }
     return set_flag;
 }
@@ -331,18 +405,23 @@ void MediaWrapper::OnVideoEncData(unsigned char *data, int data_len, int64_t pts
     //     enc_h264_fd = fopen(enc_h264_filename, "wb");
     // }
     // fwrite(data, 1, data_len, enc_h264_fd);
-    if(mp4_muxer_){
-        if(!set_mp4_info_over_){
-            if(!SetMP4MediaInfo()){
-                return;
-            }
-            set_mp4_info_over_ = true;
-        }
-        mp4_muxer_->WriteVideo2File(data, data_len);
-    }
     if(rtmp_push_client_){
         rtmp_push_client_->SetVideoInfo(VideoType::VIDEO_H264);
         rtmp_push_client_->InputVideoData(data, data_len, pts);
+        return;
+    }
+
+    if(!set_media_info_over_){
+        if(!SetMediaInfo()){
+            return;
+        }
+        set_media_info_over_ = true;
+    }
+    if(mp4_muxer_){
+        mp4_muxer_->WriteVideo2File(data, data_len);
+    }
+    if(ts_muxer_client_){
+        ts_muxer_client_->InputVideoData(data, data_len, pts);
     }
     return;
 }
@@ -354,18 +433,24 @@ void MediaWrapper::OnAudioEncData(unsigned char *data, int data_len, int64_t pts
     //     enc_aac_fd = fopen(enc_aac_filename, "wb");
     // }
     // fwrite(data, 1, data_len, enc_aac_fd);
-    if(mp4_muxer_){
-        if(!set_mp4_info_over_){
-            if(!SetMP4MediaInfo()){
-                return;
-            }
-            set_mp4_info_over_ = true;
-        }
-        mp4_muxer_->WriteAudio2File(data, data_len);
-    }
     if(rtmp_push_client_){
         rtmp_push_client_->SetAudioInfo(AudioType::AUDIO_AAC);
         rtmp_push_client_->InputAudioData(data, data_len, pts);
+        return;
+    }
+
+    if(!set_media_info_over_){
+        if(!SetMediaInfo()){
+            return;
+        }
+        set_media_info_over_ = true;
+    }
+    if(mp4_muxer_){
+        mp4_muxer_->WriteAudio2File(data, data_len);
+    }
+    
+    if(ts_muxer_client_){
+        ts_muxer_client_->InputAudioData(data, data_len, pts);
     }
     return;
 }
@@ -383,6 +468,10 @@ MediaWrapper::~MediaWrapper()
     if(rtmp_pull_client_){
         delete rtmp_pull_client_;
         rtmp_pull_client_ = nullptr;
+    }
+    if(ts_demuxer_client_){
+        delete ts_demuxer_client_;
+        ts_demuxer_client_ = nullptr;
     }
     if (hard_decoder_) {
         delete hard_decoder_;
@@ -407,6 +496,10 @@ MediaWrapper::~MediaWrapper()
     if(rtmp_push_client_){
         delete rtmp_push_client_;
         rtmp_push_client_ = nullptr;
+    }
+    if(ts_muxer_client_){
+        delete ts_muxer_client_;
+        ts_muxer_client_ = nullptr;
     }
     if (buffer_pcm_) {
         free(buffer_pcm_);

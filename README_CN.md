@@ -1,6 +1,6 @@
 # Media-Cognition-Pipeline
-实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、RTSP、RTMP、YOLO。
-* 音视频解封装(MP4、FLV、RTSP、RTMP)、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾)、封装(MP4、FLV、RTMP)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾)pipeline, 采用模块化、节点化和接口化管理。
+实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT(TODO)、YOLO。
+* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾)、封装(MP4、FLV、TS、RTMP、SRT(TODO))，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾)pipeline, 采用模块化、节点化和接口化管理。
 
 # 解封装
 * mp4
@@ -9,6 +9,9 @@
 * flv/rtmp
   * Media/RtmpClient
   * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
+* ts/srt
+  * Media/TsTransport
+  * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
 * rtsp
   * Media/RtspReader
   * simple-rtsp-client (https://github.com/BreakingY/simple-rtsp-client)
@@ -48,6 +51,9 @@
 * flv/rtmp
   * Media/RtmpClient
   * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
+* ts/srt
+  * Media/TsTransport
+  * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
 
 # 视觉感知(YOLO + ByteTrack)
 * NVIDIA TensorRT
@@ -64,7 +70,7 @@
 # 框架搭建
 * Warpper
 * 基于解封装、编解码、封装、视觉感知模块搭建通用媒体处理及感知框架。
-* 因为mp4需要在程序结束的时候写入尾数据，对于rtsp/rtmp实时流不适用，实时流写文件推荐使用flv。
+* 因为mp4需要在程序结束的时候写入尾数据，对于rtsp/rtmp实时流不适用，实时流写文件推荐使用flv和ts。
 
 # 说明
 * 支持格式，视频：H264/H265，音频：AAC。
@@ -80,12 +86,13 @@
 ![MCP](https://github.com/user-attachments/assets/bdb98d02-eaa6-4ad8-b30b-e2d3da399056)
 
 # 感谢以下作者(.gitmodules子模块)
-* spdlog：https://github.com/gabime/spdlog
-* Bitstream：https://github.com/ireader/avcodec
-* ByteTrack：https://github.com/Vertical-Beach/ByteTrack-cpp
-* libflv: https://github.com/BreakingY/libflv
+* spdlog: https://github.com/gabime/spdlog
+* Bitstream: https://github.com/ireader/avcodec
+* ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 * librtmp: https://git.ffmpeg.org/rtmpdump
+* libflv: https://github.com/BreakingY/libflv
 * simple-rtsp-client: https://github.com/BreakingY/simple-rtsp-client
+* libmpeg2core: https://github.com/BreakingY/libmpeg2core
 
 # 编译
 * `git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git`
@@ -103,8 +110,10 @@
    * NVIDIA: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..`
    * ASCEND: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..`
 # 测试：
-1. pipeline测试： `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
-2. AI推理：       `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
+1. pipeline测试：
+   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)/ts(../Media/TsTransport/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
+2. AI推理：
+   `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 
    https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
 

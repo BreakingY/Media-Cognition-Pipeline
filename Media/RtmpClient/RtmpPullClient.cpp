@@ -18,7 +18,7 @@ void audioCallBack(enum FLVAudioType type, int profile, int sample_rate_index, i
     client->profile_ = profile;
     client->sample_rate_index_ = sample_rate_index;
     client->channels_ = channel;
-    if(!client->probe_over_flag_){
+    if(!client->media_ready_){
         return;
     }
 
@@ -42,7 +42,12 @@ void audioCallBack(enum FLVAudioType type, int profile, int sample_rate_index, i
         client->data_listner_->OnAudioData(audio_data);
     }
     free(data_withadts);
-    if(client->type_ == FLVOutMode::FLV_FILE){     
+    if(client->start_timestamp_audio_ == -1 || timestamp < client->last_timestamp_audio_){
+        client->start_timestamp_audio_ = timestamp;
+    }
+    client->last_timestamp_audio_ = timestamp;
+    timestamp -= client->start_timestamp_audio_;
+    if(client->type_ == FLVMode::FLV_FILE){     
         uint64_t now = GetCurrentTimeMs();
         uint64_t expected = 0;
         client->start_timestamp_.compare_exchange_strong(expected, now, std::memory_order_relaxed);
@@ -96,7 +101,7 @@ void videoCallBack(enum FLVVideoType type, int64_t timestamp, uint8_t* data, uin
         }
     }
     if(!client->probe_over_flag_ && client->width_ > 0 && client->height_ > 0 && client->fps_ > 0){
-        if(client->type_ == FLVOutMode::FLV_FILE){
+        if(client->type_ == FLVMode::FLV_FILE){
             terminateDemuxerFLVFile(client->context_demuxer_);
         }
         client->probe_over_flag_ = true;
@@ -104,7 +109,7 @@ void videoCallBack(enum FLVVideoType type, int64_t timestamp, uint8_t* data, uin
     if(client->probe_over_flag_ && !client->video_ready_ && (nalu_type == 7/*h264 sps*/ || nalu_type == 32/*h265 vps*/)){
         client->video_ready_ = true;
     }
-    if(!client->video_ready_){
+    if(!client->video_ready_ || !client->media_ready_){
         return;
     }
     char start_code[4] = {0, 0, 0, 1};
@@ -120,7 +125,12 @@ void videoCallBack(enum FLVVideoType type, int64_t timestamp, uint8_t* data, uin
         client->data_listner_->OnVideoData(video_data);
     }
     free(data_withwtartcode);
-    if(client->type_ == FLVOutMode::FLV_FILE){ 
+    if(client->start_timestamp_video_ == -1 || timestamp < client->last_timestamp_video_){
+        client->start_timestamp_video_ = timestamp;
+    }
+    client->last_timestamp_video_ = timestamp;
+    timestamp -= client->start_timestamp_video_;
+    if(client->type_ == FLVMode::FLV_FILE){ 
         uint64_t now = GetCurrentTimeMs();
         uint64_t expected = 0;
         client->start_timestamp_.compare_exchange_strong(expected, now, std::memory_order_relaxed);
@@ -160,36 +170,41 @@ void scriptDataCallBack(AMFDict dict, void* arg){
         }
     }
     if(!client->probe_over_flag_ && client->width_ > 0 && client->height_ > 0 && client->fps_ > 0){
-        if(client->type_ == FLVOutMode::FLV_FILE){
+        if(client->type_ == FLVMode::FLV_FILE){
             terminateDemuxerFLVFile(client->context_demuxer_);
         }
         client->probe_over_flag_ = true;
     }
     return;
 }
-RtmpPullClient::RtmpPullClient(std::string url, FLVOutMode type){
+RtmpPullClient::RtmpPullClient(std::string url, FLVMode type){
     type_ = type;
     url_ = url;
-    if(type == FLVOutMode::FLV_FILE){
-        log_debug("flv stream");
+    if(type == FLVMode::FLV_FILE){
+        log_debug("flv file");
     }
     else{
-        log_debug("rtmp file");
+        log_debug("rtmp stream");
     }
     // probe width height fps
     context_demuxer_ = createFLVContext();
     setReadCallBack(context_demuxer_, audioCallBack, videoCallBack, scriptDataCallBack, this);
-    if(type == FLVOutMode::FLV_FILE){
+    if(type == FLVMode::FLV_FILE){
         int ret = demuxerFLVFile(context_demuxer_, const_cast<char*>(url_.c_str()));
         if(ret < 0){
             log_error("demuxerFLVFile error");
         }
         destroyFLVContext(context_demuxer_);
+        if(fps_ < 0){ // The media duration is too short, failing to meet the detection frame count requirement
+            fps_ = 90000 / (interval_sum_ / probe_cnt_);
+        }
+        media_ready_ = true;
         // start reading
         context_demuxer_ = createFLVContext();
         setReadCallBack(context_demuxer_, audioCallBack, videoCallBack, scriptDataCallBack, this);
     }
     else{
+        media_ready_ = true;
         ConnectServer();
         th_rtmp_reconnect_ = std::thread(&RtmpPullClient::RtmpReconnectThread, this);
 
@@ -200,7 +215,7 @@ RtmpPullClient::~RtmpPullClient(){
     abort_ = true;
     terminateDemuxerFLVFile(context_demuxer_); // demuxerFLVFile blocks execution and requires calling terminateDemuxerFLVFile to stop parsing
     th_flv_handle_.join();
-    if(type_ == FLVOutMode::FLV_RTMP){
+    if(type_ == FLVMode::FLV_RTMP){
         th_rtmp_reconnect_.join();
         CloseConnect();
     }
@@ -238,18 +253,20 @@ void RtmpPullClient::CloseConnect(){
     }
 }
 void RtmpPullClient::FLVStreamReadThread(){
+    std::vector<uint8_t> flv_cache;
     while(!abort_){
-        if(type_ == FLVOutMode::FLV_FILE){
+        if(type_ == FLVMode::FLV_FILE && !media_over_){
             int ret = demuxerFLVFile(context_demuxer_, const_cast<char*>(url_.c_str()));
             if(ret < 0){
                 log_error("demuxerFLVFile error");
             }
+            media_over_ = true;
             if(colse_cb_ != nullptr){
                 colse_cb_();
             }
         }
-        else if(type_ == FLVOutMode::FLV_RTMP && rtmp_connect_stat_){
-            
+        else if(type_ == FLVMode::FLV_RTMP && rtmp_connect_stat_){
+            #if 0
             int ret = RTMP_Read(rtmp_, (char *)recv_buffer_, sizeof(recv_buffer_));
             if(ret <= 0){
                 rtmp_connect_stat_ = false;
@@ -285,7 +302,59 @@ void RtmpPullClient::FLVStreamReadThread(){
 
                 remain_bytes = ret - pos;
             }
+            #endif
+            int ret = RTMP_Read(rtmp_, (char*)recv_buffer_, sizeof(recv_buffer_));
+            if (ret <= 0) {
+                rtmp_connect_stat_ = false;
+                flv_cache.clear();
+                read_flv_header_ = false;
+                continue;
+            }
 
+            flv_cache.insert(flv_cache.end(), recv_buffer_, recv_buffer_ + ret);
+
+            while (!abort_) {
+                if (!read_flv_header_) {
+                    if (flv_cache.size() < FLV_HEADER_SIZE + FLV_PREVIOUS_SIZE)
+                        break;
+
+                    readFLVHeader(&context_demuxer_->flv_header, flv_cache.data(), flv_cache.size());
+
+                    flv_cache.erase(flv_cache.begin(), flv_cache.begin() + FLV_HEADER_SIZE + FLV_PREVIOUS_SIZE);
+                    read_flv_header_ = true;
+                    continue;
+                }
+                if (flv_cache.size() < FLV_TAG_HEADER_SIZE)
+                    break;
+
+                readTagHeader(&context_demuxer_->tag_header, flv_cache.data(), flv_cache.size());
+
+                uint32_t tag_size = FLV_TAG_HEADER_SIZE + context_demuxer_->tag_header.data_size + FLV_PREVIOUS_SIZE;
+
+                if (flv_cache.size() < tag_size)
+                    break;
+
+                uint8_t* tag_data = flv_cache.data() + FLV_TAG_HEADER_SIZE;
+
+                switch (context_demuxer_->tag_header.flv_media_type) {
+                    case FLV_AUDIO:
+                        readAudioTagData(context_demuxer_, tag_data,context_demuxer_->tag_header.data_size);
+                        break;
+                    case FLV_VIDEO:
+                        readVideoTagData(context_demuxer_, tag_data,context_demuxer_->tag_header.data_size);
+                        break;
+                    case FLV_SCRIPT_DATA:
+                        readScriptDataTagData(context_demuxer_, tag_data,context_demuxer_->tag_header.data_size);
+                        break;
+                    default:
+                        break;
+                }
+
+                flv_cache.erase(flv_cache.begin(), flv_cache.begin() + tag_size);
+            }
+        }
+        else{
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         } 
     }
     log_debug("FLVStreamReadThread Finished");

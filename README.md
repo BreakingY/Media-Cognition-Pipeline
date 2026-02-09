@@ -1,7 +1,7 @@
 [English](README.md) | [中文](README_CN.md)
 # Media-Cognition-Pipeline
-A general-purpose real-time streaming media and deep learning inference acceleration framework, supporting H264, H265, AAC, MP4, FLV, RTSP, RTMP, and YOLO.
-* Audio/video demuxing (MP4, FLV, RTSP, RTMP), resampling, encoding/decoding (H264, H265, AAC; NVIDIA, Ascend), muxing (MP4, FLV, RTMP), and visual perception (YOLO object detection + ByteTrack multi-object tracking; NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
+A general-purpose real-time streaming media and deep learning inference acceleration framework, supporting H264, H265, AAC, MP4, FLV, TS, RTSP, RTMP, SRT(TODO) and YOLO.
+* Audio/video demuxing (MP4, FLV, TS, RTSP, RTMP, SRT(TODO)), resampling, encoding/decoding (H264, H265, AAC; NVIDIA, Ascend), muxing (MP4, FLV, RTMP, SRT(TODO)), and visual perception (YOLO object detection + ByteTrack multi-object tracking; NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
 
 # Demuxing
 * mp4
@@ -10,6 +10,9 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * flv/rtmp
   * Media/RtmpClient
   * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
+* ts/srt
+  * Media/TsTransport
+  * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
 * rtsp
   * Media/RtspReader
   * simple-rtsp-client (https://github.com/BreakingY/simple-rtsp-client)
@@ -54,6 +57,9 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * flv/rtmp
   * Media/RtmpClient
   * libflv (https://github.com/BreakingY/libflv) + librtmp (https://git.ffmpeg.org/rtmpdump.git)
+* ts/srt
+  * Media/TsTransport
+  * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
 
 # Visual Perception (YOLO + ByteTrack)
 * NVIDIA TensorRT
@@ -70,7 +76,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
 # Framework Construction
 * Wrapper
 * A general media processing and perception framework built on demuxing, encoding/decoding, muxing, and visual perception modules.
-* Since MP4 requires writing trailer data at program termination, it is not suitable for RTSP/RTMP real-time streams. For real-time streaming, FLV is recommended for file output.
+* MP4 requires writing finalization metadata at the end of the file, which makes it unsuitable for RTSP/RTMP real-time streaming. FLV and TS are recommended formats for recording real-time streams.
 
 # Notes
 * Supported formats: Video: H264/H265, Audio: AAC.
@@ -89,9 +95,10 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * spdlog: https://github.com/gabime/spdlog
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
-* libflv: https://github.com/BreakingY/libflv
 * librtmp: https://git.ffmpeg.org/rtmpdump
+* libflv: https://github.com/BreakingY/libflv
 * simple-rtsp-client: https://github.com/BreakingY/simple-rtsp-client
+* libmpeg2core: https://github.com/BreakingY/libmpeg2core
 
 # Build
 * `git clone --recursive https://github.com/BreakingY/Media-Cognition-Pipeline.git`
@@ -110,10 +117,10 @@ A general-purpose real-time streaming media and deep learning inference accelera
    * ASCEND: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..`
 
 # Testing
-1. Pipeline test:  
-   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)>/<rtsp url>/<rtmp url> <mp4>/<flv>/<rtmp url>`
-2. AI inference:  
-   `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<rtmp url>`
+1. Pipeline test:
+   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)/ts(../Media/TsTransport/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
+2. AI inference:
+   `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 
    https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
 

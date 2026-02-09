@@ -13,6 +13,8 @@
 #include "rtsp_client_proxy.h"
 #include "RtmpPushClient.h"
 #include "RtmpPullClient.h"
+#include "TsMuxerClient.h"
+#include "TsDemuxerClient.h"
 #include <opencv2/opencv.hpp>
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
 #include "NodeFlow.h"
@@ -56,6 +58,7 @@ public:
     MediaReader *reader_ = nullptr;
     RtspClientProxy *rtsp_client_proxy_ = nullptr;
     RtmpPullClient *rtmp_pull_client_ = nullptr;
+    TsDemuxerClient *ts_demuxer_client_ = nullptr;
     int width_;
     int height_;
     int fps_ = 25;
@@ -69,15 +72,16 @@ public:
     AACDecoder *aac_decoder_ = nullptr; // aac
     AACEncoder *aac_encoder_ = nullptr; // aac
     
-    Muxer *mp4_muxer_ = nullptr; // MP4 requires knowing whether audio/video tracks exist in advance
-    bool SetMP4MediaInfo();
-    std::mutex mp4_mtx_;
-    std::atomic<bool> set_mp4_info_over_ = {false};
+    bool SetMediaInfo();
+    std::mutex media_info_mtx_;
+    std::atomic<bool> set_media_info_over_ = {false};
     std::chrono::steady_clock::time_point time_now_;
     std::chrono::steady_clock::time_point time_pre_;
     uint64_t nframe_counter_ = 0;
 
+    Muxer *mp4_muxer_ = nullptr; // MP4 requires knowing whether audio/video tracks exist in advance
     RtmpPushClient *rtmp_push_client_ = nullptr; // RTMP/FLV does not require knowing whether audio/video streams exist in advance
+    TsMuxerClient *ts_muxer_client_ = nullptr; // Live streaming: No need to know in advance whether there is an audio/video stream. File: Need to know audio and video information in advance
 
     // NPU GPU
     int32_t device_id_ = 0;

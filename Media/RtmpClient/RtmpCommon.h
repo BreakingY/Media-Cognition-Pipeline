@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-enum FLVOutMode {
+enum FLVMode {
     FLV_FILE = 0,
     FLV_RTMP
 };

@@ -27,7 +27,8 @@ include_directories(Warpper Log Log/spdlog/include
                     Media/Bitstream/h264/include Media/Bitstream/h265/include
                     Media/MediaReader Media/MediaReader/FileReader 
                     Media/MediaReader/RtspReader Media/MediaReader/RtspReader/simple-rtsp-client Media/MediaReader/RtspReader/simple-rtsp-client/3rdparty Media/MediaReader/RtspReader/simple-rtsp-client/rtp
-                    Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp)
+                    Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp
+                    Media/TsTransport Media/TsTransport/libmpeg2core/include)
 
 aux_source_directory(Test TEST)
 aux_source_directory(Warpper WRAPPER)
@@ -49,6 +50,9 @@ aux_source_directory(Media/Bitstream/h265/src BH265)
 aux_source_directory(Media/RtmpClient RTMPCLIENT)
 aux_source_directory(Media/RtmpClient/libflv/source LIBFLV)
 aux_source_directory(Media/RtmpClient/rtmpdump/librtmp LIBRTMP)
+
+aux_source_directory(Media/TsTransport TSTRANSPORT)
+aux_source_directory(Media/TsTransport/libmpeg2core/source MPEG2CORE)
 
 set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -Wno-deprecated-declarations)
@@ -123,6 +127,7 @@ endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSPSRC} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
+                        ${TSTRANSPORT} ${MPEG2CORE}
                         ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS} ssl crypto)
 ###############
