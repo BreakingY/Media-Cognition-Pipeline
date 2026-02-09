@@ -89,9 +89,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * Windows software installation reference:
   * https://sunkx.blog.csdn.net/article/details/146064215
 * Code module structure is shown below:
-![MCP](https://github.com/user-attachments/assets/32634f63-97f5-4aa0-80c0-ac624280c01c)
-
-
+![MCP](https://github.com/user-attachments/assets/6a9cbe6a-8a61-47de-bdac-81dc5865e182)
 
 # Acknowledgements (.gitmodules submodules)
 * spdlog: https://github.com/gabime/spdlog
