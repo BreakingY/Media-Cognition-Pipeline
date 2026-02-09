@@ -83,7 +83,7 @@
 * Windows 软件安装参考：
   * https://sunkx.blog.csdn.net/article/details/146064215
 * 代码模块划分如下图：
-![MCP](https://github.com/user-attachments/assets/bdb98d02-eaa6-4ad8-b30b-e2d3da399056)
+![MCP](https://github.com/user-attachments/assets/6a9cbe6a-8a61-47de-bdac-81dc5865e182)
 
 # 感谢以下作者(.gitmodules子模块)
 * spdlog: https://github.com/gabime/spdlog
