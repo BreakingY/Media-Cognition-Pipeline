@@ -36,7 +36,6 @@ A general-purpose real-time streaming media and deep learning inference accelera
     * `cmake -DDVPP_MPI=ON ..` (execute `source /usr/local/Ascend/ascend-toolkit/set_env.sh` first)
     * Uses NPU device 0 by default (MiedaWrapper.h → device_id_)
     * For real-time performance, B-frame decoding is not supported by default. To enable B-frame support, modify `DVPPDecoder.cpp → HardVideoDecoder::Init` and increase `chn_attr_.video_attr.ref_frame_num`.
-    * Test/test2.mp4 contains no B-frames; Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Ascend, first modify the code to support B-frames, then use Cognition.mp4, or use software decoding instead).
   * NVIDIA x86 encoding/decoding (NVIDIADecoder.cpp, H264NVIDIAEncoder.cpp, Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..` (set environment variables `export PATH=$PATH:/usr/local/cuda/bin` and `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * Uses the native NVIDIA x86 SDK (https://developer.nvidia.com/video_codec_sdk/downloads/v11).  
@@ -53,7 +52,6 @@ A general-purpose real-time streaming media and deep learning inference accelera
     * JetPack version: 5.0.2. JetPack 5.x encoding/decoding is generally compatible, but libraries compiled on 5.0.2 cannot be directly used on other 5.x versions. Recompile the code on the target machine (no need to replace jetson_multimedia_api headers).
     * Reference implementations: jetson_multimedia_api/samples/02_video_dec_cuda, jetson_multimedia_api/samples/01_video_encode
     * Considering Jetson is usually used as an edge device and to reduce latency, B-frame decoding is disabled by default. Enabling B-frames may cause frame reordering issues. To enable B-frame decoding, modify `Jetson_utils → JetsonDec.cpp` and comment out `ret = ctx.dec->disableDPB();` in `JetsonDec::decode_pro`.
-    * Test/test2.mp4 contains no B-frames; Test/test1.mp4 and Test/Cognition.mp4 contain B-frames (if you want to test visual perception on Jetson, first modify the code to support B-frames, then use Cognition.mp4, or use software decoding instead).
 
 # Muxing
 * mp4

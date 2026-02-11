@@ -353,7 +353,7 @@ void *MediaReader::MediaReaderThread(void *arg)
             self->packet_.dts -= start_timestamp_dts_video;
 
             AVRational time_base = self->format_ctx_->streams[self->video_index_]->time_base;
-            int64_t curtimestamp = av_rescale_q(self->packet_.pts, time_base, time_base_q);
+            int64_t curtimestamp = av_rescale_q(self->packet_.dts, time_base, time_base_q);
             if (curtimestamp > now_time){
                 av_usleep(curtimestamp - now_time);
             }

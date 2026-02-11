@@ -34,7 +34,6 @@
     * `cmake -DDVPP_MPI=ON ..`(先执行`source /usr/local/Ascend/ascend-toolkit/set_env.sh`)
     * 默认使用第0号NPU(MiedaWrapper.h-->device_id_)
     * 考虑是实时性，不支持解码B帧，如果要支持B帧，请修改`DVPPDecoder.cpp-->HardVideoDecoder::Init`，把`chn_attr_.video_attr.ref_frame_num`增大即可
-    * Test/test2.mp4不包含B帧 Test/test1.mp4和Test/Cognition.mp4包含B帧(如果要在Ascend上测试视觉感知，请先修改代码支持B帧，然后再使用Cognition.mp4进行测试，或者使用软解码测试)
   * NVIDIA x86编解码(NVIDIADecoder.cpp、H264NVIDIAEncoder.cpp、Nvcodec_utils)
     * `cmake -DNVIDIA_SDK_X86=ON ..`(先导入环境变量`export PATH=$PATH:/usr/local/cuda/bin`和`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`)
     * 使用NVIDIA x86原生SDK(https://developer.nvidia.com/video_codec_sdk/downloads/v11), 项目使用Video_Codec_SDK_11.0.10版本，测试驱动版本为550.163.01, Nvcodec_utils目录里的文件都是从Video_Codec_SDK_11.0.10中提取的，因为Video_Codec_SDK_11.0.10中文件很多，实际使用过程中并不是所有的都需要，Nvcodec_utils里面只提取出来本项目使用的文件，并进行分类。使用前需要设置编码方式(不是所有的显卡都支持硬编码,默认使用软编码, MiedaWrapper.h-->use_nv_enc_flag_)，默认使用第0号GPU(MiedaWrapper.h-->device_id_), 需要安装cuda(版本无要求)
@@ -47,7 +46,6 @@
     * Jetpack版本： 5.0.2，Jetpack 5.x编解码是通用的，但是5.0.2编译出来的库不能直接在其他5.x版本上使用，把代码放到目标机器上重新编译即可(不需要替换jetson_multimedia_api头文件)
     * 实现参考：jetson_multimedia_api/samples/02_video_dec_cuda、jetson_multimedia_api/samples/01_video_encode
     * 考虑到Jetson一般作为边缘设备，为了降低时延，Jetson默认不支持解码B帧，解码B帧会出现画面倒退的情况，如果要支持B帧请修改`Jetson_utils-->JetsonDec.cpp`，注释掉`JetsonDec::decode_pro`中的`ret = ctx.dec->disableDPB();`
-    * Test/test2.mp4不包含B帧 Test/test1.mp4和Test/Cognition.mp4包含B帧(如果要在Jetson上测试视觉感知，请先修改代码支持B帧，然后再使用Cognition.mp4进行测试，或者使用软解码测试)
 
 # 封装
 * mp4
