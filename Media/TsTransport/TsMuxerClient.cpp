@@ -7,7 +7,18 @@ static uint64_t GetCurrentTimeMs()
 }
 static int time_base_convert(int64_t timestamp_ms, int sampling_rate){
     return timestamp_ms * (sampling_rate / 1000);
-} 
+}
+#if defined(ENABLE_LIBSRT)
+static void print_stats(SRTSOCKET sock)
+{
+    SRT_TRACEBSTATS st {};
+    if (srt_bstats(sock, &st, 0) < 0)
+        return;
+
+    log_debug("\n[SRT STATS] SendRate : {} Mbps\n RTT : {} ms\n PktSent : {}\n PktLoss(S) : {}\n Retrans : {}\n SndBuf(p) : {}\n FlowWnd : {}\n",
+                st.mbpsSendRate, st.msRTT, st.pktSent, st.pktSndLoss, st.pktRetrans, st.pktSndBuf, st.pktFlowWindow);
+}
+#endif
 void media_write_callback(int program_number, int stream_pid, int stream_type, uint8_t *data, int data_len, void *arg){
     TsMuxerClient *client = (TsMuxerClient*)arg;
     switch (stream_type){
@@ -47,12 +58,24 @@ void media_write_callback(int program_number, int stream_pid, int stream_type, u
             fwrite(data, 1, data_len, client->ts_fd_);
         }
     }
-    else if(client->type_ == TSMode::TS_SRT){
-
+    else if(client->type_ == TSMode::TS_SRT && client->connect_stat_){
+#if defined(ENABLE_LIBSRT)
+        if (srt_sendmsg(client->sock_, reinterpret_cast<const char*>(data), data_len, -1, 0) < 0) {
+            std::printf("send failed: %s\n", srt_getlasterror_str());
+            client->connect_stat_ = false;
+            client->now_ = GetCurrentTimeMs();
+            if(client->last_stat_ == 0){
+                client->last_stat_ = client->now_;
+            }
+            if (client->now_ - client->last_stat_ >= 1000) {
+                print_stats(client->sock_);
+                client->last_stat_ = client->now_;
+            }
+        }
+#endif
     }
     return;
 }
-
 TsMuxerClient::TsMuxerClient(std::string url, TSMode type){
     url_ = url;
     type_ = type;
@@ -70,12 +93,108 @@ TsMuxerClient::TsMuxerClient(std::string url, TSMode type){
     th_video_ = std::thread(&TsMuxerClient::VideoStreamThread, this);
     th_audio_ = std::thread(&TsMuxerClient::AudioStreamThread, this);
 }
+#if defined(ENABLE_LIBSRT)
+static bool parse_srt_url(const char* url, std::string& host, uint16_t& port, std::string& streamid){
+    std::string u(url);
+
+    const std::string prefix = "srt://";
+    if (u.compare(0, prefix.size(), prefix) != 0)
+        return false;
+
+    u = u.substr(prefix.size());
+
+    std::string query;
+    auto qpos = u.find('?');
+    if (qpos != std::string::npos) {
+        query = u.substr(qpos + 1);
+        u = u.substr(0, qpos);
+    }
+
+    auto cpos = u.rfind(':');
+    if (cpos == std::string::npos)
+        return false;
+
+    host = u.substr(0, cpos);
+    port = static_cast<uint16_t>(std::stoi(u.substr(cpos + 1)));
+
+    const std::string key = "streamid=";
+    auto spos = query.find(key);
+    if (spos != std::string::npos) {
+        streamid = query.substr(spos + key.size());
+    }
+
+    return true;
+}
+static int srt_connect_with_timeout(SRTSOCKET sock, const struct sockaddr* addr, int addrlen, int timeout_ms){
+    int no = 0;
+    srt_setsockopt(sock, 0, SRTO_SNDSYN, &no, sizeof(no));
+    srt_setsockopt(sock, 0, SRTO_RCVSYN, &no, sizeof(no));
+
+    if(srt_connect(sock, addr, addrlen) == 0)
+        return 0;
+
+    int eid = srt_epoll_create();
+    srt_epoll_add_usock(eid, sock, nullptr);
+
+    SRT_EPOLL_EVENT ev {};
+    int ret = srt_epoll_uwait(eid, &ev, 1, timeout_ms);
+
+    srt_epoll_release(eid);
+
+    return (ret > 0 && (ev.events & SRT_EPOLL_OUT)) ? 0 : -1;
+}
+#endif
 int TsMuxerClient::ConnectServer(){
+#if defined(ENABLE_LIBSRT)
+    static std::once_flag flag;
+#if defined(_WIN32) || defined(_WIN64)
+    std::call_once(flag, [this] {
+        WSADATA wsa;
+        WSAStartup(MAKEWORD(2, 2), &wsa);
+        srt_startup();
+    });
+#else
+    std::call_once(flag, [this] {
+        srt_startup();
+    });
+#endif
+    
+    std::string host;
+    uint16_t port = 0;
+    std::string streamid;
+
+    if (!parse_srt_url(url_.c_str(), host, port, streamid)) {
+        log_error("Invalid SRT URL: {}", url_);
+        return -1;
+    }
+    log_debug("host: {} port: {} streamid: {}", host, port, streamid);
+    sock_ = srt_create_socket();
+    if (sock_ == SRT_INVALID_SOCK) {
+        log_error("srt_create_socket failed");
+        return -1;
+    }
+    if(!streamid.empty()){
+        srt_setsockopt(sock_, 0, SRTO_STREAMID, streamid.c_str(), streamid.size());
+    }
+    sockaddr_in addr {};
+    addr.sin_family = AF_INET;
+    addr.sin_port   = htons(port);
+    addr.sin_addr.s_addr = inet_addr(host.c_str());
+
+    if(srt_connect_with_timeout(sock_, reinterpret_cast<sockaddr*>(&addr),sizeof(addr), 5000/*ms*/) < 0){
+        log_error("connect failed:{}", srt_getlasterror_str());
+        return -1;
+    }
+#endif
     connect_stat_ = true;
     return 0;
 }
 void TsMuxerClient::CloseConnect(){
-
+#if defined(ENABLE_LIBSRT)
+    last_stat_ = now_ = 0;
+    srt_close(sock_);
+    // srt_cleanup();
+#endif
 }
 int TsMuxerClient::OpenTsHandle(){
     context_muxer_ = create_ts_context();
@@ -207,7 +326,7 @@ void TsMuxerClient::VideoStreamThread(){
             if(last_pts == -1){
                 last_pts = packet.pts;
             }
-            else if(last_pts == packet.pts){
+            else if(last_pts >= packet.pts){
                 packet.pts = last_pts + 1;
             }
             last_pts = packet.pts;
@@ -262,14 +381,14 @@ void TsMuxerClient::AudioStreamThread(){
                 if(last_pts == -1){
                     last_pts = packet.pts;
                 }
-                else if(last_pts == packet.pts){
-                    packet.pts = last_pts + ((1024 * 1000) / GetSampleRate(res.samplingFreqIndex));
+                else if(last_pts >= packet.pts){
+                    packet.pts = last_pts + 1; // (1024 * 1000) / GetSampleRate(res.samplingFreqIndex)
                 }
                 pts = dts = time_base_convert(packet.pts, 90000);
             }
             else if(stream_type_audio_ == STREAM_TYPE_AUDIO_G711A || stream_type_audio_ == STREAM_TYPE_AUDIO_G711U){
-                if(last_pts == packet.pts){
-                    packet.pts = last_pts + ((160 * 1000) / 8000);
+                if(last_pts >= packet.pts){
+                    packet.pts = last_pts + 1; // (160 * 1000) / 8000
                 }
                 pts = dts = time_base_convert(packet.pts, 90000);
             }

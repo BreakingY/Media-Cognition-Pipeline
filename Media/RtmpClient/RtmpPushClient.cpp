@@ -343,7 +343,7 @@ void RtmpPushClient::VideoStreamThread(){
             if(last_pts == -1){
                 last_pts = packet.pts;
             }
-            else if(last_pts == packet.pts){
+            else if(last_pts >= packet.pts){
                 packet.pts = last_pts + 1;
             }
             last_pts = packet.pts;
@@ -483,8 +483,8 @@ void RtmpPushClient::AudioStreamThread(){
             if(last_pts == -1){
                 last_pts = packet.pts;
             }
-            else if(last_pts == packet.pts){
-                packet.pts = last_pts + ((1024 * 1000) / GetSampleRate(res.samplingFreqIndex));
+            else if(last_pts >= packet.pts){
+                packet.pts = last_pts + 1;
             }
             last_pts = packet.pts;
             uint8_t *data = nullptr;

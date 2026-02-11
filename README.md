@@ -1,7 +1,7 @@
 [English](README.md) | [中文](README_CN.md)
 # Media-Cognition-Pipeline
-A general-purpose real-time streaming media and deep learning inference acceleration framework, supporting H264, H265, AAC, MP4, FLV, TS, RTSP, RTMP, SRT(TODO) and YOLO.
-* Audio/video demuxing (MP4, FLV, TS, RTSP, RTMP, SRT(TODO)), resampling, encoding/decoding (H264, H265, AAC; NVIDIA, Ascend), muxing (MP4, FLV, TS, RTMP, SRT(TODO)), and visual perception (YOLO object detection + ByteTrack multi-object tracking; NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
+A general-purpose real-time streaming media and deep learning inference acceleration framework, supporting H264, H265, AAC, MP4, FLV, TS, RTSP, RTMP, SRT and YOLO.
+* Audio/video demuxing (MP4, FLV, TS, RTSP, RTMP, SRT(TODO)), resampling, encoding/decoding (H264, H265, AAC; NVIDIA, Ascend), muxing (MP4, FLV, TS, RTMP, SRT), and visual perception (YOLO object detection + ByteTrack multi-object tracking; NVIDIA, Ascend) pipeline, managed with a modular, node-based, and interface-oriented design.
 
 # Demuxing
 * mp4
@@ -13,11 +13,16 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * ts/srt
   * Media/TsTransport
   * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
+  * TS: supported by default; SRT: requires enabling the CMake option `-DENABLE_SRT=ON` and libsrt needs to be installed.
+  * libsrt installation
+    * git clone https://github.com/Haivision/srt.git
+    * cd srt && ./configure
+    * make && make install
 * rtsp
   * Media/RtspReader
   * simple-rtsp-client (https://github.com/BreakingY/simple-rtsp-client)
 
-# Encoding / Decoding
+# Encoding / Decoding(Only one of them can be activated)
 * Audio encoding/decoding uses a pure software solution.
 * Video encoding/decoding implementations include:
   * FFmpeg hardware-accelerated encoding/decoding (FFHardDecoder.cpp, H264FFHardEncoder.cpp)
@@ -60,6 +65,11 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * ts/srt
   * Media/TsTransport
   * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
+  * TS: supported by default; SRT: requires enabling the CMake option `-DENABLE_SRT=ON` and libsrt needs to be installed.
+  * libsrt installation
+    * git clone https://github.com/Haivision/srt.git
+    * cd srt && ./configure
+    * make && make install
 
 # Visual Perception (YOLO + ByteTrack)
 * NVIDIA TensorRT

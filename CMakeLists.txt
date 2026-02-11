@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 project (VIDEOCODECPROJ)
 set(CMAKE_CXX_STANDARD 17)
+option(ENABLE_SRT "Enable srt streaming" OFF)
 option(FFMPEG_SOFT "Enable FFmpeg soft codec" OFF)
 option(FFMPEG_NVIDIA "Enable FFmpeg nvidia codec" OFF)
 option(DVPP_MPI "Enable Ascend DVPP V2 codec" OFF)
 option(NVIDIA_SDK_X86 "Enable NVIDIA Video Codec SDK codec" OFF)
+option(NVIDIA_SDK_ARM "Enable Jetson codec" OFF)
+option(NVIDIA_SDK_ARM "Enable Jetson codec" OFF)
+option(DETECTION_NVIDIA "Enable Nvidia detection" OFF)
+option(DETECTION_ASCEND "Enable Ascend detection" OFF)
 if(WIN32)
     # ffmpeg
     include_directories("D:/msys64/mingw64/include")
@@ -57,6 +62,13 @@ aux_source_directory(Media/TsTransport/libmpeg2core/source MPEG2CORE)
 set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -Wno-deprecated-declarations)
 set(CMAKE_BUILD_TYPE Release)
+######################
+#### input/output ####
+######################
+if(ENABLE_SRT)
+    message(STATUS "ENABLE_SRT OK")
+    add_definitions(-DENABLE_LIBSRT)
+endif()
 ###############
 #### codec ####
 ###############
@@ -130,6 +142,12 @@ add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} 
                         ${TSTRANSPORT} ${MPEG2CORE}
                         ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS} ssl crypto)
+######################
+#### input/output ####
+######################
+if(ENABLE_SRT)
+    target_link_libraries(mcp srt)
+endif()
 ###############
 #### codec ####
 ###############

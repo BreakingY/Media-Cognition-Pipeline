@@ -1,6 +1,6 @@
 # Media-Cognition-Pipeline
-实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT(TODO)、YOLO。
-* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾)、封装(MP4、FLV、TS、RTMP、SRT(TODO))，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾)pipeline, 采用模块化、节点化和接口化管理。
+实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT、YOLO。
+* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾)pipeline, 采用模块化、节点化和接口化管理。
 
 # 解封装
 * mp4
@@ -12,11 +12,16 @@
 * ts/srt
   * Media/TsTransport
   * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
+  * TS：默认支持；SRT：需要添加cmake选项，`-DENABLE_SRT=ON`，并且需要安装libsrt。
+  * libsrt安装
+    * git clone https://github.com/Haivision/srt.git
+    * cd srt && ./configure
+    * make && make install
 * rtsp
   * Media/RtspReader
   * simple-rtsp-client (https://github.com/BreakingY/simple-rtsp-client)
 
-# 编解码
+# 编解码(只能开启其中的一种)
 * 音频编解码使用纯软方案。
 * 视频编解码有以下实现：
   * FFmpeg硬编解码(FFHardDecoder.cpp、H264FFHardEncoder.cpp)
@@ -54,6 +59,11 @@
 * ts/srt
   * Media/TsTransport
   * libmpeg2 (https://github.com/BreakingY/libmpeg2core)
+  * TS：默认支持；SRT：需要添加cmake选项，`-DENABLE_SRT=ON`
+  * 需要安装libsrt(https://github.com/Haivision/srt)
+    * git clone https://github.com/Haivision/srt.git
+    * cd srt && ./configure
+    * make && make install
 
 # 视觉感知(YOLO + ByteTrack)
 * NVIDIA TensorRT

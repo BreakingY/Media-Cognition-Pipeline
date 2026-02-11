@@ -14,6 +14,13 @@
 extern "C" {
 #include "mpeg2core_ts.h"
 }
+#if defined(ENABLE_LIBSRT)
+#include <srt/srt.h>
+#if defined(_WIN32) || defined(_WIN64)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+#endif
 void media_write_callback(int program_number, int stream_pid, int stream_type, uint8_t *data, int data_len, void *arg);
 class TsMuxerClient{
 public:
@@ -78,4 +85,10 @@ private:
     // protocol 
     std::atomic<bool> connect_stat_ = {false};
     std::thread th_reconnect_;
+
+    #if defined(ENABLE_LIBSRT)
+    SRTSOCKET sock_;
+    uint64_t last_stat_ = 0;
+    uint64_t now_ = 0;
+    #endif
 };
