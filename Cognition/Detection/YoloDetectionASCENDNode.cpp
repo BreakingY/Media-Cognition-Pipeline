@@ -412,8 +412,7 @@ void YoloDetectionNode::setInput(){
             | U | = | cscMatrixR1C0 cscMatrixR1C1 cscMatrixR1C2 | | G | >> 8 + | cscOutputBiasR1 |
             | V |   | cscMatrixR2C0 cscMatrixR2C1 cscMatrixR2C2 | | R |        | cscOutputBiasR2 |
             */
-            // 使用默认参数即可，这个接口主要用于自定义色域转换参数
-            CHECK_ACL(aclmdlSetAIPPCscParams(aipp_param_tensor, 1, 298, 516, 0, 298, -100, -208, 298, 0, 409, 0, 0, 0, 16, 128, 128));
+            CHECK_ACL(aclmdlSetAIPPCscParams(aipp_param_tensor, 1, 298, 0, 409, 298, -100, -208, 298, 516,  0, 0, 0, 0, 16, 128, 128));
 
             CHECK_ACL(aclmdlSetAIPPRbuvSwapSwitch(aipp_param_tensor, 0)); // 通道（R/B 、U/V）交换开关 0-不交换 1-交换
             CHECK_ACL(aclmdlSetAIPPAxSwapSwitch(aipp_param_tensor, 0)); // 控制 RGBA 到 ARGB 或 YUVA 到 AYUV 的交换开关。0-不交换。
