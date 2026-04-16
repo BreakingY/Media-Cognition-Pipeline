@@ -461,7 +461,6 @@ void YoloDetectionNode::setInput(){
                 CHECK_ACL(aclmdlSetAIPPDtcPixelMin(aipp_param_tensor, 0.0, 0.0, 0.0, 0.0, idx));
             }
             for(int idx = 0; idx < batch_size_; idx++){
-                // 事件检测预处理R2 = R / 255 ,即(1.0 / (255.0 * 𝜎2)) 中𝜎2 = 1.0，所以dtcPixelVarReciChni = 1.0 / 255.0
                 float dtcPixelVarReciChn0 = 1.0 / 255.0;
                 float dtcPixelVarReciChn1 = 1.0 / 255.0;
                 float dtcPixelVarReciChn2 = 1.0 / 255.0;
