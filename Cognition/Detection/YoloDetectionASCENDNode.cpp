@@ -448,15 +448,8 @@ void YoloDetectionNode::setInput(){
             */
             CHECK_ACL(aclmdlSetAIPPPaddingParams(aipp_param_tensor, 0, 0, 0, 0, 0, 0));
             /*
-            深度学习图像预处理归一化操作过程如下：
-            1、缩放 首先将红色通道的值缩放到 [0, 1] 的范围，公式为：R1 = R / 255.0
-            2、方差处理 R2 = (R1 -μ) / 𝜎2  μ 是均值，𝜎2是方差 μ和𝜎2是训练的时候得到的
-            昇腾没有设置缩放到 [0, 1]的API，只有设置均值和方差的API，所以分子分母需要同时乘以255，变成R2 = (R -255.0 * μ) / (255.0 * 𝜎2)，所以调用API的时候方差和均值需要乘以255.0 
-            */
-            /*
-            设置通道的均值。
-            dtcPixelMeanChni：通道i的均值。取值范围：[0, 255] i = 0 1 2 3 如果只有3个通道，dtcPixelMeanChn3参数设置为0。
-            batchIndex:指定对第几个Batch上的图片设置通道均值。取值范围：[0,batchSize)
+            图像预处理归一化操作过程如下：
+            pixel_out_chx(i)=[pixel_in_chx(i)-mean_chn_i-min_chn_i]*var_reci_chn_i
             */
             for(int idx = 0; idx < batch_size_; idx++){
                 float dtcPixelMeanChni0 = 0.0 * 255.0;
@@ -464,20 +457,9 @@ void YoloDetectionNode::setInput(){
                 float dtcPixelMeanChni2 = 0.0 * 255.0;
                 CHECK_ACL(aclmdlSetAIPPDtcPixelMean(aipp_param_tensor, dtcPixelMeanChni0, dtcPixelMeanChni1, dtcPixelMeanChni2, 0, idx));
             }
-            /*
-            设置通道的最小值
-            取值范围：[0, 255]
-            */
             for(int idx = 0; idx < batch_size_; idx++){
                 CHECK_ACL(aclmdlSetAIPPDtcPixelMin(aipp_param_tensor, 0.0, 0.0, 0.0, 0.0, idx));
             }
-            /*
-            设置通道的方差
-            通道i的方差的倒数，默认值为1.0。取值范围：[-65504, 65504]
-            dtcPixelVarReciChni：表示通道i方差的倒数
-            这里设置的是方差的倒数
-            R2 = (R -255.0 * μ) * (1.0 / (255.0 * 𝜎2))
-            */
             for(int idx = 0; idx < batch_size_; idx++){
                 // 事件检测预处理R2 = R / 255 ,即(1.0 / (255.0 * 𝜎2)) 中𝜎2 = 1.0，所以dtcPixelVarReciChni = 1.0 / 255.0
                 float dtcPixelVarReciChn0 = 1.0 / 255.0;
