@@ -33,7 +33,8 @@ include_directories(Warpper Log Log/spdlog/include
                     Media/MediaReader Media/MediaReader/FileReader 
                     Media/MediaReader/RtspReader Media/MediaReader/RtspReader/simple-rtsp-client Media/MediaReader/RtspReader/simple-rtsp-client/3rdparty Media/MediaReader/RtspReader/simple-rtsp-client/rtp
                     Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp
-                    Media/TsTransport Media/TsTransport/libmpeg2core/include)
+                    Media/TsTransport Media/TsTransport/libmpeg2core/include
+                    Time)
 
 aux_source_directory(Test TEST)
 aux_source_directory(Warpper WRAPPER)

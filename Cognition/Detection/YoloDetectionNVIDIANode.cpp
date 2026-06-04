@@ -380,11 +380,14 @@ void YoloDetectionNode::SetDataNode(std::shared_ptr<CollectorNode> collector, st
 void YoloDetectionNode::DetectThreadLoop(){
     thread_run_flag_ = true;
     CHECK_CUDA(cudaSetDevice(device_id_));
+    TimeMetrics time_for_log;
+    time_for_log.startTimer();
     while (!abort_) {
         if(!collector_){
             log_error("No data source available");
             return;
         }
+        TimeMetrics t_detect;
         std::vector<ImgPacket*> packets= collector_->GetBatch(batch_size_);
         if(packets.empty()){
             continue;
@@ -392,6 +395,8 @@ void YoloDetectionNode::DetectThreadLoop(){
         std::vector<std::tuple<float, float, float>> res_pre;
         int buffer_idx = 0;
         char* input_ptr = static_cast<char*>(buffers_[in_tensor_info_[0].first]);
+        TimeMetrics t;
+        t.startTimer();
         for(int i = 0; i < packets.size(); i++){  
             ImgPacket* packet = packets[i];
             int new_unpad_w, new_unpad_h;
@@ -403,10 +408,17 @@ void YoloDetectionNode::DetectThreadLoop(){
             buffer_idx += input_h_ * input_w_ * 3 * sizeof(float);
             res_pre.push_back(res);
         }
+        int pre_time = t.stopTimer();
+
         MY_ASSERT(packets.size() == res_pre.size());
+
+        t.startTimer();
         if(Inference(packets.size()) < 0){
             log_error("Inference error");
         }
+        int infer_time = t.stopTimer();
+
+        t.startTimer();
         int one_output_len = output_pred_ * anchors_;
         for (int b = 0; b < res_pre.size(); ++b) {
             ImgPacket* packet = packets[b];
@@ -425,6 +437,12 @@ void YoloDetectionNode::DetectThreadLoop(){
             if(distributor_){
                 distributor_->Push(packet);
             }
+        }
+        int after_time = t.stopTimer();
+        int detect_all_time = t_detect.stopTimer();
+        if(time_for_log.stopTimer() >= 1000) {
+            time_for_log.startTimer();
+            log_debug("detect_all_time:{} pre_time:{} infer_time:{} after_time:{}", detect_all_time, pre_time, infer_time, after_time);
         }
     }
     log_debug("DetectThreadLoop finished");

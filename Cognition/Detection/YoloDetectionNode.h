@@ -15,6 +15,7 @@
 #include "DetectionInfo.h"
 #include "log_helpers.h"
 #include "DataChannel.h"
+#include "TimeMetrics.h"
 #if defined(DETECTION_NVIDIA)
 #include <npp.h>
 #include <NvInfer.h>

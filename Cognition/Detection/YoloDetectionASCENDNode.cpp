@@ -551,11 +551,14 @@ void YoloDetectionNode::SetDataNode(std::shared_ptr<CollectorNode> collector, st
 void YoloDetectionNode::DetectThreadLoop(){
     thread_run_flag_ = true;
     CHECK_ACL(aclrtSetDevice(device_id_));
+    TimeMetrics time_for_log;
+    time_for_log.startTimer();
     while (!abort_) {
         if(!collector_){
             log_error("No data source available");
             return;
         }
+        TimeMetrics t_detect;
         std::vector<ImgPacket*> packets= collector_->GetBatch(batch_size_);
         if(packets.empty()){
             continue;
@@ -563,11 +566,14 @@ void YoloDetectionNode::DetectThreadLoop(){
         int model_img_size = input_h_ * input_w_ * 3;
         int buffer_idx = 0;
         std::vector<std::tuple<float, float, float>> res_pre;
+        TimeMetrics t;
+        t.startTimer();
         for(int i = 0; i < packets.size(); i++){
             ImgPacket *packet = packets[i];
             MemAllocate(packet->context);
             int img_size = packet->context->width * packet->context->height * 3;
             CHECK_ACL(aclrtMemcpyAsync(packet->context->img_buffer, img_size, packet->img.data, img_size, ACL_MEMCPY_HOST_TO_DEVICE, stream_));
+            CHECK_ACL(aclrtSynchronizeStream(stream_));
             LetterBox(channel_id_letterbox_, packet->context->img_buffer, img_size, packet->context->width, packet->context->height, input_addr_img_ + buffer_idx, model_img_size, input_w_, input_h_);
             buffer_idx += input_h_ * input_w_ * 3;
 
@@ -579,10 +585,17 @@ void YoloDetectionNode::DetectThreadLoop(){
             dh /= 2.0f;
             res_pre.push_back(std::make_tuple(r, dw, dh));
         }
+        int pre_time = t.stopTimer();
+
         MY_ASSERT(packets.size() == res_pre.size());
+
+        t.startTimer();
         if(Inference(packets.size()) < 0){
             log_error("Inference error");
         }
+        int infer_time = t.stopTimer();
+
+        t.startTimer();
         int one_output_len = output_pred_ * anchors_;
         for (int b = 0; b < res_pre.size(); ++b) {
             ImgPacket* packet = packets[b];
@@ -601,6 +614,12 @@ void YoloDetectionNode::DetectThreadLoop(){
             if(distributor_){
                 distributor_->Push(packet);
             }
+        }
+        int after_time = t.stopTimer();
+        int detect_all_time = t_detect.stopTimer();
+        if(time_for_log.stopTimer() >= 1000) {
+            time_for_log.startTimer();
+            log_debug("detect_all_time:{} pre_time:{} infer_time:{} after_time:{}", detect_all_time, pre_time, infer_time, after_time);
         }
     }
     log_debug("DetectThreadLoop finished");

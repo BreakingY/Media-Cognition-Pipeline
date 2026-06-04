@@ -25,6 +25,7 @@
 #endif
 #include "DetectionInfo.h"
 #include "log_helpers.h"
+#include "TimeMetrics.h"
 
 /// =======================
 /// Infer Data Listener
@@ -42,6 +43,7 @@ struct QueueContext {
     InferDataListner* listener{nullptr};
     int width;
     int height;
+    TimeMetrics time_for_log;
 #if defined(DETECTION_NVIDIA)
     void *img_buffer{nullptr};
     void *pu8_resized{nullptr}; // yolo  Letterbox_resize_GPU
@@ -103,6 +105,7 @@ inline void DestroyContext(QueueContext* ctx) {
 struct ImgPacket{
     cv::Mat img;
     DetectionInfo info;
+    TimeMetrics timer;
     QueueContext* context{nullptr};
 };
 /// =======================
@@ -130,6 +133,7 @@ public:
         std::unique_lock<std::mutex> guard(mutex_);
         ImgPacket *packet = new ImgPacket();
         packet->img = std::move(img);
+        packet->timer.startTimer();
         packet->context = context;
         img_list_.push_back(packet);
         cond_.notify_one();
@@ -140,6 +144,7 @@ public:
         std::unique_lock<std::mutex> guard(mutex_);
         ImgPacket *packet = new ImgPacket();
         packet->img = img;
+        packet->timer.startTimer();
         packet->context = context;
         img_list_.push_back(packet);
         cond_.notify_one();
@@ -428,6 +433,11 @@ private:
                 img_list_.pop_front();
                 if (packet) {
                     QueueContext* ctx = packet->context;
+                    if(ctx->time_for_log.stopTimer() >= 1000) {
+                        ctx->time_for_log.startTimer();
+                        int flow_time = packet->timer.stopTimer();
+                        log_debug("stream id:{} flow time:{}", ctx->stream_id, flow_time);
+                    }
                     if (ctx && ctx->listener) {
                         ctx->listener->OnInferData(packet->img, packet->info);
                     }

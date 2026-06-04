@@ -91,7 +91,7 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
         chn_attr_.video_attr.ref_frame_num = 4;
     } 
     else{
-        chn_attr_.video_attr.ref_frame_num = 1;
+        chn_attr_.video_attr.ref_frame_num = 3;
     }
     chn_attr_.video_attr.temporal_mvp_en = HI_TRUE;
     chn_attr_.video_attr.tmv_buf_size = hi_vdec_get_tmv_buf_size(chn_attr_.type, width, height);
