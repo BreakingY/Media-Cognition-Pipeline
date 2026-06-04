@@ -115,8 +115,8 @@
    * `cmake -G "MinGW Makefiles" -DFFMPEG_SOFT=ON ..`
    * `mingw32-make -j`
 3. 视觉感知
-   * NVIDIA: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..`
-   * ASCEND: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/DVPP_MPI/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_ASCEND=ON ..`
+   * NVIDIA: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA//NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..`
+   * ASCEND: `cmake -D<FFMPEG_SOFT/DVPP_MPI>=ON -DDETECTION_ASCEND=ON ..`
 # 测试：
 1. pipeline测试：
    `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)/ts(../Media/TsTransport/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`

@@ -115,8 +115,12 @@ public:
     ~CollectorNode() {
         std::unique_lock<std::mutex> guard(mutex_);
         while (!img_list_.empty()) {
-            delete img_list_.front();
+            ImgPacket *packet = img_list_.front();
             img_list_.pop_front();
+            if(packet){
+                delete packet;
+                packet = nullptr;
+            }
         }
         log_debug("~CollectorNode");
     }
@@ -190,8 +194,12 @@ public:
         for (auto& kv : streams_) {
             auto& q = kv.second.queue;
             while (!q.empty()) {
-                delete q.front();
+                ImgPacket *packet = q.front();
                 q.pop_front();
+                if(packet){
+                    delete packet;
+                    packet = nullptr;
+                }
             }
         }
         streams_.clear();
@@ -355,6 +363,15 @@ public:
             }
 
             for (auto sid : to_remove) {
+                auto& q = streams_[sid].queue;
+                while (!q.empty()) {
+                    ImgPacket *packet = q.front();
+                    q.pop_front();
+                    if(packet){
+                        delete packet;
+                        packet = nullptr;
+                    }
+                }
                 streams_.erase(sid);
             }
             guard.unlock();
@@ -385,8 +402,12 @@ public:
         worker_.join();
         std::unique_lock<std::mutex> guard(mutex_);
         while (!img_list_.empty()) {
-            delete img_list_.front();
+            ImgPacket *packet = img_list_.front();
             img_list_.pop_front();
+            if(packet){
+                delete packet;
+                packet = nullptr;
+            }
         }
         log_debug("~DistributorNode");
     }
