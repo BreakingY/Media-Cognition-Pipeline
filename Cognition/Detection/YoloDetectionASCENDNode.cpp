@@ -516,6 +516,7 @@ YoloDetectionNode::~YoloDetectionNode(){
     CHECK_ACL(aclmdlDestroyDataset(input_));
     input_ = nullptr;
     CHECK_ACL(aclrtDestroyStream(stream_));
+    log_debug("~YoloDetectionNode");
 }
 int YoloDetectionNode::Inference(const int batch_size){
     CHECK_ACL(aclUpdateDataBuffer(data_buf_input_0_, input_addr_img_, batch_size * input_w_ * input_h_ * 3));

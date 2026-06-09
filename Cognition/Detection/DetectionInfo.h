@@ -1,4 +1,4 @@
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #ifndef DETECTION_INFO_H
 #define DETECTION_INFO_H
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <opencv2/opencv.hpp>
-#if defined(DETECTION_NVIDIA)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
 #ifndef CHECK_CUDA
 #define CHECK_CUDA(callstr)\
     {\
@@ -56,4 +56,4 @@ typedef struct DetectionInfoSt {
     std::vector<std::string> class_names;
 }DetectionInfo;
 #endif // DETECTION_INFO_H
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

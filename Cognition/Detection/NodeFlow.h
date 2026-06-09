@@ -1,4 +1,4 @@
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #ifndef NODE_FLOW_H
 #define NODE_FLOW_H
 #include <iostream>
@@ -20,4 +20,4 @@ void* AddStream(InferDataListner* listener, int width, int height, int fps = 30)
 void EndStream(void* context);
 void StreamPushData(cv::Mat &img, void* context);
 #endif // NODE_FLOW_H
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

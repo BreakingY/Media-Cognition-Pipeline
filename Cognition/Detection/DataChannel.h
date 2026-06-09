@@ -1,4 +1,4 @@
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #ifndef DATA_CHANNEL_H
 #define DATA_CHANNEL_H
 
@@ -14,7 +14,7 @@
 #include <unordered_map>
 
 #include <opencv2/opencv.hpp>
-#if defined(DETECTION_NVIDIA)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
 #include <cuda_runtime.h>
 #endif
 #if defined(DETECTION_ASCEND)
@@ -44,7 +44,7 @@ struct QueueContext {
     int width;
     int height;
     TimeMetrics time_for_log;
-#if defined(DETECTION_NVIDIA)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
     void *img_buffer{nullptr};
     void *pu8_resized{nullptr}; // yolo  Letterbox_resize_GPU
 #endif
@@ -62,7 +62,7 @@ inline QueueContext* CreateContext(InferDataListner* listener, int width, int he
     ctx->height = height;
     return ctx;
 }
-#if defined(DETECTION_NVIDIA)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
 inline void MemAllocate(QueueContext* ctx, int pu8_resized_w, int pu8_resized_h, int channel){
     if(ctx->img_buffer == nullptr){
         CHECK_CUDA(cudaMalloc(&ctx->img_buffer, ctx->width * ctx->height * 3));
@@ -81,7 +81,7 @@ inline void MemAllocate(QueueContext* ctx){
 #endif
 inline void DestroyContext(QueueContext* ctx) {
     if(ctx){
-#if defined(DETECTION_NVIDIA)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
         if(ctx->img_buffer){
             CHECK_CUDA(cudaFree(ctx->img_buffer));
         }
@@ -461,4 +461,4 @@ private:
 };
 
 #endif // DATA_CHANNEL_H
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

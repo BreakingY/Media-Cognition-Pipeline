@@ -1,4 +1,4 @@
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #include "TrackerNode.h"
 TrackerNode::TrackerNode(int fps){
     tracker_ = std::make_unique<byte_track::BYTETracker>(fps, fps * 2);
@@ -7,7 +7,7 @@ TrackerNode::~TrackerNode(){
     abort_ = true;
     if(thread_run_flag_)
         worker_.join();
-
+    log_debug("~TrackerNode");
 }
 void TrackerNode::SetDataNode(int64_t stream_id, std::shared_ptr<RelayNode> relayer_in, std::shared_ptr<RelayNode> relayer_out, std::shared_ptr<DistributorNode> distributor){
     stream_id_ = stream_id;
@@ -76,4 +76,4 @@ void TrackerNode::TrackThreadLoop(){
 
     }
 }
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

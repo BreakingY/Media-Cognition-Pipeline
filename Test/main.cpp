@@ -17,6 +17,8 @@ int main(int argc, char **argv)
     MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.engine");
 #elif defined(DETECTION_ASCEND)
     MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.om");
+#elif defined(DETECTION_HYGON)
+    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.mxr");
 #else
     MediaWrapper *test = new MediaWrapper(argv[1], argv[2]);
 #endif

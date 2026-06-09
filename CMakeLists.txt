@@ -10,6 +10,7 @@ option(NVIDIA_SDK_ARM "Enable Jetson codec" OFF)
 option(NVIDIA_SDK_ARM "Enable Jetson codec" OFF)
 option(DETECTION_NVIDIA "Enable Nvidia detection" OFF)
 option(DETECTION_ASCEND "Enable Ascend detection" OFF)
+option(DETECTION_HYGON "Enable Nvidia detection" OFF)
 if(WIN32)
     # ffmpeg
     include_directories("D:/msys64/mingw64/include")
@@ -117,7 +118,7 @@ endif()
 ###################
 #### Cognition ####
 ###################
-if(DETECTION_NVIDIA OR DETECTION_ASCEND)
+if(DETECTION_NVIDIA OR DETECTION_ASCEND OR DETECTION_HYGON)
     message(STATUS "Enable detection")
     include_directories(Cognition/Detection Cognition/ByteTrack-cpp/include)
     include_directories(/usr/include/eigen3) # for ByteTrack
@@ -125,6 +126,7 @@ if(DETECTION_NVIDIA OR DETECTION_ASCEND)
     aux_source_directory(Cognition/ByteTrack-cpp/src BYTETRACK)
 endif()
 if(DETECTION_NVIDIA)
+    enable_language(CUDA)
     add_definitions(-DDETECTION_NVIDIA)
     include_directories(/data/sunkx/TensorRT-10.4.0.26/include)
     link_directories(/data/sunkx/TensorRT-10.4.0.26/lib)
@@ -136,12 +138,19 @@ elseif(DETECTION_ASCEND)
     add_definitions(-DENABLE_DVPP_INTERFACE) # for ACL Lib
     include_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/include /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl /usr/local/Ascend/ascend-toolkit/latest/runtime/include/acl/dvpp)
     link_directories(/usr/local/Ascend/ascend-toolkit/latest/runtime/lib64)
+elseif(DETECTION_HYGON)
+    enable_language(CUDA)
+    add_definitions(-DDETECTION_HYGON)
+    include_directories(Cognition/Detection/dataProcessKernel)
+    set(HYGON_CUDA_SOURCES Cognition/Detection/dataProcessKernel/dataProcess.cu)  # Add all your .cu files here
+    include_directories(/opt/dtk/cuda/cuda/include /opt/dtk/include)
+    link_directories(/opt/dtk/cuda/cuda/lib64 /opt/dtk/lib)
 endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSPSRC} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
                         ${TSTRANSPORT} ${MPEG2CORE}
-                        ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK})
+                        ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK} ${HYGON_CUDA_SOURCES})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS} ssl crypto)
 ######################
 #### input/output ####
@@ -169,6 +178,8 @@ if(DETECTION_NVIDIA)
     target_link_libraries(mcp nvinfer cudart nppig nppidei nppial)
 elseif(DETECTION_ASCEND)
     target_link_libraries(mcp ascendcl acl_dvpp_mpi)
+elseif(DETECTION_HYGON)
+    target_link_libraries(mcp cudart nppig nppidei nppial migraphx migraphx_gpu migraphx_onnx)
 endif()
 
 if(WIN32)

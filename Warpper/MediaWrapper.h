@@ -16,7 +16,7 @@
 #include "TsMuxerClient.h"
 #include "TsDemuxerClient.h"
 #include <opencv2/opencv.hpp>
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #include "NodeFlow.h"
 class MediaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner, public InferDataListner
 #else
@@ -48,7 +48,7 @@ public:
     // for nvidia
     void UseNVEnc() {use_nv_enc_flag_ = true; return;}
 
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     void OnInferData(cv::Mat& img, DetectionInfo& info);
 #endif
 
@@ -87,7 +87,7 @@ public:
     int32_t device_id_ = 0;
     bool use_nv_enc_flag_ = false;
 
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     std::string eng_path_;
     void *context_ = nullptr;
 #endif

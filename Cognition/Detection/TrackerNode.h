@@ -1,4 +1,4 @@
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #ifndef TRACKER_NODE_H
 #define TRACKER_NODE_H
 #include <iostream>
@@ -36,4 +36,4 @@ private:
 };
 
 #endif // TRACKER_NODE_H
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

@@ -1,4 +1,4 @@
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #include "NodeFlow.h"
 
 std::unique_ptr<YoloDetectionNode> detect = nullptr;
@@ -39,7 +39,6 @@ void EndStream(void* context){
     relayer1->MarkStreamEOS(ctx->stream_id);
     delete stream_map[ctx];
     stream_map.erase(ctx);
-    DestroyContext(ctx);
     if(stream_map.empty()){
         detect.reset();
         detect = nullptr;
@@ -50,9 +49,10 @@ void EndStream(void* context){
         distributor.reset();
         distributor = nullptr;
     }
+    DestroyContext(ctx);
 }
 void StreamPushData(cv::Mat &img, void* context){
     QueueContext* ctx = (QueueContext*)context;
     collector->Push(std::move(img), ctx);
 }
-#endif // DETECTION_NVIDIA DETECTION_ASCEND
+#endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

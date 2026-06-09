@@ -1,45 +1,13 @@
-#if defined(DETECTION_NVIDIA)
+#if defined(DETECTION_HYGON)
 #include "YoloDetectionNode.h"
-class LoggerDetect: public nvinfer1::ILogger{
-    void log(Severity severity, const char* msg) noexcept override{
-        if(severity <= Severity::kWARNING)
-            log_error("{}", msg);
-    }
-}loggerDetect;
+#include "dataProcess.h"
 #define MY_ASSERT(x)                     \
     do {                                \
         if (!(x)) {                     \
             std::abort();               \
         }                               \
     } while (0)
-static char* ReadFromPath(std::string eng_path,int &model_size){
-    std::ifstream file(eng_path, std::ios::binary);
-    if (!file.good()) {
-        std::cerr << "read " << eng_path << " error!" << std::endl;
-        return nullptr;
-    }
-    char *trt_model_stream = nullptr;
-    size_t size = 0;
-    file.seekg(0, file.end);
-    size = file.tellg();
-    file.seekg(0, file.beg);
-    trt_model_stream = new char[size];
-    if(!trt_model_stream){
-        return nullptr;
-    }
-    file.read(trt_model_stream, size);
-    file.close();
-    model_size = size;
-    return trt_model_stream;
-}
-static size_t CountElement(const nvinfer1::Dims &dims, int batch_zise)
-{
-    int64_t total = batch_zise;
-    for (int32_t i = 1; i < dims.nbDims; ++i){
-        total *= dims.d[i];
-    }
-    return static_cast<size_t>(total);
-}
+
 static float GetUnpadSize(int new_w, int new_h, int orig_w, int orig_h, int &new_unpad_w, int &new_unpad_h){
     float r = std::min(static_cast<float>(new_h) / orig_h, static_cast<float>(new_w) / orig_w);
     new_unpad_w = static_cast<int>(std::round(orig_w * r));
@@ -65,14 +33,14 @@ static std::tuple<float, float, float> Letterbox_resize_GPU(int orig_h, int orig
 
     Npp8u *pu8_src = static_cast<Npp8u*>(img_buffer);
     Npp8u *pu8_dst = static_cast<Npp8u*>(out_buffer);
-
-    Npp8u color_array[3] = {(Npp8u)color[0], (Npp8u)color[1], (Npp8u)color[2]};
-    NppiSize dst_size{new_w, new_h};
-    NppStatus ret = nppiSet_8u_C3R(color_array, pu8_dst, new_w * 3, dst_size);
-    if(ret != 0){
-        log_error("nppiSet_8u_C3R error: {}", static_cast<int>(ret));
-        return std::make_tuple(r, dw, dh);
-    }
+    // hygon not support nppiSet_8u_C3R
+    // Npp8u color_array[3] = {(Npp8u)color[0], (Npp8u)color[1], (Npp8u)color[2]};
+    // NppiSize dst_size{new_w, new_h};
+    // NppStatus ret = nppiSet_8u_C3R(color_array, pu8_dst, new_w * 3, dst_size);
+    // if(ret != 0){
+    //     log_error("nppiSet_8u_C3R error: {}", static_cast<int>(ret));
+    //     return std::make_tuple(r, dw, dh);
+    // }
     // Npp8u *pu8_resized = nullptr;
     // CHECK_CUDA(cudaMalloc(&pu8_resized, new_unpad_h * new_unpad_w * 3));
 
@@ -81,7 +49,7 @@ static std::tuple<float, float, float> Letterbox_resize_GPU(int orig_h, int orig
     NppiSize resize_size{new_unpad_w, new_unpad_h};
     NppiRect dst_roi{0,0,new_unpad_w,new_unpad_h};
 
-    ret = nppiResize_8u_C3R(pu8_src, orig_w * 3, src_size, src_roi, pu8_resized, new_unpad_w * 3, resize_size, dst_roi, NPPI_INTER_LINEAR);
+    NppStatus ret = nppiResize_8u_C3R(pu8_src, orig_w * 3, src_size, src_roi, pu8_resized, new_unpad_w * 3, resize_size, dst_roi, NPPI_INTER_LINEAR);
     if(ret != 0){
         log_error("nppiResize_8u_C3R error: {}", static_cast<int>(ret));
         CHECK_CUDA(cudaFree(pu8_resized));
@@ -128,7 +96,8 @@ static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *
     if(ret != 0){
         log_error("nppiSwapChannels_8u_C3R error: {}", static_cast<int>(ret));
     }
-
+#if 0
+    // hygon not support nppiConvert_8u32f_C3R nppiMulC_32f_C3IR nppiCopy_32f_C3P3R
     // 转 float 并归一化
     NppiSize fsize = {input_w, input_h};
     ret = nppiConvert_8u32f_C3R(pu8_rgb, input_w * 3, (Npp32f*)buffer, input_w * 3 * sizeof(float), fsize);
@@ -152,6 +121,10 @@ static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *
         log_error("nppiCopy_32f_C3P3R error: {}", static_cast<int>(ret));
     }
     CHECK_CUDA(cudaMemcpy(buffer, buffer_chw, input_h * input_w * 3 * sizeof(float), cudaMemcpyDeviceToDevice));
+#else
+    hwc_To_chw_normalize_float_rgb(pu8_rgb, buffer, input_w, input_h, stream);
+    CHECK_CUDA(cudaStreamSynchronize(stream)); // pu8_rgb is multiplexed, and synchronization is required here
+#endif
 
     return std::move(std::make_tuple(r, dw, dh));
 }
@@ -256,89 +229,6 @@ YoloDetectionNode::YoloDetectionNode(std::string eng_path, int device_id){
     device_id_ = device_id;
     CHECK_CUDA(cudaSetDevice(device_id));
     CHECK_CUDA(cudaStreamCreate(&stream_));
-    runtime_.reset(nvinfer1::createInferRuntime(loggerDetect));
-    MY_ASSERT(runtime_ != nullptr);
-    int model_size = 0;
-    char *trt_model_stream = ReadFromPath(eng_path, model_size);
-    MY_ASSERT(trt_model_stream != nullptr);
-    engine_.reset(runtime_->deserializeCudaEngine(trt_model_stream, model_size));
-	MY_ASSERT(engine_ != nullptr);
-    context_.reset(engine_->createExecutionContext());
-	MY_ASSERT(context_ != nullptr);
-    delete []trt_model_stream;
-
-    int num_bindings = engine_->getNbIOTensors();
-    log_debug("input/output : {}", num_bindings);
-    for (int i = 0; i < num_bindings; ++i)
-    {
-        const char *tensor_name = engine_->getIOTensorName(i);
-        nvinfer1::TensorIOMode io_mode = engine_->getTensorIOMode(tensor_name);
-        if (io_mode == nvinfer1::TensorIOMode::kINPUT)
-            in_tensor_info_.push_back({i, std::string(tensor_name)});
-        else if (io_mode == nvinfer1::TensorIOMode::kOUTPUT)
-            out_tensor_info_.push_back({i, std::string(tensor_name)});
-    }
-    for(int idx = 0; idx < in_tensor_info_.size(); idx++){
-        nvinfer1::Dims in_dims = context_->getTensorShape(in_tensor_info_[idx].second.c_str());
-        log_debug("input: {}", in_tensor_info_[idx].second);
-        for(int i = 0; i < in_dims.nbDims; i++){
-            log_debug(" dims [{}] : {}", i, in_dims.d[i]);
-        }
-        nvinfer1::DataType size_type = engine_->getTensorDataType(in_tensor_info_[idx].second.c_str());
-        if (size_type == nvinfer1::DataType::kINT32) {
-            log_debug(" int32");
-        } 
-        else if (size_type == nvinfer1::DataType::kINT64) {
-            log_debug(" int64");
-        } 
-        else if (size_type == nvinfer1::DataType::kFLOAT) {
-            log_debug(" float");
-        }
-    }
-    for(int idx = 0; idx < out_tensor_info_.size(); idx++){
-        nvinfer1::Dims out_dims=context_->getTensorShape(out_tensor_info_[idx].second.c_str());
-        log_debug("output: {}", out_tensor_info_[idx].second);
-        for(int i = 0; i < out_dims.nbDims; i++){
-            log_debug(" dims [{}] : {}", i, out_dims.d[i]);
-        }
-        nvinfer1::DataType size_type = engine_->getTensorDataType(out_tensor_info_[idx].second.c_str());
-        if (size_type == nvinfer1::DataType::kINT32) {
-            log_debug(" int32");
-        } 
-        else if (size_type == nvinfer1::DataType::kINT64) {
-            log_debug(" int64");
-        } 
-        else if (size_type == nvinfer1::DataType::kFLOAT) {
-            log_debug(" float");
-        }
-    }
-    MY_ASSERT(in_tensor_info_.size() == 1);
-    MY_ASSERT(out_tensor_info_.size() == 1);
-    nvinfer1::Dims in_dims = context_->getTensorShape(in_tensor_info_[0].second.c_str());
-    nvinfer1::Dims out_dims = context_->getTensorShape(out_tensor_info_[0].second.c_str());
-    size_t max_in_size_byte = CountElement(in_dims, batch_size_) * sizeof(float); // batch_size * input_h * input_w * 3 * sizeof(float)
-    size_t max_out_size_byte = CountElement(out_dims, batch_size_) * sizeof(float); // batch_size * output_pred_ * anchors_ * sizeof(float)
-
-    // in_dims.d[0] dynamic batch_size == -1 
-    int channel = in_dims.d[1];
-    MY_ASSERT(channel == 3);
-    input_h_ = in_dims.d[2];
-	input_w_ = in_dims.d[3];
-    log_debug("batch_size: {} channel:{} input_h:{} input_w:{}", batch_size_, channel, input_h_, input_w_);
-    // out_dims.d[0] dynamic batch_size == -1 
-    output_pred_ = out_dims.d[1];
-	anchors_ = out_dims.d[2];
-    log_debug("output_pred: {} anchors: {}", output_pred_, anchors_);
-
-    CHECK_CUDA(cudaMalloc(&buffers_[in_tensor_info_[0].first], max_in_size_byte));
-    int one_output_len = output_pred_ * anchors_;
-	CHECK_CUDA(cudaMalloc(&buffers_[out_tensor_info_[0].first], max_out_size_byte));
-    output_ = new float[max_out_size_byte];
-    context_->setInputTensorAddress(in_tensor_info_[0].second.c_str(), buffers_[in_tensor_info_[0].first]);
-    context_->setOutputTensorAddress(out_tensor_info_[0].second.c_str(), buffers_[out_tensor_info_[0].first]);
-
-    CHECK_CUDA(cudaMalloc(&pu8_rgb_, input_h_ * input_w_ * 3));
-    CHECK_CUDA(cudaMalloc(&buffer_chw_, input_h_ * input_w_ * 3 * sizeof(float)));
 }
 YoloDetectionNode::~YoloDetectionNode(){
     abort_ = true;
@@ -347,29 +237,89 @@ YoloDetectionNode::~YoloDetectionNode(){
     if(worker_.joinable()) {
         worker_.join();
     }
-    delete []output_;
+    CHECK_CUDA(cudaStreamDestroy(stream_));
+    log_debug("~YoloDetectionNode");
+}
+// 不同线程不能共用同一个program对象
+void YoloDetectionNode::Init(){
+#if 0
+    // onnx
+    migraphx::onnx_options onnx_options;
+    onnx_options.map_input_dims["images"] = {(long unsigned int)batch_size_, 3, 640, 640};
+    net_ = migraphx::parse_onnx(eng_path_, onnx_options);
+#endif
+    // mxr
+    migraphx::file_options options;
+    // options.device_id = device_id_;
+    net_ = migraphx::load(eng_path_, options);
+
+    log_debug("inputs:");
+    std::unordered_map<std::string, migraphx::shape> inputs = net_.get_inputs();
+    for (auto i : inputs){
+        log_debug("  {}", i.first);
+    }
+    log_debug("outputs:");
+    std::unordered_map<std::string, migraphx::shape> outputs = net_.get_outputs();
+    for (auto i : outputs){
+        log_debug("  {}", i.first);
+    }
+    input_name_ = inputs.begin()->first;
+    input_shape_ = inputs.begin()->second;
+    int N = input_shape_.lens()[0];
+    int C = input_shape_.lens()[1];
+    int H = input_shape_.lens()[2];
+    int W = input_shape_.lens()[3];
+    input_h_ = H;
+    input_w_ = W;
+    log_debug("batch size:{} channels:{} input_h:{} input_w:{}", N, C, H, W);
+    output_name_ = outputs.begin()->first;
+    output_shape_ = outputs.begin()->second;
+    // int N = output_shape_.lens()[0];
+    output_pred_ = output_shape_.lens()[1];
+	anchors_ = output_shape_.lens()[2];
+    log_debug("output_pred_:{} anchors_:{}", output_pred_, anchors_);
+#if 0
+    // onnx
+    migraphx::target gpu_target = migraphx::gpu::target{};
+    migraphx::quantize_fp16(net_);
+    migraphx::compile_options options;
+    options.device_id = device_id_;
+    options.offload_copy = false;
+    net_.compile(gpu_target, options);
+    log_debug("{} compile success", eng_path_);
+#endif
+
+    for (auto x : net_.get_parameter_shapes()){
+        parameter_map_[x.first] = migraphx::gpu::to_gpu(migraphx::generate_argument(x.second));
+    } 
+
+    // warm up
+    net_.eval(parameter_map_);
+
+    size_t input_len = batch_size_ * input_h_ * input_w_ * 3 * sizeof(float);
+    CHECK_CUDA(cudaMalloc(&buffers_[0], input_len));
+    size_t output_len = batch_size_ * output_pred_ * anchors_ * sizeof(float);
+	CHECK_CUDA(cudaMalloc(&buffers_[1], output_len));
+    output_ = new float[output_len];
+    CHECK_CUDA(cudaMalloc(&pu8_rgb_, input_h_ * input_w_ * 3));
+    CHECK_CUDA(cudaMalloc(&buffer_chw_, input_h_ * input_w_ * 3 * sizeof(float)));
+}
+void YoloDetectionNode::UnInit(){
     CHECK_CUDA(cudaFree(buffers_[0]));
     CHECK_CUDA(cudaFree(buffers_[1]));
     CHECK_CUDA(cudaFree(pu8_rgb_));
     CHECK_CUDA(cudaFree(buffer_chw_));
-    CHECK_CUDA(cudaStreamDestroy(stream_));
-    log_debug("~YoloDetectionNode");
+    delete []output_;
 }
 int YoloDetectionNode::Inference(const int batch_size){
-    nvinfer1::Dims trt_in_dims{};
-    trt_in_dims.nbDims = 4;
-    trt_in_dims.d[0] = batch_size;
-    trt_in_dims.d[1] = 3;
-    trt_in_dims.d[2] = input_h_;
-    trt_in_dims.d[3] = input_w_;
-    context_->setInputShape(in_tensor_info_[0].second.c_str(), trt_in_dims);
-    if(!context_->enqueueV3(stream_)) {
-        log_error("enqueueV3 failed!");
-        return -1;
-    }
-    int one_output_len = output_pred_ * anchors_;
-    CHECK_CUDA(cudaMemcpyAsync(output_, buffers_[out_tensor_info_[0].first], batch_size * one_output_len * sizeof(float), cudaMemcpyDeviceToHost, stream_));
-    CHECK_CUDA(cudaStreamSynchronize(stream_));
+    // migraphx::shape infer_shape = migraphx::shape(input_shape_.type(), {(long unsigned int)batch_size, 3, (long unsigned int)input_h_, (long unsigned int)input_w_});
+    migraphx::shape infer_shape = migraphx::shape(input_shape_.type(), {4, 3, (long unsigned int)input_h_, (long unsigned int)input_w_});
+    parameter_map_[input_name_] = migraphx::argument{infer_shape, (float*)buffers_[0]};
+    std::vector<migraphx::argument> results = net_.eval(parameter_map_);
+
+    migraphx::argument result  = migraphx::gpu::from_gpu(results[0]);
+    memcpy(output_, result.data(), batch_size * output_pred_ * anchors_ * sizeof(float));
+
     return 0;
 }
 void YoloDetectionNode::SetDataNode(std::shared_ptr<CollectorNode> collector, std::shared_ptr<RelayNode> relayer,std::shared_ptr<DistributorNode> distributor){
@@ -377,10 +327,14 @@ void YoloDetectionNode::SetDataNode(std::shared_ptr<CollectorNode> collector, st
     relayer_ = relayer; 
     distributor_ = distributor;
     worker_ = std::thread(&YoloDetectionNode::DetectThreadLoop, this);
+    std::unique_lock<std::mutex> guard(mutex_init_);
+    cond_init_.wait(guard);
 }
 void YoloDetectionNode::DetectThreadLoop(){
     thread_run_flag_ = true;
     CHECK_CUDA(cudaSetDevice(device_id_));
+    Init();
+    cond_init_.notify_one();
     TimeMetrics time_for_log;
     time_for_log.startTimer();
     while (!abort_) {
@@ -395,7 +349,7 @@ void YoloDetectionNode::DetectThreadLoop(){
         }
         std::vector<std::tuple<float, float, float>> res_pre;
         int buffer_idx = 0;
-        char* input_ptr = static_cast<char*>(buffers_[in_tensor_info_[0].first]);
+        char* input_ptr = static_cast<char*>(buffers_[0]);
         TimeMetrics t;
         t.startTimer();
         for(int i = 0; i < packets.size(); i++){  
@@ -446,6 +400,7 @@ void YoloDetectionNode::DetectThreadLoop(){
             log_debug("detect_all_time:{} pre_time:{} infer_time:{} after_time:{}", detect_all_time, pre_time, infer_time, after_time);
         }
     }
+    UnInit();
     log_debug("DetectThreadLoop finished");
 }
-#endif // DETECTION_NVIDIA
+#endif // DETECTION_HYGON

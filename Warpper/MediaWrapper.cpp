@@ -2,7 +2,7 @@
 MediaWrapper::MediaWrapper(const char *input, const char *output, const char *eng_path, int device_id)
 {
     device_id_ = device_id;
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     eng_path_ = eng_path;
     DetectModelInit(eng_path_, device_id_);
 #endif
@@ -176,7 +176,7 @@ void MediaWrapper::OnAudioData(AudioData data)
 void MediaWrapper::OnRGBData(cv::Mat frame)
 {
     // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     if(context_ == nullptr){
         context_ = AddStream(static_cast<InferDataListner *>(this), width_, height_, fps_);
     }
@@ -208,7 +208,7 @@ void MediaWrapper::OnRGBData(cv::Mat frame)
     hard_encoder_->AddVideoFrame(frame);
     return;
 }
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 static void DetectDraw(cv::Mat& img, DetectionInfo& info) {
     for (const auto& det : info.dets) {
         std::string label = "id:" + std::to_string(det.track_id);
@@ -505,7 +505,7 @@ MediaWrapper::~MediaWrapper()
         free(buffer_pcm_);
         buffer_pcm_ = nullptr;
     }
-#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     EndStream(context_);
 #endif
     log_debug("~MediaWrapper");
