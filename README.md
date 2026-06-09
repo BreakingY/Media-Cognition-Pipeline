@@ -94,8 +94,7 @@
 # 说明
 * 支持格式，视频：H264/H265，音频：AAC。
 * 视觉感知：YOLO11
-* 昇腾的DVPP有两个版本:V1和V2 ,V1和V2适用不同的平台，请到官网自行查阅，不过昇腾后续的显卡应该都支持V2版本。
-* 测试版本：ffmpeg4.0.5(要求ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; NVIDIA驱动550.163.01; Video_Codec_SDK11.0.10；Jetson5.0.2; TensorRT-10.4.0.26。
+* 测试版本：ffmpeg4.0.5(要求ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; NVIDIA驱动550.163.01; Video_Codec_SDK11.0.10；Jetson5.0.2; TensorRT-10.4.0.26; dtk26.04/migraphx5.2.0(海光DCU SDK)。
 * ByteTrack依赖: `apt install libeigen3-dev`
 * Jetson依赖：v4l2
 * librtmp依赖：openssl

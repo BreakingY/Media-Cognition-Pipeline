@@ -98,8 +98,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
 # Notes
 * Supported formats: Video: H264/H265, Audio: AAC.
 * Visual perception: YOLO11.
-* Ascend DVPP has two versions: V1 and V2. V1 and V2 apply to different platforms. Please refer to the official documentation. Newer Ascend cards generally support V2.
-* Tested versions: FFmpeg 4.0.5 (requires FFmpeg 4.x; audio uses fdk-aac encoding, ensure FFmpeg is built with fdk-aac), OpenCV 4.5.1, CANN 7.0.0 / 8.2.RC1 (Ascend SDK), NVIDIA: CUDA 12.4; NVIDIA driver 550.163.01; Video_Codec_SDK 11.0.10; Jetson 5.0.2; TensorRT 10.4.0.26.
+* Tested versions: FFmpeg 4.0.5 (requires FFmpeg 4.x; audio uses fdk-aac encoding, ensure FFmpeg is built with fdk-aac), OpenCV 4.5.1, CANN 7.0.0 / 8.2.RC1 (Ascend SDK), NVIDIA: CUDA 12.4; NVIDIA driver 550.163.01; Video_Codec_SDK 11.0.10; Jetson 5.0.2; TensorRT 10.4.0.26; dtk26.04/migraphx5.2.0(Hygon DCU SDK).
 * ByteTrack dependency: `apt install libeigen3-dev`
 * Jetson dependency: v4l2
 * librtmp dependency: openssl
