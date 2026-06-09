@@ -1,10 +1,9 @@
-#if defined(DETECTION_HYGON)
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
 #ifndef DATA_PROCESS_H
 #define DATA_PROCESS_H
 #include <stdint.h>
 #include <cuda_runtime.h>
 #include "DetectionInfo.h"
-
-void hwc_To_chw_normalize_float_rgb(void *pu8_rgb, void *buffer,int input_w, int input_h, cudaStream_t stream = 0);
+void preprocess_letter_bbox_resize(unsigned char *src, unsigned char *dst_hwc, float *dst_chw, int src_w, int src_h, int dst_w, int dst_h, cudaStream_t stream = 0);
 #endif // DATA_PROCESS_H
-#endif // DETECTION_HYGON
+#endif // DETECTION_NVIDIA DETECTION_HYGON

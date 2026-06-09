@@ -133,6 +133,8 @@ if(DETECTION_NVIDIA)
     include_directories(/usr/local/cuda/include)
     link_directories(/usr/local/cuda/lib64)
     add_compile_options(-Wno-deprecated-declarations)
+    include_directories(Cognition/Detection/dataProcessKernel)
+    set(DATA_PROCESS_CUDA_SOURCES Cognition/Detection/dataProcessKernel/dataProcess.cu)  # Add all your .cu files here
 elseif(DETECTION_ASCEND)
     add_definitions(-DDETECTION_ASCEND)
     add_definitions(-DENABLE_DVPP_INTERFACE) # for ACL Lib
@@ -142,7 +144,7 @@ elseif(DETECTION_HYGON)
     enable_language(CUDA)
     add_definitions(-DDETECTION_HYGON)
     include_directories(Cognition/Detection/dataProcessKernel)
-    set(HYGON_CUDA_SOURCES Cognition/Detection/dataProcessKernel/dataProcess.cu)  # Add all your .cu files here
+    set(DATA_PROCESS_CUDA_SOURCES Cognition/Detection/dataProcessKernel/dataProcess.cu)  # Add all your .cu files here
     include_directories(/opt/dtk/cuda/cuda/include /opt/dtk/include)
     link_directories(/opt/dtk/cuda/cuda/lib64 /opt/dtk/lib)
 endif()
@@ -150,7 +152,7 @@ endif()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSPSRC} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
                         ${TSTRANSPORT} ${MPEG2CORE}
-                        ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK} ${HYGON_CUDA_SOURCES})
+                        ${DVPP_ENC} ${DVPP_UTILS} ${NVDEC} ${NVENC} ${CUDA_SOURCES} ${JETSON_UTILS} ${JETSON_UTILS_COMMON} ${JETSON_UTILS_COMMON_CUDA} ${DETECTION} ${BYTETRACK} ${DATA_PROCESS_CUDA_SOURCES})
 target_link_libraries(mcp avutil avformat avcodec swscale swresample ${OpenCV_LIBS} ssl crypto)
 ######################
 #### input/output ####

@@ -1,5 +1,7 @@
 #if defined(DETECTION_NVIDIA)
 #include "YoloDetectionNode.h"
+#include "dataProcess.h"
+// #define USE_NPP
 class LoggerDetect: public nvinfer1::ILogger{
     void log(Severity severity, const char* msg) noexcept override{
         if(severity <= Severity::kWARNING)
@@ -154,6 +156,39 @@ static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *
     CHECK_CUDA(cudaMemcpy(buffer, buffer_chw, input_h * input_w * 3 * sizeof(float), cudaMemcpyDeviceToDevice));
 
     return std::move(std::make_tuple(r, dw, dh));
+}
+static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *img_buffer, void *buffer, int input_h, int input_w, cudaStream_t stream)
+{
+    TimeMetrics t;
+    t.startTimer();
+    int orig_h = img.rows;
+    int orig_w = img.cols;
+    void *img_ptr = img.data;
+    CHECK_CUDA(cudaMemcpyAsync(img_buffer, img_ptr, orig_h * orig_w * 3, cudaMemcpyHostToDevice, stream));
+
+    preprocess_letter_bbox_resize((unsigned char *)img_buffer, nullptr, (float *)buffer, orig_w, orig_h, input_w, input_h, stream);
+    // test
+#if 0
+    void *addr;
+    CHECK_CUDA(cudaMalloc(&addr, input_w * input_h * 3));
+    preprocess_letter_bbox_resize((unsigned char *)img_buffer, (unsigned char *)addr, nullptr, orig_w, orig_h, input_w, input_h);
+    cv::Mat img_cpu(input_h, input_w, CV_8UC3);
+    size_t bytes = input_w * input_h * 3;
+    CHECK_CUDA(cudaMemcpy(img_cpu.data, addr, bytes, cudaMemcpyDeviceToHost));
+    if(!cv::imwrite("output.jpg", img_cpu)){
+        log_error("Failed to save image");
+    } 
+    CHECK_CUDA(cudaFree(addr));
+    exit(0);
+#endif
+
+    int new_unpad_w, new_unpad_h;
+    float r = GetUnpadSize(input_w, input_h, orig_w, orig_h, new_unpad_w, new_unpad_h);
+    float dw = input_w - new_unpad_w;
+    float dh = input_h - new_unpad_h;
+    dw /= 2.0f;
+    dh /= 2.0f;
+    return std::make_tuple(r, dw, dh);
 }
 static float IoU(const cv::Rect2f& a, const cv::Rect2f& b) {
     float inter = (a & b).area();
@@ -403,9 +438,13 @@ void YoloDetectionNode::DetectThreadLoop(){
             int new_unpad_w, new_unpad_h;
             GetUnpadSize(input_w_, input_h_, packet->context->width, packet->context->height, new_unpad_w, new_unpad_h);
             MemAllocate(packet->context, new_unpad_w, new_unpad_h, 3);
-            Npp8u *pu8_resized = (Npp8u *)packet->context->pu8_resized;
             void *img_buffer = packet->context->img_buffer;
+#ifdef USE_NPP
+            Npp8u *pu8_resized = (Npp8u *)packet->context->pu8_resized;
             std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, 3, input_h_, input_w_, stream_, pu8_rgb_, buffer_chw_, pu8_resized);
+#else
+            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, input_h_, input_w_, stream_);
+#endif
             buffer_idx += input_h_ * input_w_ * 3 * sizeof(float);
             res_pre.push_back(res);
         }

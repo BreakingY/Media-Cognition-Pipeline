@@ -163,9 +163,6 @@ private:
     std::shared_ptr<CollectorNode> collector_;
     std::shared_ptr<RelayNode> relayer_;
     std::shared_ptr<DistributorNode> distributor_;
-
-    Npp8u *pu8_rgb_ = nullptr;
-    float* buffer_chw_ = nullptr;
 }; 
 #endif // DETECTION_HYGON
 #endif // YOLO_DETECTION_NODE_H

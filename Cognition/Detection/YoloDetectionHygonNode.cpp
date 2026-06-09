@@ -14,119 +14,38 @@ static float GetUnpadSize(int new_w, int new_h, int orig_w, int orig_h, int &new
     new_unpad_h = static_cast<int>(std::round(orig_h * r));
     return r;
 }
-// 返回值: tuple<cv::Mat, float, float, float> -> (resized_img, scale_ratio, dw, dh)
-static std::tuple<float, float, float> Letterbox_resize_GPU(int orig_h, int orig_w, void *img_buffer, void *out_buffer,int new_h, int new_w, Npp8u *pu8_resized, const cv::Scalar& color = cv::Scalar(114, 114, 114))
+static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *img_buffer, void *buffer, int input_h, int input_w, cudaStream_t stream)
 {
-    // float r = std::min(static_cast<float>(new_h) / orig_h, static_cast<float>(new_w) / orig_w);
-    // int new_unpad_w = static_cast<int>(std::round(orig_w * r));
-    // int new_unpad_h = static_cast<int>(std::round(orig_h * r));
-    int new_unpad_w, new_unpad_h;
-    float r = GetUnpadSize(new_w, new_h, orig_w, orig_h, new_unpad_w, new_unpad_h);
-    float dw = new_w - new_unpad_w;
-    float dh = new_h - new_unpad_h;
-    dw /= 2.0f;
-    dh /= 2.0f;
-    int top = static_cast<int>(std::round(dh - 0.1f));
-    int bottom = static_cast<int>(std::round(dh + 0.1f));
-    int left = static_cast<int>(std::round(dw - 0.1f));
-    int right = static_cast<int>(std::round(dw + 0.1f));
-
-    Npp8u *pu8_src = static_cast<Npp8u*>(img_buffer);
-    Npp8u *pu8_dst = static_cast<Npp8u*>(out_buffer);
-    // hygon not support nppiSet_8u_C3R
-    // Npp8u color_array[3] = {(Npp8u)color[0], (Npp8u)color[1], (Npp8u)color[2]};
-    // NppiSize dst_size{new_w, new_h};
-    // NppStatus ret = nppiSet_8u_C3R(color_array, pu8_dst, new_w * 3, dst_size);
-    // if(ret != 0){
-    //     log_error("nppiSet_8u_C3R error: {}", static_cast<int>(ret));
-    //     return std::make_tuple(r, dw, dh);
-    // }
-    // Npp8u *pu8_resized = nullptr;
-    // CHECK_CUDA(cudaMalloc(&pu8_resized, new_unpad_h * new_unpad_w * 3));
-
-    NppiSize src_size{orig_w, orig_h};
-    NppiRect src_roi{0,0,orig_w,orig_h};
-    NppiSize resize_size{new_unpad_w, new_unpad_h};
-    NppiRect dst_roi{0,0,new_unpad_w,new_unpad_h};
-
-    NppStatus ret = nppiResize_8u_C3R(pu8_src, orig_w * 3, src_size, src_roi, pu8_resized, new_unpad_w * 3, resize_size, dst_roi, NPPI_INTER_LINEAR);
-    if(ret != 0){
-        log_error("nppiResize_8u_C3R error: {}", static_cast<int>(ret));
-        CHECK_CUDA(cudaFree(pu8_resized));
-        return std::make_tuple(r, dw, dh);
-    }
-    NppiSize copy_size{new_unpad_w, new_unpad_h};
-    ret = nppiCopy_8u_C3R(pu8_resized, new_unpad_w * 3, pu8_dst + top * new_w * 3 + left * 3, new_w * 3, copy_size);
-    if(ret != 0){
-        log_error("nppiCopy_8u_C3R error: {}", static_cast<int>(ret));
-        CHECK_CUDA(cudaFree(pu8_resized));
-        return std::make_tuple(r, dw, dh);
-    }
-
-    // CHECK_CUDA(cudaFree(pu8_resized));
-#if 0
-    cv::Mat img_cpu(new_h, new_w, CV_8UC3);
-    
-    size_t bytes = new_w * new_h * 3 * sizeof(Npp8u);
-    CHECK_CUDA(cudaMemcpy(img_cpu.data, out_buffer, bytes, cudaMemcpyDeviceToHost));
-    if(!cv::imwrite("output.jpg", img_cpu)){
-        log_error("Failed to save image");
-    } 
-#endif
-    return std::make_tuple(r, dw, dh);
-}
-static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *img_buffer, void *buffer, int channel, int input_h, int input_w, cudaStream_t stream,
-                                                            Npp8u *pu8_rgb/*char input_h input_w*/, float* buffer_chw/*float input_h input_w*/, Npp8u *pu8_resized/*char new_unpad_h * new_unpad_w*/)
-{
+    TimeMetrics t;
+    t.startTimer();
     int orig_h = img.rows;
     int orig_w = img.cols;
     void *img_ptr = img.data;
     CHECK_CUDA(cudaMemcpyAsync(img_buffer, img_ptr, orig_h * orig_w * 3, cudaMemcpyHostToDevice, stream));
-    CHECK_CUDA(cudaStreamSynchronize(stream));
-    std::tuple<float, float, float> res = Letterbox_resize_GPU(orig_h, orig_w, img_buffer, buffer, input_h, input_w, pu8_resized);
 
-    float &r = std::get<0>(res);
-    float &dw = std::get<1>(res);
-    float &dh = std::get<2>(res);
-    
-    // BGR-->RGB
-    int aOrder[3] = {2, 1, 0};
-    NppiSize size = {input_w, input_h};
-    NppStatus ret = nppiSwapChannels_8u_C3R((Npp8u*)buffer, input_w * 3, pu8_rgb, input_w * 3, size, aOrder);
-    if(ret != 0){
-        log_error("nppiSwapChannels_8u_C3R error: {}", static_cast<int>(ret));
-    }
+    preprocess_letter_bbox_resize((unsigned char *)img_buffer, nullptr, (float *)buffer, orig_w, orig_h, input_w, input_h, stream);
+    // test
 #if 0
-    // hygon not support nppiConvert_8u32f_C3R nppiMulC_32f_C3IR nppiCopy_32f_C3P3R
-    // 转 float 并归一化
-    NppiSize fsize = {input_w, input_h};
-    ret = nppiConvert_8u32f_C3R(pu8_rgb, input_w * 3, (Npp32f*)buffer, input_w * 3 * sizeof(float), fsize);
-    if(ret != 0){
-        log_error("nppiConvert_8u32f_C3R error: {}", static_cast<int>(ret));
-    }
-    Npp32f aConstants[3] = {1.f / 255.f, 1.f / 255.f,1.f / 255.f};
-    ret = nppiMulC_32f_C3IR(aConstants, (Npp32f*)buffer, input_w * 3 * sizeof(float), fsize);
-    if(ret != 0){
-        log_error("nppiMulC_32f_C3IR error: {}", static_cast<int>(ret));
-    }
-
-    // HWC TO CHW
-    NppiSize chw_size = {input_w, input_h};
-    Npp32f* dst_planes[3];
-    dst_planes[0] = (Npp32f*)buffer_chw;                           // R
-    dst_planes[1] = (Npp32f*)buffer_chw + input_h * input_w;       // G
-    dst_planes[2] = (Npp32f*)buffer_chw + input_h * input_w * 2;   // B
-    ret = nppiCopy_32f_C3P3R((Npp32f*)buffer, input_w * 3 * sizeof(float), dst_planes, input_w * sizeof(float), chw_size);
-    if (ret != 0) {
-        log_error("nppiCopy_32f_C3P3R error: {}", static_cast<int>(ret));
-    }
-    CHECK_CUDA(cudaMemcpy(buffer, buffer_chw, input_h * input_w * 3 * sizeof(float), cudaMemcpyDeviceToDevice));
-#else
-    hwc_To_chw_normalize_float_rgb(pu8_rgb, buffer, input_w, input_h, stream);
-    CHECK_CUDA(cudaStreamSynchronize(stream)); // pu8_rgb is multiplexed, and synchronization is required here
+    void *addr;
+    CHECK_CUDA(cudaMalloc(&addr, input_w * input_h * 3));
+    preprocess_letter_bbox_resize((unsigned char *)img_buffer, (unsigned char *)addr, nullptr, orig_w, orig_h, input_w, input_h);
+    cv::Mat img_cpu(input_h, input_w, CV_8UC3);
+    size_t bytes = input_w * input_h * 3;
+    CHECK_CUDA(cudaMemcpy(img_cpu.data, addr, bytes, cudaMemcpyDeviceToHost));
+    if(!cv::imwrite("output.jpg", img_cpu)){
+        log_error("Failed to save image");
+    } 
+    CHECK_CUDA(cudaFree(addr));
+    exit(0);
 #endif
 
-    return std::move(std::make_tuple(r, dw, dh));
+    int new_unpad_w, new_unpad_h;
+    float r = GetUnpadSize(input_w, input_h, orig_w, orig_h, new_unpad_w, new_unpad_h);
+    float dw = input_w - new_unpad_w;
+    float dh = input_h - new_unpad_h;
+    dw /= 2.0f;
+    dh /= 2.0f;
+    return std::make_tuple(r, dw, dh);
 }
 static float IoU(const cv::Rect2f& a, const cv::Rect2f& b) {
     float inter = (a & b).area();
@@ -301,14 +220,10 @@ void YoloDetectionNode::Init(){
     size_t output_len = batch_size_ * output_pred_ * anchors_ * sizeof(float);
 	CHECK_CUDA(cudaMalloc(&buffers_[1], output_len));
     output_ = new float[output_len];
-    CHECK_CUDA(cudaMalloc(&pu8_rgb_, input_h_ * input_w_ * 3));
-    CHECK_CUDA(cudaMalloc(&buffer_chw_, input_h_ * input_w_ * 3 * sizeof(float)));
 }
 void YoloDetectionNode::UnInit(){
     CHECK_CUDA(cudaFree(buffers_[0]));
     CHECK_CUDA(cudaFree(buffers_[1]));
-    CHECK_CUDA(cudaFree(pu8_rgb_));
-    CHECK_CUDA(cudaFree(buffer_chw_));
     delete []output_;
 }
 int YoloDetectionNode::Inference(const int batch_size){
@@ -357,12 +272,12 @@ void YoloDetectionNode::DetectThreadLoop(){
             int new_unpad_w, new_unpad_h;
             GetUnpadSize(input_w_, input_h_, packet->context->width, packet->context->height, new_unpad_w, new_unpad_h);
             MemAllocate(packet->context, new_unpad_w, new_unpad_h, 3);
-            Npp8u *pu8_resized = (Npp8u *)packet->context->pu8_resized;
             void *img_buffer = packet->context->img_buffer;
-            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, 3, input_h_, input_w_, stream_, pu8_rgb_, buffer_chw_, pu8_resized);
+            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, input_h_, input_w_, stream_);
             buffer_idx += input_h_ * input_w_ * 3 * sizeof(float);
             res_pre.push_back(res);
         }
+        CHECK_CUDA(cudaStreamSynchronize(stream_));
         int pre_time = t.stopTimer();
 
         MY_ASSERT(packets.size() == res_pre.size());
