@@ -25,7 +25,7 @@ class MediaWrapper : public MediaDataListner, public DecDataCallListner, public 
 {
 public:
     MediaWrapper() = delete;
-    MediaWrapper(const char *input, const char *output, const char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend*/ = 0);
+    MediaWrapper(const char *input, const char *output, const char *eng_path/*for Cognition*/ = nullptr, int device_id/*for nvidia ascend hygon*/ = 0);
     virtual ~MediaWrapper();
     // 音视频解封装接口
     void OnVideoData(VideoData data);
@@ -83,7 +83,7 @@ public:
     RtmpPushClient *rtmp_push_client_ = nullptr; // RTMP/FLV does not require knowing whether audio/video streams exist in advance
     TsMuxerClient *ts_muxer_client_ = nullptr; // Live streaming: No need to know in advance whether there is an audio/video stream. File: Need to know audio and video information in advance
 
-    // NPU GPU
+    // NPU GPU DCU
     int32_t device_id_ = 0;
     bool use_nv_enc_flag_ = false;
 
