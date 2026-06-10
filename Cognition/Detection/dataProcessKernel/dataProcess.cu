@@ -10,7 +10,7 @@
  * 模型输入尺寸：w3、h3
  * 填充信息：x_b( (w3 - w2)/2 )、y_b( (h3 - h2)/2 )
  * letter box目的地址(CHW)：channelImage(float类型)
- * letter box目的地地址(HWC RGB)：resizedImage(unsigned char类型)
+ * letter box目的地地址(HWC、 BGR for opencv)：resizedImage(unsigned char类型)
  * note: 如果把x_b、y_b都设置为0，并且w3、h3与w2、h2相等，就是普通的resize
  */
 __global__ void letter_box_kernel(unsigned char *originalImage, unsigned char *resizedImage, float *channelImage, int w, int h, int w2, int h2, int w3, int h3, int x_b, int y_b)
