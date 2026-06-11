@@ -258,7 +258,8 @@ void YoloDetectionNode::DetectThreadLoop(){
             return;
         }
         TimeMetrics t_detect;
-        std::vector<ImgPacket*> packets= collector_->GetBatch(batch_size_);
+        int list_size;
+        std::vector<ImgPacket*> packets= collector_->GetBatch(batch_size_, list_size);
         if(packets.empty()){
             continue;
         }
@@ -312,7 +313,7 @@ void YoloDetectionNode::DetectThreadLoop(){
         int detect_all_time = t_detect.stopTimer();
         if(time_for_log.stopTimer() >= 1000) {
             time_for_log.startTimer();
-            log_debug("detect_all_time:{} pre_time:{} infer_time:{} after_time:{}", detect_all_time, pre_time, infer_time, after_time);
+            log_debug("detect_all_time:{} pre_time:{} infer_time:{} after_time:{} list_size:{}", detect_all_time, pre_time, infer_time, after_time, list_size);
         }
     }
     UnInit();

@@ -149,7 +149,7 @@ public:
         img_list_.push_back(packet);
         cond_.notify_one();
     }
-    inline std::vector<ImgPacket*> GetBatch(size_t batch_size) {
+    inline std::vector<ImgPacket*> GetBatch(size_t batch_size, int &list_size) {
         std::vector<ImgPacket*> batch;
         std::unique_lock<std::mutex> guard(mutex_);
         if (!img_list_.empty()) {
@@ -163,6 +163,7 @@ public:
             cond_.wait_until(guard, now + std::chrono::milliseconds(10));
             guard.unlock();
         }
+        list_size = img_list_.size();
         return batch;
     }
 
