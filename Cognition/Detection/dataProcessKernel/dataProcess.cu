@@ -1,6 +1,6 @@
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
 #include "dataProcess.h"
-#define threadNum 1024
+#define threadNum 256
 #define WARP_SIZE 64
 #define elemsPerThread 1
 /**
