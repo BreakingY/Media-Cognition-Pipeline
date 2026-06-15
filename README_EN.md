@@ -106,7 +106,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
     * TensorRT: 10.4.0.26
     * X86: cuda 12.4; NVIDIA driver 550.163.01; Video_Codec_SDK 11.0.10
     * ARM: Jetson 5.0.2
-  * Hygon DCU: dtk 26.04; migraphx 5.2.0
+  * Hygon DCU: DTK 26.04; migraphx 5.2.0
 * ByteTrack dependency: `apt install libeigen3-dev`
 * Jetson dependency: v4l2
 * librtmp dependency: openssl
