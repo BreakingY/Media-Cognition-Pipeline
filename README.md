@@ -94,7 +94,15 @@
 # 说明
 * 支持格式，视频：H264/H265，音频：AAC。
 * 视觉感知：YOLO11
-* 测试版本：ffmpeg4.0.5(要求ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)、opencv4.5.1、CANN7.0.0/8.2.RC1(昇腾SDK)、NVIDIA:cuda12.4; NVIDIA驱动550.163.01; Video_Codec_SDK11.0.10；Jetson5.0.2; TensorRT-10.4.0.26; dtk26.04/migraphx5.2.0(海光DCU SDK)。
+* 测试版本：
+  * ffmpeg 4.0.5(ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)
+  * opencv 4.5.1
+  * Ascend: CANN 7.0.0/8.2.RC1
+  * NVIDIA: 
+    * TensorRT: 10.4.0.26
+    * X86: cuda 12.4; 驱动 550.163.01; Video_Codec_SDK 11.0.10
+    * ARM: Jetson 5.0.2
+  * Hygon DCU: dtk 26.04; migraphx 5.2.0
 * ByteTrack依赖: `apt install libeigen3-dev`
 * Jetson依赖：v4l2
 * librtmp依赖：openssl
