@@ -327,7 +327,8 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             if (ret != HMEV_SUCCESS) {
                 HMEV_HISDK_PRT(DEBUG, "dequeue_input_buffer fail");
                 std::this_thread::sleep_for(std::chrono::microseconds(2000)); // sleep 2000 us
-                continue;
+                // continue;
+                goto CONTINUE;
             }
             // CHECK_ACL(aclrtMemcpy(video_frame_info->v_frame.virt_addr[0] , self->out_buffer_size_, yuv_frame, self->out_buffer_size_, ACL_MEMCPY_DEVICE_TO_DEVICE));
             hi_vpc_pic_info output_pic = self->output_pic_;
@@ -342,9 +343,11 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             if (ret != HMEV_SUCCESS) {
                 HMEV_HISDK_PRT(ERROR, "Chn[%d] hi_mpi_venc_send_frame failed, s32Ret:0x%x\n", self->enc_channel_, ret);
                 enc->cancel_frame(video_frame_info);
-                continue;
+                // continue;
+                goto CONTINUE;
             }
             self->nframe_counter_++;
+goto CONTINUE;
             self->PutColorAddr(yuv_frame);
 
         } else {
