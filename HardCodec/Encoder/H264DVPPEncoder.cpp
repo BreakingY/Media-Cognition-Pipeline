@@ -323,6 +323,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             void *yuv_frame = self->yuv_frames_.front();
             self->yuv_frames_.pop_front();
             guard.unlock();
+            hi_vpc_pic_info output_pic;
             int ret = enc->dequeue_input_buffer(self->width_, self->height_, pixel_format, bit_width, cmp_mode, align, &video_frame_info);
             if (ret != HMEV_SUCCESS) {
                 HMEV_HISDK_PRT(DEBUG, "dequeue_input_buffer fail");
@@ -331,7 +332,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
                 goto CONTINUE;
             }
             // CHECK_ACL(aclrtMemcpy(video_frame_info->v_frame.virt_addr[0] , self->out_buffer_size_, yuv_frame, self->out_buffer_size_, ACL_MEMCPY_DEVICE_TO_DEVICE));
-            hi_vpc_pic_info output_pic = self->output_pic_;
+            output_pic = self->output_pic_;
             output_pic.picture_address = yuv_frame;
             video_frame_info->v_frame.height_stride[0] = video_frame_info->v_frame.height_stride[0] == 0 ? self->height_ : video_frame_info->v_frame.height_stride[0];
             ret = handle_output_data_from_device_to_device((const char *)video_frame_info->v_frame.virt_addr[0], video_frame_info->v_frame.width_stride[0], video_frame_info->v_frame.height_stride[0], output_pic);
