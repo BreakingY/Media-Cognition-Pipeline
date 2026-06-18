@@ -348,7 +348,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
                 goto CONTINUE;
             }
             self->nframe_counter_++;
-goto CONTINUE;
+CONTINUE:
             self->PutColorAddr(yuv_frame);
 
         } else {
