@@ -116,6 +116,7 @@
 * Bitstream: https://github.com/ireader/avcodec
 * ByteTrack: https://github.com/Vertical-Beach/ByteTrack-cpp
 * librtmp: https://git.ffmpeg.org/rtmpdump
+* pybind11: https://github.com/pybind/pybind11 v2.12.0
 * libflv: https://github.com/BreakingY/libflv
 * simple-rtsp-client: https://github.com/BreakingY/simple-rtsp-client
 * libmpeg2core: https://github.com/BreakingY/libmpeg2core
