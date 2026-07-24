@@ -223,7 +223,7 @@ if(MCP_PYBIND)
     add_subdirectory(third_party/pybind11)
     pybind11_add_module(mcp_module python_module.cpp)
     target_link_libraries(mcp_module PRIVATE mcp)
-else
+else()
     ####################
     ## C++  interface ##
     ####################
