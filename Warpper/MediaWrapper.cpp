@@ -175,6 +175,18 @@ void MediaWrapper::OnAudioData(AudioData data)
  */
 void MediaWrapper::OnRGBData(cv::Mat frame)
 {
+#if defined(MCP_PYBIND)
+    if (video_cb_){
+        py::gil_scoped_acquire acquire;  // 获取 Python GIL
+        py::array_t<unsigned char> arr(
+            {frame.rows, frame.cols, frame.channels()},  // shape
+            frame.data                                   // data pointer
+        );
+
+        video_cb_(arr);
+    }
+    return;
+#endif
     // 拿到解码后的图像就可以根据自己的业务需求进行处理，例如：AI识别、opencv检测、图像渲染等。
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     if(context_ == nullptr){
@@ -208,6 +220,33 @@ void MediaWrapper::OnRGBData(cv::Mat frame)
     hard_encoder_->AddVideoFrame(frame);
     return;
 }
+#if defined(MCP_PYBIND)
+void MediaWrapper::PyAddVideoFrame(cv::Mat frame){
+    if (!hard_encoder_) {
+#if defined(USE_NVIDIA_X86)
+        if(use_nv_enc_flag_){
+            hard_encoder_ = new NVHardVideoEncoder();
+        }
+        else{
+            hard_encoder_ =  new NVSoftVideoEncoder();
+        }
+        hard_encoder_->SetDevice(device_id_);
+#elif defined(USE_NVIDIA_ARM)
+        hard_encoder_ = new HardVideoEncoder();
+        hard_encoder_->SetDevice(device_id_);
+#elif defined(USE_DVPP_MPI)
+        hard_encoder_ = new HardVideoEncoder();
+        hard_encoder_->SetDevice(device_id_);
+#else
+        hard_encoder_ = new HardVideoEncoder();
+#endif
+        hard_encoder_->Init(frame, fps_);
+        hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
+    }
+    hard_encoder_->AddVideoFrame(frame);
+    return;
+}
+#endif
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 static void DetectDraw(cv::Mat& img, DetectionInfo& info) {
     for (const auto& det : info.dets) {
@@ -288,6 +327,15 @@ void MediaWrapper::OnPCMData(unsigned char **data, int data_len)
     } else { // packed,dst_linesize=data_len*out_spb*out_channels
         memcpy(buffer_pcm_, data[0], data_len * out_spb * dst_nb_channels);
     }
+#if defined(MCP_PYBIND)
+    if (audio_cb_){
+        py::gil_scoped_acquire acquire;  // 获取 Python GIL
+        py::array_t<unsigned char> arr(buf_len);
+        memcpy(arr.mutable_data(), buffer_pcm_, buf_len);
+        audio_cb_(arr, data_len, out_spb, dst_nb_channels);
+    }
+    return;
+#endif
     aac_encoder_->AddPCMFrame(buffer_pcm_, buf_len);
     // if (fp_file == nullptr) {
     //     fp_file = fopen("test.pcm", "wb+");
@@ -295,6 +343,14 @@ void MediaWrapper::OnPCMData(unsigned char **data, int data_len)
     // fwrite(buffer_pcm_, 1, buf_len, fp_file); // ffplay -ar 44100 -ac 2 -f s16le -i test.pcm
     return;
 }
+#if defined(MCP_PYBIND)
+void MediaWrapper::PyAddAudioFrame(uint8_t* data, int data_len, int spb, int channels){
+    if(aac_encoder_){
+        int buf_len = data_len * spb * channels;
+        aac_encoder_->AddPCMFrame(data, buf_len);
+    }
+}
+#endif
 // static const char *enc_h264_filename = "out.h264";
 // static FILE *enc_h264_fd = nullptr;
 bool MediaWrapper::SetMediaInfo(){

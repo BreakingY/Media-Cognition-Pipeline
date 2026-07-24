@@ -16,6 +16,15 @@
 #include "TsMuxerClient.h"
 #include "TsDemuxerClient.h"
 #include <opencv2/opencv.hpp>
+#if defined(MCP_PYBIND)
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/functional.h>
+#include <pybind11/stl.h>
+namespace py = pybind11;
+using FrameCallbackFuncVideo = std::function<void(py::array_t<uint8_t>)>;
+using FrameCallbackFuncAudio = std::function<void(py::array_t<uint8_t>, int/*单通道当本个数*/, int/*每个样本占用的字节数*/, int/*通道数量*/)>; // packed格式的pcm音频
+#endif
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
 #include "NodeFlow.h"
 class MediaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner, public InferDataListner
@@ -51,7 +60,21 @@ public:
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     void OnInferData(cv::Mat& img, DetectionInfo& info);
 #endif
-
+#if defined(MCP_PYBIND)
+    /**
+     * 流媒体处理库：为Python提供高性能的视频处理功能，包括视频采集、编解码加速、帧数据交互以及实时流媒体处理。
+     * 典型应用场景：
+     *    C++负责视频采集(文件，实时流)、编解码加速、输出(文件，实时流)
+     *    Python负责目标检测、人脸识别、行为分析等模型算法。
+     * 开启MCP_PYBIND时此项目仅作为媒体库使用，不能和
+     */
+    // cb：python回调函数, 接收解码图像DETECTION_*同时使用
+    void InitImgPycallback(FrameCallbackFuncVideo video_cb, FrameCallbackFuncAudio audio_cb) {video_cb_ = video_cb; audio_cb_ = audio_cb;}
+    // frame：python处理后的图像，用于输出到文件或推流
+    void PyAddVideoFrame(cv::Mat frame);
+    // packed格式的pcm音频
+    void PyAddAudioFrame(uint8_t* data, int data_len, int spb, int channels);
+#endif
 public:
     bool over_flag_ = false;
 
@@ -90,6 +113,10 @@ public:
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     std::string eng_path_;
     void *context_ = nullptr;
+#endif
+#if defined(MCP_PYBIND)
+    FrameCallbackFuncVideo video_cb_ = nullptr;
+    FrameCallbackFuncAudio audio_cb_ = nullptr;
 #endif
 };
 #endif

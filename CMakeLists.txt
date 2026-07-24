@@ -7,10 +7,18 @@ option(FFMPEG_NVIDIA "Enable FFmpeg nvidia codec" OFF)
 option(DVPP_MPI "Enable Ascend DVPP V2 codec" OFF)
 option(NVIDIA_SDK_X86 "Enable NVIDIA Video Codec SDK codec" OFF)
 option(NVIDIA_SDK_ARM "Enable Jetson codec" OFF)
-option(NVIDIA_SDK_ARM "Enable Jetson codec" OFF)
 option(DETECTION_NVIDIA "Enable Nvidia detection" OFF)
 option(DETECTION_ASCEND "Enable Ascend detection" OFF)
-option(DETECTION_HYGON "Enable Nvidia detection" OFF)
+option(DETECTION_HYGON "Enable hygon detection" OFF)
+option(MCP_PYBIND "Enable Python binding" OFF)
+if(MCP_PYBIND)
+    message(STATUS "MCP_PYBIND enabled: disable all detection modules")
+
+    set(DETECTION_NVIDIA OFF CACHE BOOL "Disable Nvidia detection" FORCE)
+    set(DETECTION_ASCEND OFF CACHE BOOL "Disable Ascend detection" FORCE)
+    set(DETECTION_HYGON OFF CACHE BOOL "Disable Hygon detection" FORCE)
+endif()
+
 if(WIN32)
     # ffmpeg
     include_directories("D:/msys64/mingw64/include")
@@ -149,6 +157,16 @@ elseif(DETECTION_HYGON)
     link_directories(/opt/dtk/cuda/cuda/lib64 /opt/dtk/lib)
 endif()
 
+####################
+# Python interface #
+####################
+if(MCP_PYBIND)
+    add_definitions(-DMCP_PYBIND)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+    set(PYBIND11_FINDPYTHON ON)
+    include_directories(third_party/pybind11/include ${Python3_INCLUDE_DIRS})
+endif()
+
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./)
 add_library(mcp SHARED ${WRAPPER} ${MEDIACOMMON} ${HARDDEC} ${HARDENC} ${MUXER} ${FILEREADER} ${RTSPREADER} ${RTSPSRC} ${RTSP3Rd} ${RTP} ${BH264} ${BH265} ${RTMPCLIENT} ${LIBFLV} ${LIBRTMP}
                         ${TSTRANSPORT} ${MPEG2CORE}
@@ -183,7 +201,12 @@ elseif(DETECTION_ASCEND)
 elseif(DETECTION_HYGON)
     target_link_libraries(mcp cudart nppig nppidei nppial migraphx migraphx_gpu migraphx_onnx)
 endif()
-
+####################
+# Python interface #
+####################
+if(MCP_PYBIND)
+    target_link_libraries(mcp Python3::Python)
+endif()
 if(WIN32)
     # Set the function stack size to 6MB
     add_compile_options(-Wl,--stack,6000000)
@@ -193,6 +216,18 @@ elseif(UNIX)
 endif()
 
 
-add_executable(MediaCodec ${TEST})
-target_link_libraries(MediaCodec mcp)
+if(MCP_PYBIND)
+    ####################
+    # Python interface #
+    ####################
+    add_subdirectory(third_party/pybind11)
+    pybind11_add_module(mcp_module python_module.cpp)
+    target_link_libraries(mcp_module PRIVATE mcp)
+else
+    ####################
+    ## C++  interface ##
+    ####################
+    add_executable(MediaCodec ${TEST})
+    target_link_libraries(MediaCodec mcp)
+endif()
 

@@ -149,6 +149,18 @@ A general-purpose real-time streaming media and deep learning inference accelera
 
    https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
 
+# Python Interface: Real-time Streaming Media Acceleration Processing Library (Input: File/RTSP/RTMP/SRT; Output: File/RTSP/RTMP/SRT)
+* Streaming Media Processing Library: Provides high-performance video processing capabilities for Python, including audio/video capture, encoding/decoding acceleration, frame data interaction, and real-time streaming media processing.
+* Typical Application Scenario: C++ handles video capture (file, real-time stream), encoding/decoding acceleration, and output (file, real-time stream); Python handles model algorithms such as object detection, face recognition, and behavior analysis.
+* `-DMCP_PYBIND=ON`: When enabled, it serves only as a media library for Python and cannot enable `DETECTION_NVIDIA/DETECTION_ASCEND/DETECTION_HYGON`.
+* To specify a particular Python version, refer to the commands below, e.g., compiling for Python 3.12 and Python 3.7:
+  * `-DPYTHON_LIBRARY=/usr/local/lib/libpython3.12.so -DPYTHON_INCLUDE_DIR=/usr/local/include/python3.12 -DPYTHON_EXECUTABLE=/usr/local/bin/python3.12`
+  * `-DPYTHON_LIBRARY=/usr/local/lib/libpython3.7m.so -DPYTHON_INCLUDE_DIR=/usr/local/include/python3.7m -DPYTHON_EXECUTABLE=/usr/local/bin/python3.7`
+* Build Steps:
+  1. Compile Python from source with `./configure --enable-shared`. The `--enable-shared` flag is required; otherwise, compilation will fail.
+  2. cd build
+  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON -DMCP_PYBIND=ON ..`
+  4. python demo.py
 
 # Technical Contact
 * kxsun617@163.com

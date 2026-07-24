@@ -144,5 +144,18 @@
 
    https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
 
+# python接口：实时流媒体加速处理库(输入：文件/RTSP/RTMP/SRT;输出：文件/RTSP/RTMP/SRT)
+* 流媒体处理库：为Python提供高性能的视频处理功能，包括音视频采集、编解码加速、帧数据交互以及实时流媒体处理。
+* 典型应用场景：C++负责视频采集(文件，实时流)、编解码加速、输出(文件，实时流)；Python负责目标检测、人脸识别、行为分析等模型算法。
+* `-DMCP_PYBIND=ON`此时仅作为媒体库供python使用，无法开启`DETECTION_NVIDIA/DETECTION_ASCEND/DETECTION_HYGON`
+* 如果要指定特定python版本，请参考下面命令,例如编译python3.12和python3.7
+  * `-DPYTHON_LIBRARY=/usr/local/lib/libpython3.12.so -DPYTHON_INCLUDE_DIR=/usr/local/include/python3.12 -DPYTHON_EXECUTABLE=/usr/local/bin/python3.12`
+  * `-DPYTHON_LIBRARY=/usr/local/lib/libpython3.7m.so -DPYTHON_INCLUDE_DIR=/usr/local/include/python3.7m -DPYTHON_EXECUTABLE=/usr/local/bin/python3.7`
+* 编译：
+  1. 源码编译python`./configure --enable-shared`必须添加--enable-shared参数，否则无法编译
+  2. cd build
+  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON -DMCP_PYBIND=ON ..`
+  4. python demo.py
+
 # 技术交流
 * kxsun617@163.com
