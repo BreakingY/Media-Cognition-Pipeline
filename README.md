@@ -145,7 +145,8 @@
 
    https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
 
-# python接口：实时流媒体加速处理库(输入：文件/RTSP/RTMP/SRT;输出：文件/RTSP/RTMP/SRT)
+# python接口
+* 实时流媒体加速处理库(输入：文件/RTSP/RTMP/SRT;输出：文件/RTSP/RTMP/SRT)
 * 流媒体处理库：为Python提供高性能的视频处理功能，包括音视频采集、编解码加速、帧数据交互以及实时流媒体处理。
 * 典型应用场景：C++负责视频采集(文件，实时流)、编解码加速、输出(文件，实时流)；Python负责目标检测、人脸识别、行为分析等模型算法。
 * `-DMCP_PYBIND=ON`此时仅作为媒体库供python使用，无法开启`DETECTION_NVIDIA/DETECTION_ASCEND/DETECTION_HYGON`
