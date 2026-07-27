@@ -13,9 +13,9 @@ def on_image(img):
 def on_pcm(pcm, data_len, spb, channels):
     '''
     pcm:packed模式pcm数据
-    data_len:单通道当本个数
-    spb:每个样本占用的字节数
-    channels:通道数
+    data_len: 每通道sample数量
+    spb: 每个sample字节数
+    channels: 通道数量
     '''
     mcp_module.addAudioFrame(obj, pcm, data_len, spb, channels)
 
