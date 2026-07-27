@@ -156,7 +156,7 @@
 * 编译：
   1. 源码编译python`./configure --enable-shared`必须添加--enable-shared参数，否则无法编译
   2. cd build
-  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON -DMCP_PYBIND=ON ..`
+  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON <-DENABLE_SRT=ON> -DMCP_PYBIND=ON ..`
   4. make -j
   5. python demo.py
 

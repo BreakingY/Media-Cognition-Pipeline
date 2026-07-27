@@ -161,7 +161,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * Build Steps:
   1. Compile Python from source with `./configure --enable-shared`. The `--enable-shared` flag is required; otherwise, compilation will fail.
   2. cd build
-  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON -DMCP_PYBIND=ON ..`
+  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON <-DENABLE_SRT=ON> -DMCP_PYBIND=ON ..`
   4. make -j
   5. python demo.py
 
