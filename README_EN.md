@@ -151,7 +151,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
    https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
 
 # Python Interface
-* Real-time Streaming Media Acceleration Processing Library (Input: File/RTSP/RTMP/SRT; Output: File/RTSP/RTMP/SRT)
+* Real-time Streaming Media Acceleration Processing Library (Input: File/RTSP/RTMP/SRT; Output: File/RTMP/SRT)
 * Streaming Media Processing Library: Provides high-performance video processing capabilities for Python, including audio/video capture, encoding/decoding acceleration, frame data interaction, and real-time streaming media processing.
 * Typical Application Scenario: C++ handles video capture (file, real-time stream), encoding/decoding acceleration, and output (file, real-time stream); Python handles model algorithms such as object detection, face recognition, and behavior analysis.
 * `-DMCP_PYBIND=ON`: When enabled, it serves only as a media library for Python and cannot enable `DETECTION_NVIDIA/DETECTION_ASCEND/DETECTION_HYGON`.
