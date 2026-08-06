@@ -34,15 +34,15 @@ elseif(UNIX)
     find_package(OpenCV REQUIRED)
     include_directories(${OpenCV_INCLUDE_DIRS})
 endif()
-include_directories(Warpper Log Log/spdlog/include
+include_directories(Warpper Log third_party/spdlog/include
                     HardCodec HardCodec/Decoder HardCodec/Encoder 
                     Media/MediaCommon
                     Media/MediaMuxer
-                    Media/Bitstream/h264/include Media/Bitstream/h265/include
+                    third_party/Bitstream/h264/include third_party/Bitstream/h265/include
                     Media/MediaReader Media/MediaReader/FileReader 
-                    Media/MediaReader/RtspReader Media/MediaReader/RtspReader/simple-rtsp-client Media/MediaReader/RtspReader/simple-rtsp-client/3rdparty Media/MediaReader/RtspReader/simple-rtsp-client/rtp
-                    Media/RtmpClient Media/RtmpClient/libflv/include Media/RtmpClient/rtmpdump/librtmp
-                    Media/TsTransport Media/TsTransport/libmpeg2core/include
+                    Media/MediaReader/RtspReader third_party/simple-rtsp-client third_party/simple-rtsp-client/3rdparty third_party/simple-rtsp-client/rtp
+                    Media/RtmpClient third_party/libflv/include third_party/rtmpdump/librtmp
+                    Media/TsTransport third_party/libmpeg2core/include
                     Time)
 
 aux_source_directory(Test TEST)
@@ -55,19 +55,19 @@ aux_source_directory(Media/MediaCommon MEDIACOMMON)
 aux_source_directory(Media/MediaMuxer MUXER)
 aux_source_directory(Media/MediaReader/FileReader FILEREADER)
 aux_source_directory(Media/MediaReader/RtspReader RTSPREADER)
-aux_source_directory(Media/MediaReader/RtspReader/simple-rtsp-client RTSPSRC)
-aux_source_directory(Media/MediaReader/RtspReader/simple-rtsp-client/3rdparty RTSP3Rd)
-aux_source_directory(Media/MediaReader/RtspReader/simple-rtsp-client/rtp RTP)
+aux_source_directory(third_party/simple-rtsp-client RTSPSRC)
+aux_source_directory(third_party/simple-rtsp-client/3rdparty RTSP3Rd)
+aux_source_directory(third_party/simple-rtsp-client/rtp RTP)
 
-aux_source_directory(Media/Bitstream/h264/source BH264)
-aux_source_directory(Media/Bitstream/h265/src BH265)
+aux_source_directory(third_party/Bitstream/h264/source BH264)
+aux_source_directory(third_party/Bitstream/h265/src BH265)
 
 aux_source_directory(Media/RtmpClient RTMPCLIENT)
-aux_source_directory(Media/RtmpClient/libflv/source LIBFLV)
-aux_source_directory(Media/RtmpClient/rtmpdump/librtmp LIBRTMP)
+aux_source_directory(third_party/libflv/source LIBFLV)
+aux_source_directory(third_party/rtmpdump/librtmp LIBRTMP)
 
 aux_source_directory(Media/TsTransport TSTRANSPORT)
-aux_source_directory(Media/TsTransport/libmpeg2core/source MPEG2CORE)
+aux_source_directory(third_party/libmpeg2core/source MPEG2CORE)
 
 set(EXECUTABLE_OUTPUT_PATH ./)
 add_compile_options(-g -Wno-deprecated-declarations)
@@ -128,10 +128,10 @@ endif()
 ###################
 if(DETECTION_NVIDIA OR DETECTION_ASCEND OR DETECTION_HYGON)
     message(STATUS "Enable detection")
-    include_directories(Cognition/Detection Cognition/ByteTrack-cpp/include)
+    include_directories(Cognition/Detection third_party/ByteTrack-cpp/include)
     include_directories(/usr/include/eigen3) # for ByteTrack
     aux_source_directory(Cognition/Detection DETECTION)
-    aux_source_directory(Cognition/ByteTrack-cpp/src BYTETRACK)
+    aux_source_directory(third_party/ByteTrack-cpp/src BYTETRACK)
 endif()
 if(DETECTION_NVIDIA)
     enable_language(CUDA)

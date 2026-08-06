@@ -139,7 +139,7 @@
    * Hygon : `cmake -DFFMPEG_SOFT=ON -DDETECTION_HYGON=ON ..`
 # 测试：
 1. pipeline测试：
-   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../Media/RtmpClient/libflv/test/test_1280x720_h264_aac.flv)/ts(../Media/TsTransport/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
+   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../third_party/libflv/test/test_1280x720_h264_aac.flv)/ts(../third_party/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 2. AI推理：
    `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 

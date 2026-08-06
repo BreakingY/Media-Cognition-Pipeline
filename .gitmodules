@@ -1,23 +1,23 @@
-[submodule "Log/spdlog"]
-	path = Log/spdlog
+[submodule "third_party/spdlog"]
+	path = third_party/spdlog
 	url = https://github.com/gabime/spdlog
-[submodule "Media/Bitstream"]
-	path = Media/Bitstream
+[submodule "third_party/Bitstream"]
+	path = third_party/Bitstream
 	url = https://github.com/ireader/avcodec
-[submodule "Cognition/ByteTrack-cpp"]
-	path = Cognition/ByteTrack-cpp
+[submodule "third_party/ByteTrack-cpp"]
+	path = third_party/ByteTrack-cpp
 	url = https://github.com/Vertical-Beach/ByteTrack-cpp.git
-[submodule "Media/RtmpClient/libflv"]
-	path = Media/RtmpClient/libflv
+[submodule "third_party/libflv"]
+	path = third_party/libflv
 	url = https://github.com/BreakingY/libflv.git
-[submodule "Media/RtmpClient/rtmpdump"]
-	path = Media/RtmpClient/rtmpdump
+[submodule "third_party/rtmpdump"]
+	path = third_party/rtmpdump
 	url = https://git.ffmpeg.org/rtmpdump.git
-[submodule "Media/MediaReader/RtspReader/simple-rtsp-client"]
-	path = Media/MediaReader/RtspReader/simple-rtsp-client
+[submodule "third_party/simple-rtsp-client"]
+	path = third_party/simple-rtsp-client
 	url = https://github.com/BreakingY/simple-rtsp-client
-[submodule "Media/TsTransport/libmpeg2core"]
-	path = Media/TsTransport/libmpeg2core
+[submodule "third_party/libmpeg2core"]
+	path = third_party/libmpeg2core
 	url = https://github.com/BreakingY/libmpeg2core
 [submodule "third_party/pybind11"]
 	path = third_party/pybind11
