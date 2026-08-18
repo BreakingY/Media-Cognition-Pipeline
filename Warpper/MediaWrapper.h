@@ -26,6 +26,12 @@ using FrameCallbackFuncVideo = std::function<void(py::array_t<uint8_t>)>;
 using FrameCallbackFuncAudio = std::function<void(py::array_t<uint8_t>, int/*单通道当本个数*/, int/*每个样本占用的字节数*/, int/*通道数量*/)>; // packed格式的pcm音频
 #endif
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
+#if defined(USE_NVIDIA_ARM)
+// Resolve the macro conflict between x11 and eigen3 
+#ifdef Success
+#undef Success
+#endif
+#endif
 #include "NodeFlow.h"
 class MediaWrapper : public MediaDataListner, public DecDataCallListner, public EncDataCallListner, public InferDataListner
 #else
