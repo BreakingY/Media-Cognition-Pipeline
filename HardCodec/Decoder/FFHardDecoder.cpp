@@ -451,7 +451,10 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
                 pre_frames_ = now_frames_;
             }
         }
-        callback_->OnRGBData(frame_ret, GetCurrentTimeMs());
+        VideoFrame frame;
+        frame.frame = frame_ret;
+        frame.timestamp = GetCurrentTimeMs();
+        callback_->OnRGBData(frame);
     }
     uint8_t *p = frame->data[0];
     av_freep(&p);

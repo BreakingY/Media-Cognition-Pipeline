@@ -48,8 +48,8 @@ public:
     void MediaOverhandle();
 
     // 解码后数据接口
-    void OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/);
-    void OnPCMData(unsigned char **data, int data_len, int64_t timestamp/*ms*/);
+    void OnRGBData(VideoFrame frame);
+    void OnPCMData(AudioFrame frame);
 
     // 编码后的数据接口
     // 音视频接口中的pts是独立的，没有同步

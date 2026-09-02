@@ -179,14 +179,15 @@ void MediaWrapper::OnAudioData(AudioData data)
 /**
  * 解码后音视频数据
  */
-void MediaWrapper::OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/)
+void MediaWrapper::OnRGBData(VideoFrame frame)
 {
+    VideoFrame dec_frame = frame;
 #if defined(MCP_PYBIND)
     if (video_cb_){
         py::gil_scoped_acquire acquire;  // 获取 Python GIL
         py::array_t<unsigned char> arr(
-            {frame.rows, frame.cols, frame.channels()},  // shape
-            frame.data                                   // data pointer
+            {dec_frame.frame.rows, dec_frame.frame.cols, dec_frame.frame.channels()},  // shape
+            dec_frame.frame.data                                   // data pointer
         );
 
         video_cb_(arr);
@@ -198,7 +199,7 @@ void MediaWrapper::OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/)
     if(context_ == nullptr){
         context_ = AddStream(static_cast<InferDataListner *>(this), width_, height_, fps_);
     }
-    StreamPushData(frame, timestamp, context_);
+    StreamPushData(dec_frame.frame, dec_frame.timestamp, context_);
     return;
 #endif
     // 之后再把处理后的图像进行编码
@@ -220,10 +221,10 @@ void MediaWrapper::OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/)
 #else
         hard_encoder_ = new HardVideoEncoder();
 #endif
-        hard_encoder_->Init(frame, fps_);
+        hard_encoder_->Init(dec_frame.frame, fps_);
         hard_encoder_->SetDataCallback(static_cast<EncDataCallListner *>(this));
     }
-    hard_encoder_->AddVideoFrame(frame);
+    hard_encoder_->AddVideoFrame(dec_frame.frame);
     return;
 }
 #if defined(MCP_PYBIND)
@@ -306,8 +307,11 @@ void MediaWrapper::OnInferData(cv::Mat& img, DetectionInfo& info, int64_t timest
 #endif
 // FILE *fp_file = nullptr;
 // data_len是单通道当本个数 LC-AAC:1024 HE-AAC:2048
-void MediaWrapper::OnPCMData(unsigned char **data, int data_len, int64_t timestamp/*ms*/)
+void MediaWrapper::OnPCMData(AudioFrame frame)
 {
+    unsigned char **data = frame.data;
+    int data_len = frame.data_len;
+    int64_t timestamp = frame.timestamp;
     // 拿到解码后的PCM音频根据自己的业务需求进行处理，例如语音识别、语音合成等。
     // 之后再把处理后的音频进行编码
     if (aac_encoder_ == nullptr) {

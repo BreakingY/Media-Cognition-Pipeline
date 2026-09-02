@@ -10,12 +10,21 @@ typedef enum CODEC_TYPE_e{
     CODEC_H264,
     CODEC_H265,
 }CODEC_TYPE;
+typedef struct VideoFrameSt{
+    cv::Mat frame;
+    int64_t timestamp; /*解码前时间戳(包含解码时延) ms*/
+}VideoFrame;
+typedef struct AudioFrameSt{
+    unsigned char **data; // 原生的输出数据, 指针数组
+    int data_len; // data_len是单通道样本个数
+    int64_t timestamp; /*解码前时间戳(包含解码时延) ms*/
+}AudioFrame;
 // 解码后数据接口
 class DecDataCallListner
 {
 public:
-    virtual void OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/) = 0; // timestamp解码前时间戳(包含解码时延)
-    virtual void OnPCMData(unsigned char **data, int data_len, int64_t timestamp/*ms*/) = 0; // data是原生的输出数据，指针数组，data_len是单通道样本个数，timestamp解码前时间戳(包含解码时延)
+    virtual void OnRGBData(VideoFrame frame) = 0;
+    virtual void OnPCMData(AudioFrame frame) = 0;
 };
 // 编码后数据接口
 class EncDataCallListner

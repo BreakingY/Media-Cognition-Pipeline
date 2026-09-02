@@ -322,7 +322,10 @@ void *HardVideoDecoder::GetPic(void *arg){
                             self->pre_frames_ = self->now_frames_;
                         }
                     }
-                    self->callback_->OnRGBData(frame_ret, static_cast<int64_t>(pts));
+                    VideoFrame frame;
+                    frame.frame = frame_ret;
+                    frame.timestamp = static_cast<int64_t>(pts);
+                    self->callback_->OnRGBData(frame);
                 }
             }
             else{

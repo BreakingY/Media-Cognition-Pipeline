@@ -154,7 +154,10 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
                     pre_frames_ = now_frames_;
                 }
             }
-            callback_->OnRGBData(frame_ret, timestamp);
+            VideoFrame frame;
+            frame.frame = frame_ret;
+            frame.timestamp = timestamp;
+            callback_->OnRGBData(frame);
         }
     }
     return;

@@ -228,7 +228,11 @@ void AACDecoder::ScaleAudio(AVFrame *frame)
                 pre_frames_ = now_frames_;
             }
         }
-        callback_->OnPCMData(frame_dec->data, ret, GetCurrentTimeMs());
+        AudioFrame frame;
+        frame.data = frame_dec->data;
+        frame.data_len = ret;
+        frame.timestamp = GetCurrentTimeMs();
+        callback_->OnPCMData(frame);
     }
     av_frame_free(&frame_dec);
     // uint8_t* p=frame->data[0];
