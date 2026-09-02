@@ -336,7 +336,8 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             output_pic.picture_address = yuv_frame;
             video_frame_info->v_frame.height_stride[0] = video_frame_info->v_frame.height_stride[0] == 0 ? self->height_ : video_frame_info->v_frame.height_stride[0];
             ptr_backup = video_frame_info->v_frame.virt_addr[0];
-            if(video_frame_info->v_frame.width_stride[0] == output_pic.picture_width_stride && video_frame_info->v_frame.height_stride[0] == output_pic.picture_height_stride){
+            if(false){// if(video_frame_info->v_frame.width_stride[0] == output_pic.picture_width_stride && video_frame_info->v_frame.height_stride[0] == output_pic.picture_height_stride){
+                // 编码不能这样写
                 video_frame_info->v_frame.virt_addr[0] = output_pic.picture_address;
             }
             else{
