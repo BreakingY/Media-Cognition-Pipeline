@@ -48,8 +48,8 @@ public:
     void MediaOverhandle();
 
     // 解码后数据接口
-    void OnRGBData(cv::Mat frame);
-    void OnPCMData(unsigned char **data, int data_len);
+    void OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/);
+    void OnPCMData(unsigned char **data, int data_len, int64_t timestamp/*ms*/);
 
     // 编码后的数据接口
     // 音视频接口中的pts是独立的，没有同步
@@ -64,7 +64,7 @@ public:
     void UseNVEnc() {use_nv_enc_flag_ = true; return;}
 
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
-    void OnInferData(cv::Mat& img, DetectionInfo& info);
+    void OnInferData(cv::Mat& img, DetectionInfo& info, int64_t timestamp/*OnRGBData中的时间戳 ms*/);
 #endif
 #if defined(MCP_PYBIND)
     /**
@@ -119,6 +119,7 @@ public:
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
     std::string eng_path_;
     void *context_ = nullptr;
+    TimeMetrics time_for_log_;
 #endif
 #if defined(MCP_PYBIND)
     FrameCallbackFuncVideo video_cb_ = nullptr;

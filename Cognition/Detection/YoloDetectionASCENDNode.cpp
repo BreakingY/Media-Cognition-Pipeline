@@ -576,7 +576,7 @@ void YoloDetectionNode::DetectThreadLoop(){
             int img_size = packet->context->width * packet->context->height * 3;
             CHECK_ACL(aclrtMemcpyAsync(packet->context->img_buffer, img_size, packet->img.data, img_size, ACL_MEMCPY_HOST_TO_DEVICE, stream_));
             CHECK_ACL(aclrtSynchronizeStream(stream_));
-            LetterBox(channel_id_letterbox_, packet->context->img_buffer, img_size, packet->context->width, packet->context->height, input_addr_img_ + buffer_idx, model_img_size, input_w_, input_h_);
+            LetterBox(channel_id_letterbox_, packet->context->img_buffer, img_size, packet->context->width, packet->context->height, (uint8_t*)input_addr_img_ + buffer_idx, model_img_size, input_w_, input_h_);
             buffer_idx += input_h_ * input_w_ * 3;
 
             int new_unpad_w, new_unpad_h;

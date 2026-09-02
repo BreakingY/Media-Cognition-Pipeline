@@ -105,7 +105,7 @@ void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64
                 pre_frames_ = now_frames_;
             }
         }
-        callback_->OnRGBData(frame_ret);
+        callback_->OnRGBData(frame_ret, static_cast<int64_t>(timestamp));
     }
 }
 #endif

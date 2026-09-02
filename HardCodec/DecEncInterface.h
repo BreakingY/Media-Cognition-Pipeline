@@ -14,8 +14,8 @@ typedef enum CODEC_TYPE_e{
 class DecDataCallListner
 {
 public:
-    virtual void OnRGBData(cv::Mat frame) = 0;
-    virtual void OnPCMData(unsigned char **data, int data_len) = 0; // data是原生的输出数据，指针数组，data_len是单通道样本个数
+    virtual void OnRGBData(cv::Mat frame, int64_t timestamp/*ms*/) = 0; // timestamp解码前时间戳(包含解码时延)
+    virtual void OnPCMData(unsigned char **data, int data_len, int64_t timestamp/*ms*/) = 0; // data是原生的输出数据，指针数组，data_len是单通道样本个数，timestamp解码前时间戳(包含解码时延)
 };
 // 编码后数据接口
 class EncDataCallListner

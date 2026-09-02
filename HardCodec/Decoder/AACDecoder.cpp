@@ -157,7 +157,12 @@ void AACDecoder::SetResampleArg(enum AVSampleFormat fmt, int channels, int ratio
     dst_ratio_ = ratio;
     return;
 }
-
+static int64_t GetCurrentTimeMs()
+{
+    auto now = std::chrono::steady_clock::now();
+    auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return static_cast<int64_t>(time_ms);
+}
 void AACDecoder::ScaleAudio(AVFrame *frame)
 {
 
@@ -223,7 +228,7 @@ void AACDecoder::ScaleAudio(AVFrame *frame)
                 pre_frames_ = now_frames_;
             }
         }
-        callback_->OnPCMData(frame_dec->data, ret);
+        callback_->OnPCMData(frame_dec->data, ret, GetCurrentTimeMs());
     }
     av_frame_free(&frame_dec);
     // uint8_t* p=frame->data[0];

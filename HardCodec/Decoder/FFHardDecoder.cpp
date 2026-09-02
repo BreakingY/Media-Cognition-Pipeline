@@ -408,7 +408,12 @@ void *HardVideoDecoder::DecodeThread(void *arg)
     delete node;
     return NULL;
 }
-
+static int64_t GetCurrentTimeMs()
+{
+    auto now = std::chrono::steady_clock::now();
+    auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return static_cast<int64_t>(time_ms);
+}
 void HardVideoDecoder::ScaleVideo(AVFrame *frame)
 {
     if (!img_convert_ctx_) {
@@ -446,7 +451,7 @@ void HardVideoDecoder::ScaleVideo(AVFrame *frame)
                 pre_frames_ = now_frames_;
             }
         }
-        callback_->OnRGBData(frame_ret);
+        callback_->OnRGBData(frame_ret, GetCurrentTimeMs());
     }
     uint8_t *p = frame->data[0];
     av_freep(&p);

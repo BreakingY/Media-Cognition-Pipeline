@@ -322,7 +322,7 @@ void *HardVideoDecoder::GetPic(void *arg){
                             self->pre_frames_ = self->now_frames_;
                         }
                     }
-                    self->callback_->OnRGBData(frame_ret);
+                    self->callback_->OnRGBData(frame_ret, static_cast<int64_t>(pts));
                 }
             }
             else{

@@ -18,6 +18,6 @@
 void DetectModelInit(std::string eng_path, int device_id);
 void* AddStream(InferDataListner* listener, int width, int height, int fps = 30);
 void EndStream(void* context);
-void StreamPushData(cv::Mat &img, void* context);
+void StreamPushData(cv::Mat &img, int64_t timestamp/*图像时间戳(包括解码时延)ms*/, void* context);
 #endif // NODE_FLOW_H
 #endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

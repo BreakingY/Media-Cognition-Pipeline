@@ -32,7 +32,7 @@
 /// =======================
 class InferDataListner {
 public:
-    virtual void OnInferData(cv::Mat& img, DetectionInfo& info) = 0;
+    virtual void OnInferData(cv::Mat& img, DetectionInfo& info, int64_t timestamp) = 0;
 };
 
 /// =======================
@@ -106,6 +106,7 @@ struct ImgPacket{
     cv::Mat img;
     DetectionInfo info;
     TimeMetrics timer;
+    int64_t timestamp/*图像时间戳ms*/;
     QueueContext* context{nullptr};
 };
 /// =======================
@@ -129,22 +130,24 @@ public:
     }
 
     /// Prefer this: move cv::Mat
-    inline void Push(cv::Mat&& img, QueueContext* context) {
+    inline void Push(cv::Mat&& img, int64_t timestamp/*ms*/, QueueContext* context) {
         std::unique_lock<std::mutex> guard(mutex_);
         ImgPacket *packet = new ImgPacket();
         packet->img = std::move(img);
         packet->timer.startTimer();
+        packet->timestamp = timestamp;
         packet->context = context;
         img_list_.push_back(packet);
         cond_.notify_one();
     }
 
     /// Fallback: copy cv::Mat
-    inline void Push(const cv::Mat& img, QueueContext* context) {
+    inline void Push(const cv::Mat& img, int64_t timestamp/*ms*/, QueueContext* context) {
         std::unique_lock<std::mutex> guard(mutex_);
         ImgPacket *packet = new ImgPacket();
         packet->img = img;
         packet->timer.startTimer();
+        packet->timestamp = timestamp;
         packet->context = context;
         img_list_.push_back(packet);
         cond_.notify_one();
@@ -440,7 +443,7 @@ private:
                         log_debug("stream id:{} flow time:{}", ctx->stream_id, flow_time);
                     }
                     if (ctx && ctx->listener) {
-                        ctx->listener->OnInferData(packet->img, packet->info);
+                        ctx->listener->OnInferData(packet->img, packet->info, packet->timestamp);
                     }
                     delete packet;
                 }

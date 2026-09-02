@@ -51,8 +51,8 @@ void EndStream(void* context){
     }
     DestroyContext(ctx);
 }
-void StreamPushData(cv::Mat &img, void* context){
+void StreamPushData(cv::Mat &img, int64_t timestamp/*ms*/, void* context){
     QueueContext* ctx = (QueueContext*)context;
-    collector->Push(std::move(img), ctx);
+    collector->Push(std::move(img), timestamp, ctx);
 }
 #endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON
