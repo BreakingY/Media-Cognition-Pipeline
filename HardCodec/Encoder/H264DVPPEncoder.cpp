@@ -316,7 +316,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
     hi_compress_mode cmp_mode = HI_COMPRESS_MODE_NONE;
     hi_u32 align = DEFAULT_ALIGN;
     hi_video_frame_info* video_frame_info = NULL;
-
+    void *ptr_backup = nullptr;
     while (!self->abort_) {
         std::unique_lock<std::mutex> guard(self->yuv_mutex_);
         if (!self->yuv_frames_.empty()) {
@@ -335,19 +335,27 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
             output_pic = self->output_pic_;
             output_pic.picture_address = yuv_frame;
             video_frame_info->v_frame.height_stride[0] = video_frame_info->v_frame.height_stride[0] == 0 ? self->height_ : video_frame_info->v_frame.height_stride[0];
-            ret = handle_output_data_from_device_to_device((const char *)video_frame_info->v_frame.virt_addr[0], video_frame_info->v_frame.width_stride[0], video_frame_info->v_frame.height_stride[0], output_pic);
-            if(ret < 0){
-                log_error("handle_output_data_from_device_to_device:{}", ret);
+            ptr_backup = video_frame_info->v_frame.virt_addr[0];
+            if(video_frame_info->v_frame.width_stride[0] == output_pic.picture_width_stride && video_frame_info->v_frame.height_stride[0] == output_pic.picture_height_stride){
+                video_frame_info->v_frame.virt_addr[0] = output_pic.picture_address;
+            }
+            else{
+                ret = handle_output_data_from_device_to_device((const char *)video_frame_info->v_frame.virt_addr[0], video_frame_info->v_frame.width_stride[0], video_frame_info->v_frame.height_stride[0], output_pic);
+                if(ret < 0){
+                    log_error("handle_output_data_from_device_to_device:{}", ret);
+                }
             }
             video_frame_info->v_frame.time_ref = self->nframe_counter_ * 2;
             ret = venc_mng_process_buffer((IHWCODEC_HANDLE)enc_handle, (void*)video_frame_info);
             if (ret != HMEV_SUCCESS) {
                 HMEV_HISDK_PRT(ERROR, "Chn[%d] hi_mpi_venc_send_frame failed, s32Ret:0x%x\n", self->enc_channel_, ret);
                 enc->cancel_frame(video_frame_info);
+                video_frame_info->v_frame.virt_addr[0] = ptr_backup;
                 // continue;
                 goto CONTINUE;
             }
             self->nframe_counter_++;
+            video_frame_info->v_frame.virt_addr[0] = ptr_backup;
 CONTINUE:
             self->PutColorAddr(yuv_frame);
 

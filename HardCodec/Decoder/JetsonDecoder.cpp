@@ -72,6 +72,7 @@ void HardVideoDecoder::InputVideoData(unsigned char *data, int data_len, int64_t
     return;
 }
 void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64_t timestamp){
+    uint64_t t1 = GetCurrentTimeMs();
     CHECK_CUDA(cudaMemcpy(device_frame_, jetson_addr_, width_ * height_ * 3 / 2, cudaMemcpyHostToDevice));
     const Npp8u* src_planes[2];
     src_planes[0] = (const Npp8u*)device_frame_;                     // Y
@@ -80,13 +81,13 @@ void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64
     NppiSize roi_size;
     roi_size.width  = width_;
     roi_size.height = height_;
-
     NppStatus status = nppiNV12ToBGR_8u_P2C3R(src_planes, width_, (Npp8u*)device_color_frame_, width_ * 3, roi_size);
     if (status != NPP_SUCCESS) {
         log_error("NPP NV12->BGR failed: {}", (int)status);
         return;
     }
     CHECK_CUDA(cudaMemcpy(host_frame_, device_color_frame_, width_ * height_ * 3, cudaMemcpyDeviceToHost));
+    uint64_t t2 = GetCurrentTimeMs();
     cv::Mat frame_mat(height_, width_, CV_8UC3, host_frame_);
     cv::Mat frame_ret = frame_mat.clone();
     if (callback_ != nullptr) {
@@ -100,7 +101,7 @@ void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64
             long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_now_ - time_pre_).count();
             if (tmp_time > 1000) { // 1s
                 int tmp_frame_rate = (now_frames_ - pre_frames_ + 1) * 1000 / tmp_time;
-                log_debug("input frame rate {} ", tmp_frame_rate);
+                log_debug("input frame rate {} fps, image processing latency {} ms", tmp_frame_rate, t2 - t1);
                 time_pre_ = time_now_;
                 pre_frames_ = now_frames_;
             }

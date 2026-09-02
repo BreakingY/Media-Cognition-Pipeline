@@ -285,16 +285,22 @@ void *HardVideoDecoder::GetPic(void *arg){
             if((dec_result == 0) && (output_buffer != NULL)){ // get frame
                 uint64_t pts = frame.v_frame.pts; // stream.pts
                 // color convert
-                /*
-                self->input_pic_.picture_address = output_buffer;
-                */
-                ret = prepare_input_data_from_device(self->input_pic_, (const char *)output_buffer, self->width_stride_, self->height_stride_);
-                if(ret < 0){
-                    log_error("prepare_input_data_from_device {} ", ret);
+                uint64_t t1 = GetCurrentTimeMs();
+                void *ptr_backup = self->input_pic_.picture_address;
+                if(self->width_stride_ == self->input_pic_.picture_width_stride && self->height_stride_ == self->input_pic_.picture_height_stride){
+                    self->input_pic_.picture_address = output_buffer;
+                }
+                else{
+                    ret = prepare_input_data_from_device(self->input_pic_, (const char *)output_buffer, self->width_stride_, self->height_stride_);
+                    if(ret < 0){
+                        log_error("prepare_input_data_from_device {} ", ret);
+                    }
                 }
                 uint32_t task_id;
                 CHECK_DVPP_MPI(hi_mpi_vpc_convert_color(self->channel_id_color_, &self->input_pic_, &self->output_pic_, &task_id, -1));
                 CHECK_DVPP_MPI(hi_mpi_vpc_get_process_result(self->channel_id_color_, task_id, -1));
+                self->input_pic_.picture_address = ptr_backup;
+
                 int size = self->width_ * self->height_ * 3;
                 if(!self->image_ptr_){
                     self->image_ptr_ = (unsigned char *)malloc(size);
@@ -304,6 +310,7 @@ void *HardVideoDecoder::GetPic(void *arg){
                 if(ret < 0){
                     log_error("handle_output_data_from_device_to_host {} ", ret);
                 }
+                uint64_t t2 = GetCurrentTimeMs();
                 cv::Mat frame_mat(self->height_, self->width_, CV_8UC3, self->image_ptr_);
                 cv::Mat frame_ret = frame_mat.clone();
                 if (self->callback_ != NULL) {
@@ -317,7 +324,7 @@ void *HardVideoDecoder::GetPic(void *arg){
                         long tmp_time = std::chrono::duration_cast<std::chrono::milliseconds>(self->time_now_ - self->time_pre_).count();
                         if (tmp_time > 1000) { // 1s
                             int tmp_frame_rate = (self->now_frames_ - self->pre_frames_ + 1) * 1000 / tmp_time;
-                            log_debug("input frame rate {} ", tmp_frame_rate);
+                            log_debug("input frame rate {} fps, image processing latency {} ms", tmp_frame_rate, t2 - t1);
                             self->time_pre_ = self->time_now_;
                             self->pre_frames_ = self->now_frames_;
                         }
