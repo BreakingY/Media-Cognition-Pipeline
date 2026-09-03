@@ -71,7 +71,7 @@
   * `trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16`
 * Ascend CANN
   * `-DDETECTION_ASCEND=ON`
-  * CANN7.0.0/8.2.RC1
+  * CANN 8.2.RC1
   * `atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16`
 * Hygon MIGraphX
   * `-DDETECTION_HYGON=ON`
@@ -97,7 +97,7 @@
 * 测试版本：
   * ffmpeg 4.0.5(ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)
   * opencv 4.5.1
-  * Ascend: 8.2.RC1
+  * Ascend: CANN 8.2.RC1
   * NVIDIA: 
     * TensorRT: 10.4.0.26
     * X86: cuda 12.4; 驱动 550.163.01; Video_Codec_SDK 11.0.10
