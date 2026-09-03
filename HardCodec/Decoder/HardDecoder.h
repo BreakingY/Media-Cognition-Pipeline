@@ -163,6 +163,7 @@ public:
     void Init(int32_t device_id, int width, int height);
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+    void SetDeviceFlag(){use_device_ptr_ = true;}
 
 private:
     void VdecResetChn();
@@ -216,6 +217,9 @@ private:
     std::chrono::steady_clock::time_point time_now_;
     std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
+
+    bool use_device_ptr_ = false;
+    void *device_ptr_ = nullptr;
     
 };
 #endif
@@ -234,6 +238,7 @@ public:
     void Init(int32_t device_id, int width, int height);
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+    void SetDeviceFlag(){use_device_ptr_ = true;}
 
 private:
     static void *DecodeThread(void *arg);
@@ -262,6 +267,8 @@ private:
     std::chrono::steady_clock::time_point time_now_;
     std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
+
+    bool use_device_ptr_ = false;
     
 };
 #endif
@@ -274,9 +281,10 @@ class HardVideoDecoder : public JetsonDecListner
 public:
     HardVideoDecoder(CODEC_TYPE codec_type);
     virtual ~HardVideoDecoder();
+    void Init(int32_t device_id, int width, int height);
     void SetFrameFetchCallback(DecDataCallListner *call_func);
     void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
-    void Init(int32_t device_id, int width, int height);
+    void SetDeviceFlag(){use_device_ptr_ = true;}
 
 private:
     void OnJetsonDecData(unsigned char *data, int data_len, uint64_t timestamp);
@@ -298,6 +306,8 @@ private:
     std::chrono::steady_clock::time_point time_now_;
     std::chrono::steady_clock::time_point time_pre_;
     int time_inited_;
+
+    bool use_device_ptr_ = false;
 };
 #endif
 #endif

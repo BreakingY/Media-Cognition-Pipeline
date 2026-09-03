@@ -34,7 +34,81 @@ class InferDataListner {
 public:
     virtual void OnInferData(cv::Mat& img, DetectionInfo& info, int64_t timestamp) = 0;
 };
+/// =======================
+/// GPUMemPool
+/// =======================
+class GPUMemPool {
+public:
+    GPUMemPool(int oneBlockSize, int blocks, const std::string& name){
+        logName=name;
+#if defined(DETECTION_ASCEND)
+        CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(0, &addr, oneBlockSize * blocks));
+#elif defined(DETECTION_NVIDIA)
+        CHECK_CUDA(cudaMalloc((void**)&addr, oneBlockSize * blocks));
+#else
+        log_error("Macro error")
+#endif
+        auto* base = static_cast<unsigned char*>(addr);
+        for (unsigned char* ptr = base; ptr < base + oneBlockSize * blocks; ptr += oneBlockSize) {
+            dataList_.push_back(ptr);
+        }
+    }
 
+    ~GPUMemPool() {
+#if defined(DETECTION_ASCEND)
+        if (addr) {
+            CHECK_DVPP_MPI(hi_mpi_dvpp_free(addr));
+            addr = nullptr;
+        }
+#elif defined(DETECTION_NVIDIA)
+        if (addr) {
+            CHECK_CUDA(cudaFree(addr));
+            addr = nullptr;
+        }
+#else
+        log_error("Macro error")
+#endif 
+    }
+
+    void* getAddr() {
+        std::unique_lock<std::mutex> guard(mutex_);
+        if (!dataList_.empty()) {
+            void* addr = dataList_.front();
+            dataList_.pop_front();
+            return addr;
+        }
+        log_debug("get {} empty !!!!!!!!!!!!!!!!!!", logName);
+
+        auto now = std::chrono::system_clock::now();
+        cond_.wait_until(guard, now + std::chrono::milliseconds(10));
+        if (!dataList_.empty()) {
+            void* addr = dataList_.front();
+            dataList_.pop_front();
+            return addr;
+        }
+        return nullptr;
+    }
+
+    void putAddr(void* addr) {
+        if (addr == nullptr) {
+            return;
+        }
+        {
+            std::unique_lock<std::mutex> guard(mutex_);
+            dataList_.push_back(addr);
+        }
+
+        cond_.notify_one();
+    }
+
+private:
+    std::list<void*> dataList_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+
+    void* addr = nullptr;
+    std::string logName;
+};
 /// =======================
 /// Queue Context
 /// =======================
@@ -47,9 +121,16 @@ struct QueueContext {
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
     void *img_buffer{nullptr};
     void *pu8_resized{nullptr}; // yolo  Letterbox_resize_GPU
+    std::mutex mutex_buffer;
 #endif
 #if defined(DETECTION_ASCEND)
+    std::mutex mutex_buffer;
     void *img_buffer{nullptr};
+#endif
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+    GPUMemPool *mempool{nullptr};
+    std::mutex mutex_mempool;
+    void *image_ptr{nullptr};
 #endif
 };
 
@@ -64,6 +145,7 @@ inline QueueContext* CreateContext(InferDataListner* listener, int width, int he
 }
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
 inline void MemAllocate(QueueContext* ctx, int pu8_resized_w, int pu8_resized_h, int channel){
+    std::unique_lock<std::mutex> guard(ctx->mutex_buffer);
     if(ctx->img_buffer == nullptr){
         CHECK_CUDA(cudaMalloc(&ctx->img_buffer, ctx->width * ctx->height * 3));
     }
@@ -74,11 +156,25 @@ inline void MemAllocate(QueueContext* ctx, int pu8_resized_w, int pu8_resized_h,
 #endif
 #if defined(DETECTION_ASCEND)
 inline void MemAllocate(QueueContext* ctx){
+    std::unique_lock<std::mutex> guard(ctx->mutex_buffer);
     if(ctx->img_buffer == nullptr){
         CHECK_ACL(hi_mpi_dvpp_malloc(0, &ctx->img_buffer, ctx->width * ctx->height * 3));
     }
 }
 #endif
+
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND)
+inline void MemPoolAllocate(QueueContext* ctx){
+    std::unique_lock<std::mutex> guard(ctx->mutex_mempool);
+    int dec_image_size = ctx->width * ctx->height * 3;
+    if(ctx->mempool == nullptr){
+        ctx->mempool = new GPUMemPool(dec_image_size, 8, "device memory");
+    }
+    if(!ctx->image_ptr){
+        ctx->image_ptr = (unsigned char *)malloc(dec_image_size);
+    }
+}
+#endif   
 inline void DestroyContext(QueueContext* ctx) {
     if(ctx){
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_HYGON)
@@ -95,15 +191,24 @@ inline void DestroyContext(QueueContext* ctx) {
             ctx->img_buffer = NULL;
         }
 #endif
+        if(ctx->mempool){
+            delete ctx->mempool;
+            ctx->mempool = nullptr;
+        }
+        if(ctx->image_ptr){
+            free(ctx->image_ptr);
+            ctx->image_ptr = nullptr;
+        }
         delete ctx;
     }
 }
-
 /// =======================
 /// Image Packet
 /// =======================
 struct ImgPacket{
     cv::Mat img;
+    void* device_image_ptr;
+    bool use_ptr;
     DetectionInfo info;
     TimeMetrics timer;
     int64_t timestamp/*图像时间戳ms*/;
@@ -134,6 +239,7 @@ public:
         std::unique_lock<std::mutex> guard(mutex_);
         ImgPacket *packet = new ImgPacket();
         packet->img = std::move(img);
+        packet->use_ptr = false;
         packet->timer.startTimer();
         packet->timestamp = timestamp;
         packet->context = context;
@@ -146,12 +252,47 @@ public:
         std::unique_lock<std::mutex> guard(mutex_);
         ImgPacket *packet = new ImgPacket();
         packet->img = img;
+        packet->use_ptr = false;
         packet->timer.startTimer();
         packet->timestamp = timestamp;
         packet->context = context;
         img_list_.push_back(packet);
         cond_.notify_one();
     }
+
+    inline void Push(void* device_image_ptr, int64_t timestamp/*ms*/, QueueContext* context) {
+        MemPoolAllocate(context);
+        void *addr = context->mempool->getAddr();
+        if(addr == nullptr){ // 任务忙，丢帧
+            return;
+        }
+        ImgPacket *packet = new ImgPacket();
+        #if defined(DETECTION_NVIDIA)
+            CHECK_CUDA(cudaMemcpy(addr, device_image_ptr, context->width * context->height * 3, cudaMemcpyDeviceToDevice));
+
+            CHECK_CUDA(cudaMemcpy(context->image_ptr, device_image_ptr, context->width * context->height * 3, cudaMemcpyDeviceToHost));
+            cv::Mat frame_mat(context->height, context->width, CV_8UC3, context->image_ptr);
+            packet->img = frame_mat.clone();
+        #elif defined(DETECTION_ASCEND)
+            CHECK_ACL(aclrtMemcpy(addr, context->width * context->height * 3, device_image_ptr, context->width * context->height * 3, ACL_MEMCPY_DEVICE_TO_DEVICE));
+
+            CHECK_ACL(aclrtMemcpy(context->image_ptr, context->width * context->height * 3, device_image_ptr, context->width * context->height * 3, ACL_MEMCPY_DEVICE_TO_HOST));
+            cv::Mat frame_mat(context->height, context->width, CV_8UC3, context->image_ptr);
+            packet->img = frame_mat.clone();
+        #else
+            log_error("Macro error")
+            return;
+        #endif 
+        packet->device_image_ptr = addr;
+        packet->use_ptr = true;
+        packet->timer.startTimer();
+        packet->timestamp = timestamp;
+        packet->context = context;
+        std::unique_lock<std::mutex> guard(mutex_);
+        img_list_.push_back(packet);
+        cond_.notify_one();
+    }
+
     inline std::vector<ImgPacket*> GetBatch(size_t batch_size, int &list_size) {
         std::vector<ImgPacket*> batch;
         std::unique_lock<std::mutex> guard(mutex_);
@@ -443,6 +584,9 @@ private:
                         log_debug("stream id:{} flow time:{}", ctx->stream_id, flow_time);
                     }
                     if (ctx && ctx->listener) {
+                        if(packet->use_ptr && packet->device_image_ptr != nullptr && ctx->mempool != nullptr){
+                            ctx->mempool->putAddr(packet->device_image_ptr);
+                        }
                         ctx->listener->OnInferData(packet->img, packet->info, packet->timestamp);
                     }
                     delete packet;

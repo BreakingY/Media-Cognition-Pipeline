@@ -13,6 +13,8 @@ typedef enum CODEC_TYPE_e{
 typedef struct VideoFrameSt{
     cv::Mat frame;
     int64_t timestamp; /*解码前时间戳(包含解码时延) ms*/
+    void *device_ptr; // 设备指针，存储解码后的图像,BGR packed格式，和cv::Mat保持统一
+    int data_flag; // 0:frame有效 1：device_ptr有效
 }VideoFrame;
 typedef struct AudioFrameSt{
     unsigned char **data; // 原生的输出数据, 指针数组

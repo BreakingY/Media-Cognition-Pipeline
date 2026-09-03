@@ -101,7 +101,7 @@ A general-purpose real-time streaming media and deep learning inference accelera
 * Tested versions:
   * FFmpeg 4.0.5 (requires FFmpeg 4.x; audio uses fdk-aac encoding, ensure FFmpeg is built with fdk-aac)
   * opencv 4.5.1
-  * Ascend: CANN 7.0.0/8.2.RC1
+  * Ascend: 8.2.RC1
   * NVIDIA: 
     * TensorRT: 10.4.0.26
     * X86: cuda 12.4; NVIDIA driver 550.163.01; Video_Codec_SDK 11.0.10

@@ -97,7 +97,7 @@
 * 测试版本：
   * ffmpeg 4.0.5(ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)
   * opencv 4.5.1
-  * Ascend: CANN 7.0.0/8.2.RC1
+  * Ascend: 8.2.RC1
   * NVIDIA: 
     * TensorRT: 10.4.0.26
     * X86: cuda 12.4; 驱动 550.163.01; Video_Codec_SDK 11.0.10

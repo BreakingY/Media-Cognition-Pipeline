@@ -55,4 +55,8 @@ void StreamPushData(cv::Mat &img, int64_t timestamp/*ms*/, void* context){
     QueueContext* ctx = (QueueContext*)context;
     collector->Push(std::move(img), timestamp, ctx);
 }
+void StreamPushData(void* device_image_ptr, int64_t timestamp/*ms*/, void* context){
+    QueueContext* ctx = (QueueContext*)context;
+    collector->Push(device_image_ptr, timestamp, ctx);
+}
 #endif // DETECTION_NVIDIA DETECTION_ASCEND DETECTION_HYGON

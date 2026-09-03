@@ -123,6 +123,10 @@ void MediaWrapper::OnVideoData(VideoData data)
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
 #if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86) || defined(USE_NVIDIA_ARM)
         hard_decoder_->Init(device_id_, width_, height_); // dvpp nvidia
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) // || defined(DETECTION_HYGON) 海光没有视频编解码(使用软件编解码)
+        hard_decoder_->SetDeviceFlag();
+        log_debug("use device image ptr");
+#endif
 #endif
     }
     // int type;
@@ -199,7 +203,12 @@ void MediaWrapper::OnRGBData(VideoFrame frame)
     if(context_ == nullptr){
         context_ = AddStream(static_cast<InferDataListner *>(this), width_, height_, fps_);
     }
-    StreamPushData(dec_frame.frame, dec_frame.timestamp, context_);
+    if(!dec_frame.data_flag){
+        StreamPushData(dec_frame.frame, dec_frame.timestamp, context_);
+    }
+    else{
+        StreamPushData(frame.device_ptr, dec_frame.timestamp, context_);
+    }
     return;
 #endif
     // 之后再把处理后的图像进行编码

@@ -110,13 +110,16 @@ static std::tuple<float, float, float> Letterbox_resize_GPU(int orig_h, int orig
     return std::make_tuple(r, dw, dh);
 }
 static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *img_buffer, void *buffer, int channel, int input_h, int input_w, cudaStream_t stream,
-                                                            Npp8u *pu8_rgb/*char input_h input_w*/, float* buffer_chw/*float input_h input_w*/, Npp8u *pu8_resized/*char new_unpad_h * new_unpad_w*/)
+                                                            Npp8u *pu8_rgb/*char input_h input_w*/, float* buffer_chw/*float input_h input_w*/, Npp8u *pu8_resized/*char new_unpad_h * new_unpad_w*/,
+                                                            bool img_buffer_dave_data_flag)
 {
     int orig_h = img.rows;
     int orig_w = img.cols;
-    void *img_ptr = img.data;
-    CHECK_CUDA(cudaMemcpyAsync(img_buffer, img_ptr, orig_h * orig_w * 3, cudaMemcpyHostToDevice, stream));
-    CHECK_CUDA(cudaStreamSynchronize(stream));
+    if(!img_buffer_dave_data_flag){
+        void *img_ptr = img.data;
+        CHECK_CUDA(cudaMemcpyAsync(img_buffer, img_ptr, orig_h * orig_w * 3, cudaMemcpyHostToDevice, stream));
+        CHECK_CUDA(cudaStreamSynchronize(stream));
+    }
     std::tuple<float, float, float> res = Letterbox_resize_GPU(orig_h, orig_w, img_buffer, buffer, input_h, input_w, pu8_resized);
 
     float &r = std::get<0>(res);
@@ -157,14 +160,16 @@ static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *
 
     return std::move(std::make_tuple(r, dw, dh));
 }
-static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *img_buffer, void *buffer, int input_h, int input_w, cudaStream_t stream)
+static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *img_buffer, void *buffer, int input_h, int input_w, cudaStream_t stream, bool img_buffer_dave_data_flag)
 {
     TimeMetrics t;
     t.startTimer();
     int orig_h = img.rows;
     int orig_w = img.cols;
-    void *img_ptr = img.data;
-    CHECK_CUDA(cudaMemcpyAsync(img_buffer, img_ptr, orig_h * orig_w * 3, cudaMemcpyHostToDevice, stream));
+    if(!img_buffer_dave_data_flag){
+        void *img_ptr = img.data;
+        CHECK_CUDA(cudaMemcpyAsync(img_buffer, img_ptr, orig_h * orig_w * 3, cudaMemcpyHostToDevice, stream));
+    }
 
     preprocess_letter_bbox_resize((unsigned char *)img_buffer, nullptr, (float *)buffer, orig_w, orig_h, input_w, input_h, stream);
     // test
@@ -436,15 +441,24 @@ void YoloDetectionNode::DetectThreadLoop(){
         t.startTimer();
         for(int i = 0; i < packets.size(); i++){  
             ImgPacket* packet = packets[i];
-            int new_unpad_w, new_unpad_h;
-            GetUnpadSize(input_w_, input_h_, packet->context->width, packet->context->height, new_unpad_w, new_unpad_h);
-            MemAllocate(packet->context, new_unpad_w, new_unpad_h, 3);
-            void *img_buffer = packet->context->img_buffer;
+            bool img_buffer_flag;
+            void *img_buffer;
+            if(!packet->use_ptr){
+                int new_unpad_w, new_unpad_h;
+                GetUnpadSize(input_w_, input_h_, packet->context->width, packet->context->height, new_unpad_w, new_unpad_h);
+                MemAllocate(packet->context, new_unpad_w, new_unpad_h, 3);
+                img_buffer = packet->context->img_buffer;
+                img_buffer_flag = false;
+            }
+            else{
+                img_buffer = packet->device_image_ptr;
+                img_buffer_flag = true;
+            }
 #ifdef USE_NPP
             Npp8u *pu8_resized = (Npp8u *)packet->context->pu8_resized;
-            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, 3, input_h_, input_w_, stream_, pu8_rgb_, buffer_chw_, pu8_resized);
+            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, 3, input_h_, input_w_, stream_, pu8_rgb_, buffer_chw_, pu8_resized, img_buffer_flag);
 #else
-            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, input_h_, input_w_, stream_);
+            std::tuple<float, float, float> res = PreprocessImage_GPU(packet->img, img_buffer, input_ptr + buffer_idx, input_h_, input_w_, stream_, img_buffer_flag);
 #endif
             buffer_idx += input_h_ * input_w_ * 3 * sizeof(float);
             res_pre.push_back(res);

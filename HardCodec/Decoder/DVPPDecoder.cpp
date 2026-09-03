@@ -64,6 +64,10 @@ void HardVideoDecoder::Stop(){
         CHECK_DVPP_MPI(hi_mpi_dvpp_free(input_pic_.picture_address));
         input_pic_.picture_address = NULL;
     }
+    if(device_ptr_){
+        CHECK_DVPP_MPI(hi_mpi_dvpp_free(device_ptr_));
+        device_ptr_ = NULL;
+    }
     if(image_ptr_){
         free(image_ptr_);
         image_ptr_ = NULL;
@@ -143,6 +147,8 @@ void HardVideoDecoder::Init(int32_t device_id, int width, int height){
 
     
     CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &in_es_buffer_, in_es_buffer_size_));
+
+    CHECK_DVPP_MPI(hi_mpi_dvpp_malloc(device_id_, &device_ptr_, width_ * 3 * height_));
     send_stream_thread_id_ = std::thread(HardVideoDecoder::SendStream, this);
     get_pic_thread_id_ = std::thread(HardVideoDecoder::GetPic, this);
     return;
@@ -301,18 +307,40 @@ void *HardVideoDecoder::GetPic(void *arg){
                 CHECK_DVPP_MPI(hi_mpi_vpc_get_process_result(self->channel_id_color_, task_id, -1));
                 self->input_pic_.picture_address = ptr_backup;
 
-                int size = self->width_ * self->height_ * 3;
-                if(!self->image_ptr_){
-                    self->image_ptr_ = (unsigned char *)malloc(size);
+                VideoFrame frame;
+                frame.timestamp = static_cast<int64_t>(pts);
+                if(!self->use_device_ptr_){
+                    int size = self->width_ * self->height_ * 3;
+                    if(!self->image_ptr_){
+                        self->image_ptr_ = (unsigned char *)malloc(size);
+                    }
+                    // CHECK_ACL(aclrtMemcpy(self->image_ptr_ , size, self->output_pic_.picture_address, size, ACL_MEMCPY_DEVICE_TO_HOST));
+                    ret = handle_output_data_from_device_to_host((const char *)self->image_ptr_, self->width_ * 3,  self->height_, self->output_pic_);
+                    if(ret < 0){
+                        log_error("handle_output_data_from_device_to_host {} ", ret);
+                    }
+                    cv::Mat frame_mat(self->height_, self->width_, CV_8UC3, self->image_ptr_);
+                    cv::Mat frame_ret = frame_mat.clone();
+                    frame.frame = frame_ret;
+                    frame.device_ptr = nullptr;
+                    frame.data_flag = 0;
                 }
-                // CHECK_ACL(aclrtMemcpy(self->image_ptr_ , size, self->output_pic_.picture_address, size, ACL_MEMCPY_DEVICE_TO_HOST));
-                ret = handle_output_data_from_device_to_host((const char *)self->image_ptr_, self->width_ * 3,  self->height_, self->output_pic_);
-                if(ret < 0){
-                    log_error("handle_output_data_from_device_to_host {} ", ret);
+                else{
+                    void *ptr;
+                    if(self->output_pic_.picture_width_stride == self->width_ * 3 && self->output_pic_.picture_height_stride == self->height_){
+                        ptr = self->output_pic_.picture_address;
+                    }
+                    else{
+                        ret = handle_output_data_from_device_to_device((const char *)self->device_ptr_, self->width_ * 3,  self->height_, self->output_pic_);
+                        if(ret < 0){
+                            log_error("handle_output_data_from_device_to_host {} ", ret);
+                        }
+                        ptr = self->device_ptr_;
+                    }
+                    frame.device_ptr = ptr;
+                    frame.data_flag = 1;
                 }
                 uint64_t t2 = GetCurrentTimeMs();
-                cv::Mat frame_mat(self->height_, self->width_, CV_8UC3, self->image_ptr_);
-                cv::Mat frame_ret = frame_mat.clone();
                 if (self->callback_ != NULL) {
                     self->now_frames_++;
                     if (!self->time_inited_) {
@@ -329,9 +357,7 @@ void *HardVideoDecoder::GetPic(void *arg){
                             self->pre_frames_ = self->now_frames_;
                         }
                     }
-                    VideoFrame frame;
-                    frame.frame = frame_ret;
-                    frame.timestamp = static_cast<int64_t>(pts);
+                    
                     self->callback_->OnRGBData(frame);
                 }
             }

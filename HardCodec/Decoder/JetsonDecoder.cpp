@@ -86,10 +86,21 @@ void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64
         log_error("NPP NV12->BGR failed: {}", (int)status);
         return;
     }
-    CHECK_CUDA(cudaMemcpy(host_frame_, device_color_frame_, width_ * height_ * 3, cudaMemcpyDeviceToHost));
+    VideoFrame frame;
+    frame.timestamp = static_cast<int64_t>(timestamp);
+    if(!use_device_ptr_){
+        CHECK_CUDA(cudaMemcpy(host_frame_, device_color_frame_, width_ * height_ * 3, cudaMemcpyDeviceToHost));
+        cv::Mat frame_mat(height_, width_, CV_8UC3, host_frame_);
+        cv::Mat frame_ret = frame_mat.clone();
+        frame.frame = frame_ret;
+        frame.device_ptr = nullptr;
+        frame.data_flag = 0;
+    }
+    else{
+        frame.device_ptr = device_color_frame_;
+        frame.data_flag = 1;
+    }
     uint64_t t2 = GetCurrentTimeMs();
-    cv::Mat frame_mat(height_, width_, CV_8UC3, host_frame_);
-    cv::Mat frame_ret = frame_mat.clone();
     if (callback_ != nullptr) {
         now_frames_++;
         if (!time_inited_) {
@@ -106,9 +117,6 @@ void HardVideoDecoder::OnJetsonDecData(unsigned char *data, int data_len, uint64
                 pre_frames_ = now_frames_;
             }
         }
-        VideoFrame frame;
-        frame.frame = frame_ret;
-        frame.timestamp = static_cast<int64_t>(timestamp);
         callback_->OnRGBData(frame);
     }
 }
