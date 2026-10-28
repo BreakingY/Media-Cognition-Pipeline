@@ -344,13 +344,14 @@ YoloDetectionNode::YoloDetectionNode(std::string eng_path, int device_id){
     aclmdlIODims input_dims;
     CHECK_ACL(aclmdlGetInputDims(model_desc_, 0, &input_dims));
     // int batch_size = input_dims.dims[0] // 动态batch 
+    // 格式不是NCHW，而是NHWC(因为aipp的输入格式为RGB888_U8)
     int channel = 3;
-    if(input_dims.dims[1] > 0){
-        channel = input_dims.dims[1];
+    if(input_dims.dims[3] > 0){
+        channel = input_dims.dims[3];
     }
     MY_ASSERT(channel == 3);
-    input_dims.dims[2] > 0 ? input_h_ = input_dims.dims[2]: input_h_ = 640;
-    input_dims.dims[3] > 0 ? input_w_ = input_dims.dims[3]: input_w_ = 640;
+    input_dims.dims[1] > 0 ? input_h_ = input_dims.dims[1]: input_h_ = 640;
+    input_dims.dims[2] > 0 ? input_w_ = input_dims.dims[2]: input_w_ = 640;
     log_debug("batch_size: {} channel:{} input_h:{} input_w:{}", batch_size_, channel, input_h_, input_w_);
     aclmdlIODims output_dims;
     CHECK_ACL(aclmdlGetOutputDims(model_desc_, 0, &output_dims));
