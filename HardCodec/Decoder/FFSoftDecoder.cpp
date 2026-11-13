@@ -34,7 +34,7 @@ int HardVideoDecoder::SoftDecInit()
         avcodec_free_context(&codec_ctx_);
         exit(1);
     }
-    log_info("open soft dec ok");
+    log_debug("open soft dec ok");
     return 1;
 }
 HardVideoDecoder::HardVideoDecoder(CODEC_TYPE codec_type)
@@ -185,7 +185,7 @@ void *HardVideoDecoder::DecodeThread(void *arg)
             continue;
         }
     }
-    log_info("DecodeThread Finished ");
+    log_debug("DecodeThread Finished ");
     // 刷新缓冲区
     HardDataNode *node = new HardDataNode();
     node->es_data = NULL;
@@ -266,7 +266,7 @@ void *HardVideoDecoder::ScaleThread(void *arg)
         }
     }
 
-    log_info("ScaleThread Finished");
+    log_debug("ScaleThread Finished");
     return NULL;
 }
 #endif

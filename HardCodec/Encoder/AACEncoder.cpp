@@ -92,7 +92,7 @@ int AACEncoder::Init(enum AVSampleFormat fmt, int channels, int ratio, int nb_sa
             log_error("audio_encode_init error");
             exit(1);
         }
-        log_info("audio_encode_init ok");
+        log_debug("audio_encode_init ok");
     }
     return 0;
 }
@@ -187,7 +187,7 @@ void *AACEncoder::AACScaleThread(void *arg)
             continue;
         }
     }
-    log_info("AACScaleThread exit");
+    log_debug("AACScaleThread exit");
     return NULL;
 }
 void *AACEncoder::AACEncThread(void *arg)
@@ -267,6 +267,6 @@ void *AACEncoder::AACEncThread(void *arg)
         }
         av_packet_unref(&self->pkt_enc_);
     }
-    log_info("AACEncThread exit");
+    log_debug("AACEncThread exit");
     return NULL;
 }

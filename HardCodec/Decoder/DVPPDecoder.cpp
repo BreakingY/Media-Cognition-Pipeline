@@ -272,7 +272,7 @@ void *HardVideoDecoder::SendStream(void *arg){
     node->es_data_len = 0;
     self->DecodeVideo(node);
     delete node;
-    log_info("SendStream Finished");
+    log_debug("SendStream Finished");
     return NULL;
 }
 void *HardVideoDecoder::GetPic(void *arg){
@@ -391,7 +391,7 @@ void *HardVideoDecoder::GetPic(void *arg){
             CHECK_DVPP_MPI(hi_mpi_vdec_release_frame(self->channel_id_, &frame));
         }
     }
-    log_info("GetPic Finished");
+    log_debug("GetPic Finished");
     return NULL;
 }
 #endif

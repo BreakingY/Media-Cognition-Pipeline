@@ -141,7 +141,7 @@ void *AACDecoder::AACDecodeThread(void *arg)
             continue;
         }
     }
-    log_info("AACDecodeThread Finished ");
+    log_debug("AACDecodeThread Finished ");
     // 刷新缓冲区
     AACDataNode *node = new AACDataNode();
     node->es_data = NULL;
@@ -257,6 +257,6 @@ void *AACDecoder::AACScaleThread(void *arg)
             continue;
         }
     }
-    log_info("AACScaleThread Finished ");
+    log_debug("AACScaleThread Finished ");
     return NULL;
 }

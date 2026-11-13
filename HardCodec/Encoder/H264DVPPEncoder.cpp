@@ -53,7 +53,7 @@ HardVideoEncoder::~HardVideoEncoder()
         CHECK_DVPP_MPI(hi_mpi_dvpp_free(input_pic_.picture_address));
         input_pic_.picture_address = NULL;
     }
-    log_info("~HardVideoEncoder");
+    log_debug("~HardVideoEncoder");
 }
 void HardVideoEncoder::SetDevice(int device_id){
     device_id_ = device_id;
@@ -298,7 +298,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             guard.unlock();
         }
     }
-    log_info("VideoScaleThread exit");
+    log_debug("VideoScaleThread exit");
     return NULL;
 }
 void *HardVideoEncoder::VideoEncThread(void *arg)
@@ -367,7 +367,7 @@ CONTINUE:
             continue;
         }
     }
-    log_info("VideoEncThread exit");
+    log_debug("VideoEncThread exit");
     return NULL;
 }
 #endif

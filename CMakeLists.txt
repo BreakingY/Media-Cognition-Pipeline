@@ -16,6 +16,7 @@ option(FFMPEG_NVIDIA    "Enable FFmpeg nvidia codec" OFF)
 option(DVPP_MPI         "Enable Ascend DVPP V2 codec" OFF)
 option(NVIDIA_SDK_X86   "Enable NVIDIA Video Codec SDK codec" OFF)
 option(NVIDIA_SDK_ARM   "Enable Jetson codec" OFF)
+option(MPP              "Enable MPP codec" OFF)
 
 # detection
 option(DETECTION_NVIDIA "Enable Nvidia detection" OFF)
@@ -222,6 +223,14 @@ elseif(NVIDIA_SDK_ARM)
     aux_source_directory(HardCodec/Jetson_utils JETSON_UTILS)
     aux_source_directory(HardCodec/Jetson_utils/common/classes JETSON_UTILS_COMMON)
     aux_source_directory(HardCodec/Jetson_utils/common/algorithm/cuda JETSON_UTILS_COMMON_CUDA)
+
+elseif(MPP)
+    message(STATUS "MPP OK")
+    add_definitions(-DUSE_MPP)
+    include_directories(
+        /usr/include/rockchip 
+        /usr/include/rga
+    )
 endif()
 
 # ==============================================================================
@@ -391,7 +400,11 @@ if(FFMPEG_SOFT)
 elseif(FFMPEG_NVIDIA)
     # do nothing
 elseif(DVPP_MPI)
-    target_link_libraries(mcp ascendcl acl_dvpp_mpi)
+    target_link_libraries(
+        mcp
+        ascendcl
+        acl_dvpp_mpi
+    )
 elseif(NVIDIA_SDK_X86)
     target_link_libraries(
         mcp
@@ -418,6 +431,12 @@ elseif(NVIDIA_SDK_ARM)
         nvjpeg
         nvosd
         drm
+    )
+elseif(MPP)
+    target_link_libraries(
+        mcp
+        rockchip_mpp
+        rga
     )
 endif()
 

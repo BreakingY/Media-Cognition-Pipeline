@@ -121,8 +121,8 @@ void MediaWrapper::OnVideoData(VideoData data)
         }
         hard_decoder_ = new HardVideoDecoder(type);
         hard_decoder_->SetFrameFetchCallback(static_cast<DecDataCallListner *>(this));
-#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86) || defined(USE_NVIDIA_ARM)
-        hard_decoder_->Init(device_id_, width_, height_); // dvpp nvidia
+#if defined(USE_DVPP_MPI) || defined(USE_NVIDIA_X86) || defined(USE_NVIDIA_ARM) || defined(USE_MPP)
+        hard_decoder_->Init(device_id_, width_, height_); // dvpp nvidia mpp
 #if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) // || defined(DETECTION_HYGON) 海光没有视频编解码(使用软件编解码)
         hard_decoder_->SetDeviceFlag();
         log_debug("use device image ptr");

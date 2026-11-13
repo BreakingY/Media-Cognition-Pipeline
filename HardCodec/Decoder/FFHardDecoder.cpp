@@ -72,9 +72,9 @@ int HardVideoDecoder::HardDecInit()
         exit(1);
     }
     // 列举支持的硬解码
-    log_info("Available device types:");
+    log_debug("Available device types:");
     while ((type_ = av_hwdevice_iterate_types(type_)) != AV_HWDEVICE_TYPE_NONE) {
-        log_info("{}", av_hwdevice_get_type_name(type_));
+        log_debug("{}", av_hwdevice_get_type_name(type_));
     }
     // 使用英伟达硬解码
     type_ = av_hwdevice_find_type_by_name("cuda");
@@ -136,7 +136,7 @@ int HardVideoDecoder::HardDecInit()
         hw_device_ctx_ = NULL;
         return -1;
     }
-    log_info("open hard dec ok");
+    log_debug("open hard dec ok");
     is_hard_ = true;
     return 1;
 }
@@ -174,7 +174,7 @@ int HardVideoDecoder::SoftDecInit()
         avcodec_free_context(&codec_ctx_);
         exit(1);
     }
-    log_info("open soft dec ok");
+    log_debug("open soft dec ok");
     return 1;
 }
 HardVideoDecoder::HardVideoDecoder(CODEC_TYPE codec_type)
@@ -399,7 +399,7 @@ void *HardVideoDecoder::DecodeThread(void *arg)
             continue;
         }
     }
-    log_info("DecodeThread Finished ");
+    log_debug("DecodeThread Finished ");
     // 刷新缓冲区
     HardDataNode *node = new HardDataNode();
     node->es_data = NULL;
@@ -480,7 +480,7 @@ void *HardVideoDecoder::ScaleThread(void *arg)
         }
     }
 
-    log_info("ScaleThread Finished");
+    log_debug("ScaleThread Finished");
     return NULL;
 }
 #endif

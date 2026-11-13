@@ -34,7 +34,7 @@ HardVideoEncoder::~HardVideoEncoder()
     CHECK_CUDA(cudaFree(d_rgb_));
     CHECK_CUDA(cudaFree(d_yuv_));
 
-    log_info("~HardVideoEncoder");
+    log_debug("~HardVideoEncoder");
 }
 int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
 {

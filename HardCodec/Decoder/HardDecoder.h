@@ -310,4 +310,67 @@ private:
     bool use_device_ptr_ = false;
 };
 #endif
+#ifdef USE_MPP
+#include <rk_mpi.h>
+#include <rk_type.h>
+#include <mpp_err.h>
+#include <im2d.hpp>
+#include <rga.h>
+class HardVideoDecoder
+{
+
+public:
+    HardVideoDecoder(CODEC_TYPE codec_type);
+    virtual ~HardVideoDecoder();
+    void Init(int32_t device_id/*忽略*/, int width, int height);
+    void SetFrameFetchCallback(DecDataCallListner *call_func);
+    void InputVideoData(unsigned char *data, int data_len, int64_t duration, int64_t pts);
+    void SetDeviceFlag(){use_device_ptr_ = true;}
+
+private:
+    static void *DecodeThread(void *arg);
+    void DecodeVideo(HardDataNode *data);
+private:
+    CODEC_TYPE codec_type_;
+    int32_t device_id_ = 0;
+    int width_;
+    int height_;
+
+    MppCodingType type_;
+    MppCtx ctx_ = NULL;
+    MppApi *mpi_ = NULL;
+    MppPacket packet_ = NULL;
+    MppDecCfg cfg_ = NULL;
+
+    RK_U32 width_frame_;
+    RK_U32 height_frame_;
+    RK_U32 hor_stride_frame_;
+    RK_U32 ver_stride_frame_;
+
+    RK_U32 buf_count_ = 24;
+    RK_U32 buf_size_;
+    MppBufferGroup group_ = NULL;
+
+    unsigned char *image_ptr_ = NULL;
+    rga_buffer_handle_t dst_handle_ = 0;
+    std::map<int, rga_buffer_handle_t> src_handles_;
+
+    std::thread dec_thread_id_;
+
+    DecDataCallListner *callback_ = NULL;
+    std::mutex packet_mutex_;
+    std::condition_variable packet_cond_;
+    std::list<HardDataNode *> es_packets_;
+    bool abort_ = false;
+
+    int now_frames_;
+    int pre_frames_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    int time_inited_;
+
+    bool use_device_ptr_ = false;
+    
+};
+#endif
 #endif

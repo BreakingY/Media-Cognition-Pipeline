@@ -45,7 +45,7 @@ HardVideoEncoder::~HardVideoEncoder()
         sws_context_ = NULL;
     }
 
-    log_info("~HardVideoEncoder");
+    log_debug("~HardVideoEncoder");
 }
 /**
  * ffmpeg -codecs | grep 264
@@ -60,9 +60,9 @@ int HardVideoEncoder::HardEncInit(int width, int height, int fps)
     std::string codec_name = "h264_nvenc";
     decodec_id_ = AV_CODEC_ID_H264;
     // try to open hard encodec
-    log_info("Available device types:");
+    log_debug("Available device types:");
     while ((type_ = av_hwdevice_iterate_types(type_)) != AV_HWDEVICE_TYPE_NONE) {
-        log_info("{}", av_hwdevice_get_type_name(type_));
+        log_debug("{}", av_hwdevice_get_type_name(type_));
     }
     type_ = av_hwdevice_find_type_by_name("cuda");
     if (type_ == AV_HWDEVICE_TYPE_NONE) {
@@ -117,7 +117,7 @@ int HardVideoEncoder::HardEncInit(int width, int height, int fps)
         return -1;
     }
     is_hard_enc_ = true;
-    log_info("using hard enc");
+    log_debug("using hard enc");
     return 1;
 }
 int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
@@ -162,7 +162,7 @@ int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
         log_error("no decodec can be used");
         exit(1);
     }
-    log_info("using soft enc");
+    log_debug("using soft enc");
     return 1;
 }
 int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
@@ -247,7 +247,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             guard.unlock();
         }
     }
-    log_info("VideoScaleThread exit");
+    log_debug("VideoScaleThread exit");
     return NULL;
 }
 
@@ -343,7 +343,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
     }
     av_packet_free(&packet);
 
-    log_info("VideoEncThread exit");
+    log_debug("VideoEncThread exit");
     return NULL;
 }
 

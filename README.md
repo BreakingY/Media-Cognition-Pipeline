@@ -1,7 +1,7 @@
 [English](README_EN.md) | [中文](README.md)
 # Media-Cognition-Pipeline
 实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT、YOLO。
-* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾、海光)pipeline, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾、瑞芯微)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾、海光)pipeline, 采用模块化、节点化和接口化管理。
 
 # 解封装
 * mp4
@@ -47,6 +47,9 @@
     * Jetpack版本： 5.0.2，Jetpack 5.x编解码是通用的，但是5.0.2编译出来的库不能直接在其他5.x版本上使用，把代码放到目标机器上重新编译即可(不需要替换jetson_multimedia_api头文件)
     * 实现参考：jetson_multimedia_api/samples/02_video_dec_cuda、jetson_multimedia_api/samples/01_video_encode
     * 考虑到Jetson一般作为边缘设备，为了降低时延，Jetson默认不支持解码B帧，解码B帧会出现画面倒退的情况，如果要支持B帧请修改`Jetson_utils-->JetsonDec.cpp`，注释掉`JetsonDec::decode_pro`中的`ret = ctx.dec->disableDPB();`
+  * MPP-瑞芯微(MPPDecoder.cpp、H264MPPEncoder.cpp-TODO)
+    * `cmake -DMPP=ON ..`
+    * 内存分配模式: 半内部分配模式
 
 # 封装
 * mp4
@@ -156,7 +159,7 @@
 * 编译：
   1. 源码编译python`./configure --enable-shared`必须添加--enable-shared参数，否则无法编译
   2. cd build
-  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI>=ON <-DENABLE_SRT=ON> -DMCP_PYBIND=ON ..`
+  3. `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM/DVPP_MPI/MPP>=ON <-DENABLE_SRT=ON> -DMCP_PYBIND=ON ..`
   4. make -j
   5. python demo.py
 

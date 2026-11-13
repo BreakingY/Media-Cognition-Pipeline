@@ -191,7 +191,7 @@ void *HardVideoDecoder::DecodeThread(void *arg)
             continue;
         }
     }
-    log_info("DecodeThread Finished ");
+    log_debug("DecodeThread Finished ");
     // 刷新缓冲区
     HardDataNode *node = new HardDataNode();
     node->es_data = NULL;

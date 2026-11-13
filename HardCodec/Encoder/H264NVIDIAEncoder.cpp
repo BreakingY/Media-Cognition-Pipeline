@@ -52,7 +52,7 @@ NVHardVideoEncoder::~NVHardVideoEncoder()
     }
     CHECK_CUDA(cudaFree(ptr_image_bgr_device_));
     CHECK_CUDA(cudaFree(ptr_image_bgra_device_));
-    log_info("~NVHardVideoEncoder");
+    log_debug("~NVHardVideoEncoder");
 }
 void NVHardVideoEncoder::SetDevice(int device_id){
     device_id_ = device_id;
@@ -182,7 +182,7 @@ void *NVHardVideoEncoder::VideoEncThread(void *arg)
         }
         self->time_pre_ = self->time_now_;
     }
-    log_info("VideoEncThread exit");
+    log_debug("VideoEncThread exit");
     return NULL;
 }
 
@@ -234,7 +234,7 @@ NVSoftVideoEncoder::~NVSoftVideoEncoder()
         sws_context_ = NULL;
     }
 
-    log_info("~NVSoftVideoEncoder");
+    log_debug("~NVSoftVideoEncoder");
 }
 int NVSoftVideoEncoder::SoftEncInit(int width, int height, int fps)
 {
@@ -277,7 +277,7 @@ int NVSoftVideoEncoder::SoftEncInit(int width, int height, int fps)
         log_error("no decodec can be used");
         exit(1);
     }
-    log_info("using soft enc");
+    log_debug("using soft enc");
     return 1;
 }
 int NVSoftVideoEncoder::Init(cv::Mat bgr_frame, int fps)
@@ -361,7 +361,7 @@ void *NVSoftVideoEncoder::VideoScaleThread(void *arg)
             guard.unlock();
         }
     }
-    log_info("VideoScaleThread exit");
+    log_debug("VideoScaleThread exit");
     return NULL;
 }
 
@@ -457,7 +457,7 @@ void *NVSoftVideoEncoder::VideoEncThread(void *arg)
     }
     av_packet_free(&packet);
 
-    log_info("VideoEncThread exit");
+    log_debug("VideoEncThread exit");
     return NULL;
 }
 

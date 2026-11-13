@@ -45,7 +45,7 @@ HardVideoEncoder::~HardVideoEncoder()
         sws_context_ = NULL;
     }
 
-    log_info("~HardVideoEncoder");
+    log_debug("~HardVideoEncoder");
 }
 int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
 {
@@ -88,7 +88,7 @@ int HardVideoEncoder::SoftEncInit(int width, int height, int fps)
         log_error("no decodec can be used");
         exit(1);
     }
-    log_info("using soft enc");
+    log_debug("using soft enc");
     return 1;
 }
 int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
@@ -172,7 +172,7 @@ void *HardVideoEncoder::VideoScaleThread(void *arg)
             guard.unlock();
         }
     }
-    log_info("VideoScaleThread exit");
+    log_debug("VideoScaleThread exit");
     return NULL;
 }
 
@@ -268,7 +268,7 @@ void *HardVideoEncoder::VideoEncThread(void *arg)
     }
     av_packet_free(&packet);
 
-    log_info("VideoEncThread exit");
+    log_debug("VideoEncThread exit");
     return NULL;
 }
 
