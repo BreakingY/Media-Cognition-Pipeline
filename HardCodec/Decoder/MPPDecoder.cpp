@@ -173,8 +173,8 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
                     }
                     width_ = width_frame_;
                     height_ = height_frame_;
-                    int dst_wstride = ALIGN(width_, 16); 
-                    int out_size = dst_wstride * height_ * 3;
+                    int dst_w_align = ALIGN(width_, 16); 
+                    int out_size = dst_w_align * height_ * 3;
                     image_ptr_ = (unsigned char *)malloc(out_size);
 
                     buf_size_ = mpp_frame_get_buf_size(frame);
@@ -202,8 +202,8 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
                         base = (RK_U8 *)mpp_buffer_get_ptr(buffer);
                         uint64_t t1 = GetCurrentTimeMs();
                         rga_buffer_handle_t src_handle;
-                        int dst_wstride = ALIGN(width_, 16); 
-                        int out_size = dst_wstride * height_ * 3;
+                        int dst_w_align = ALIGN(width_, 16); 
+                        int out_size = dst_w_align * height_ * 3;
                         int fd = mpp_buffer_get_fd(buffer);
                         auto it = src_handles_.find(fd);
                         if (it == src_handles_.end()) {
@@ -216,7 +216,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
                             dst_handle_ = importbuffer_virtualaddr(image_ptr_, out_size);
                         }
                         rga_buffer_t src_img = wrapbuffer_handle(src_handle, width_, height_, RK_FORMAT_YCbCr_420_SP, hor_stride_frame_, ver_stride_frame_);
-                        rga_buffer_t dst_img = wrapbuffer_handle(dst_handle_, width_, height_, RK_FORMAT_BGR_888, dst_wstride, height_);
+                        rga_buffer_t dst_img = wrapbuffer_handle(dst_handle_, width_, height_, RK_FORMAT_BGR_888, dst_w_align, height_);
 
                         // imsetColorSpace(&src_img, IM_YUV_BT709_LIMIT_RANGE);
                         // imsetColorSpace(&dst_img, IM_RGB_FULL_RANGE);
@@ -230,7 +230,7 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
                         VideoFrame frame_cb;
                         frame_cb.timestamp = mpp_frame_get_pts(frame);
                         if(!use_device_ptr_){
-                            cv::Mat strided(height_, width_, CV_8UC3, image_ptr_, (size_t)dst_wstride * 3);
+                            cv::Mat strided(height_, width_, CV_8UC3, image_ptr_, (size_t)dst_w_align * 3);
                             cv::Mat frame_mat;
                             strided.copyTo(frame_mat); // frame_mat.contiguous()==true，step = width*3，stride已被去掉
                             frame_cb.frame = std::move(frame_mat);

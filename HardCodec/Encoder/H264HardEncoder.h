@@ -341,4 +341,53 @@ private:
     int pre_frames_;
 };
 #endif
+#ifdef USE_MPP
+#include <rk_mpi.h>
+#include <rk_type.h>
+#include <mpp_err.h>
+#include <mpp_buffer.h>
+class HardVideoEncoder
+{
+public:
+    HardVideoEncoder();
+    ~HardVideoEncoder();
+    int AddVideoFrame(cv::Mat bgr_frame);
+    int Init(cv::Mat init_frame, int fps);
+    void SetDataCallback(EncDataCallListner *call_func);
+
+private:
+    static void *VideoEncThread(void *arg);
+
+private:
+    EncDataCallListner *callback_ = NULL;
+    MppCodingType type_;
+    MppCtx ctx_ = NULL;
+    MppApi *mpi_ = NULL;
+    MppEncCfg cfg_ = NULL;
+    MppBufferGroup buf_grp_ = NULL;
+    MppBuffer frm_buf_ = NULL;
+    MppBuffer pkt_buf_ = NULL;
+    RK_S32 width_;
+    RK_S32 height_;
+    RK_S32 hor_stride_;
+    RK_S32 ver_stride_;
+
+    std::list<cv::Mat> bgr_frames_;
+    std::mutex bgr_mutex_;
+    std::condition_variable bgr_cond_;
+    std::thread encode_id_;
+
+    bool abort_;
+    uint64_t nframe_counter_;
+    std::chrono::steady_clock::time_point time_now_;
+    std::chrono::steady_clock::time_point time_pre_;
+    uint64_t time_ts_accum_;
+
+    std::chrono::steady_clock::time_point time_now_1_;
+    std::chrono::steady_clock::time_point time_pre_1_;
+    int time_inited_;
+    int now_frames_;
+    int pre_frames_;
+};
+#endif
 #endif

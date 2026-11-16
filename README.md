@@ -47,9 +47,9 @@
     * Jetpack版本： 5.0.2，Jetpack 5.x编解码是通用的，但是5.0.2编译出来的库不能直接在其他5.x版本上使用，把代码放到目标机器上重新编译即可(不需要替换jetson_multimedia_api头文件)
     * 实现参考：jetson_multimedia_api/samples/02_video_dec_cuda、jetson_multimedia_api/samples/01_video_encode
     * 考虑到Jetson一般作为边缘设备，为了降低时延，Jetson默认不支持解码B帧，解码B帧会出现画面倒退的情况，如果要支持B帧请修改`Jetson_utils-->JetsonDec.cpp`，注释掉`JetsonDec::decode_pro`中的`ret = ctx.dec->disableDPB();`
-  * MPP-瑞芯微(MPPDecoder.cpp、H264MPPEncoder.cpp-TODO)
+  * MPP-瑞芯微(MPPDecoder.cpp、H264MPPEncoder.cpp)
     * `cmake -DMPP=ON ..`
-    * 内存分配模式: 半内部分配模式
+    * 解码器内存分配模式: 半内部分配模式
 
 # 封装
 * mp4
