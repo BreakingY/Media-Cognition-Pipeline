@@ -48,7 +48,7 @@ int HardVideoEncoder::Init(cv::Mat bgr_frame, int fps)
     hor_stride_ = ALIGN(width_, 8) * 3;
     ver_stride_ = ALIGN(height_, 2);
     size_t frame_size = (size_t)ALIGN(hor_stride_, 64) * ALIGN(ver_stride_, 64);
-    RK_S32 bps = width_ * height_ / 8 * fps;
+    RK_S32 bps = width_ * height_ * fps / 12;
 
     int ret = -1;
 
