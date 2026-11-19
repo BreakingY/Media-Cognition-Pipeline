@@ -1,4 +1,3 @@
-[English](README_EN.md) | [中文](README.md)
 # Media-Cognition-Pipeline
 实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT、YOLO。
 * 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾、瑞芯微)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾、海光)pipeline, 采用模块化、节点化和接口化管理。
