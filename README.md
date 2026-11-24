@@ -1,6 +1,6 @@
 # Media-Cognition-Pipeline
 实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT、YOLO。
-* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾、瑞芯微)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾、海光)pipeline, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾、瑞芯微RK3588)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾、海光)pipeline, 采用模块化、节点化和接口化管理。
 
 # 解封装
 * mp4
@@ -68,25 +68,27 @@
 
 # 视觉感知(YOLO + ByteTrack)
 * NVIDIA TensorRT
+  * 先导入环境变量`export PATH=$PATH:/usr/local/cuda/bin`和`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64`
   * `-DDETECTION_NVIDIA=ON`
   * TensorRT-10.4.0.26
-  * `trtexec --onnx=yolo11s_best.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo11s_best.engine --fp16`
+  * `trtexec --onnx=yolo26s.onnx --minShapes=images:1x3x640x640 --optShapes=images:4x3x640x640 --maxShapes=images:4x3x640x640 --saveEngine=yolo26s.engine --fp16`
 * Ascend CANN
   * `-DDETECTION_ASCEND=ON`
   * CANN 8.2.RC1
-  * `atc --model=yolo11s_best.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=insert_op.cfg --output=yolo11s_best --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16`
+  * `atc --model=yolo26s.onnx --framework=5 --input_shape=images:-1,3,640,640 --dynamic_batch_size="1,2,3,4" --insert_op_conf=Test/insert_op.cfg --output=yolo26s --soc_version=Ascend310P3  --precision_mode_v2=mixed_float16`
 * Hygon MIGraphX
   * `-DDETECTION_HYGON=ON`
   * `source /etc/profile.d/dtk.sh`
   * `source /etc/profile.d/migraphx.sh`
   * `source /opt/dtk/cuda/env.sh`
   * dtk26.04/migraphx5.2.0
-  * 动态batch(migraphx暂不支持yolo11)
-    * `migraphx-driver compile --onnx yolo11s_best.onnx --dyn-input-dim @images "[{min:1,max:8,optimals:[1,4,8]},3,640,640]" --binary -o yolo11s_best.mxr --fp16 --gpu`
+  * 动态batch(migraphx暂不支持yolo26)
+    * `migraphx-driver compile --onnx yolo26s.onnx --dyn-input-dim @images "[{min:1,max:8,optimals:[1,4,8]},3,640,640]" --binary -o yolo26s.mxr --fp16 --gpu`
   * 静态batch
-    * `migraphx-driver compile --onnx yolo11s_best.onnx --input-dim @images 4 3 640 640 --binary -o yolo11s_best.mxr --fp16 --gpu`
-* yolo11s_best.onnx 包含两个类别：{"dog", "person"}
-* 模型训练：https://github.com/BreakingY/yolo-onnx-tensorrt
+    * `migraphx-driver compile --onnx yolo26s.onnx --input-dim @images 4 3 640 640 --binary -o yolo26s.mxr --fp16 --gpu`
+* YOLO26: 动态batch, 80个类别
+* 导出onnx: pip install ultralytics && yolo export model=yolo26s.pt format=onnx imgsz=640 dynamic=True simplify=True
+  * 注意：YOLO26为端到端(NMS-free)模型，导出输出固定为`[N,300,6]`(x1,y1,x2,y2,score,class)，图内已完成NMS，`nms`参数无效。本项目后处理已按该格式实现；若换回YOLO11等输出`[N,4+nc,8400]`(需本地NMS)的模型，把各平台`YoloDetection*Node.cpp`中的`YOLO_E2E_OUTPUT`开关由1改为0即可。
 
 # 框架搭建
 * Warpper
@@ -95,7 +97,6 @@
 
 # 说明
 * 支持格式，视频：H264/H265，音频：AAC。
-* 视觉感知：YOLO11
 * 测试版本：
   * ffmpeg 4.0.5(ffmpeg==4.x，音频使用fdk-aac编码，确保安装的ffmpeg包含fdk-aac)
   * opencv 4.5.1
@@ -144,9 +145,8 @@
 1. pipeline测试：
    `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../third_party/libflv/test/test_1280x720_h264_aac.flv)/ts(../third_party/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 2. AI推理：
-   `./MediaCodec ../Test/Cognition.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
-
-   https://github.com/user-attachments/assets/59b77cfd-b6a7-4fcd-b6ab-acec722d74e2
+   `./MediaCodec ../Test/test2.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url> <模型文件>`
+   * 模型文件：NVIDIA使用`yolo26s.engine`，晟腾使用`yolo26s.om`(atc输出目录)，海光使用`yolo26s.mxr`
 
 # python接口
 * 实时流媒体加速处理库(输入：文件/RTSP/RTMP/SRT;输出：文件/RTMP/SRT)

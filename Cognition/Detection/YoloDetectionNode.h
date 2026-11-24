@@ -16,6 +16,7 @@
 #include "log_helpers.h"
 #include "DataChannel.h"
 #include "TimeMetrics.h"
+#include "COCOClasses.h"
 #if defined(DETECTION_NVIDIA)
 #include <npp.h>
 #include <NvInfer.h>
@@ -42,7 +43,7 @@ private:
     int input_w_;
     int output_pred_; // 4(c_x, c_y, w, h) + len(class_names)
 	int anchors_; // The total number of anchors after the fusion of three feature maps
-    const char *class_names_[2] = {"dog", "person"};
+    static constexpr const char *class_names_[] = {COCO_CLASS_NAMES_LIST};
     void* buffers_[2] = {nullptr, nullptr};
     float* output_ = nullptr;
 
@@ -102,7 +103,7 @@ private:
     int input_w_;
     int output_pred_; // 4(c_x, c_y, w, h) + len(class_names)
 	int anchors_; // The total number of anchors after the fusion of three feature maps
-    const char *class_names_[2] = {"dog", "person"};
+    static constexpr const char *class_names_[] = {COCO_CLASS_NAMES_LIST};
     float* output_prob_ = nullptr;
     int output_prob_len_;
 
@@ -153,7 +154,7 @@ private:
     int input_w_;
     int output_pred_; // 4(c_x, c_y, w, h) + len(class_names)
 	int anchors_; // The total number of anchors after the fusion of three feature maps
-    const char *class_names_[2] = {"dog", "person"};
+    static constexpr const char *class_names_[] = {COCO_CLASS_NAMES_LIST};
     void* buffers_[2] = {nullptr, nullptr};
     float* output_ = nullptr;
 

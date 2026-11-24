@@ -4,21 +4,25 @@
 int main(int argc, char **argv)
 {
     spdlog::set_level(spdlog::level::debug);
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
+    if (argc < 4) {
+        log_info("only support H264/H265 AAC");
+        log_info("./bin input ouput model_path");
+        return -1;
+    }
+#else
     if (argc < 3) {
         log_info("only support H264/H265 AAC");
         log_info("./bin input ouput");
         return -1;
     }
+#endif
     av_log_set_level(AV_LOG_FATAL);
 #if defined(USE_DVPP_MPI) || defined(DETECTION_ASCEND)
     aclInit(NULL);
 #endif
-#if defined(DETECTION_NVIDIA)
-    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.engine");
-#elif defined(DETECTION_ASCEND)
-    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.om");
-#elif defined(DETECTION_HYGON)
-    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], "../Test/yolo11s_best.mxr");
+#if defined(DETECTION_NVIDIA) || defined(DETECTION_ASCEND) || defined(DETECTION_HYGON)
+    MediaWrapper *test = new MediaWrapper(argv[1], argv[2], argv[3]);
 #else
     MediaWrapper *test = new MediaWrapper(argv[1], argv[2]);
 #endif

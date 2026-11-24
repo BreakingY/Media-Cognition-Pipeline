@@ -195,6 +195,11 @@ static std::tuple<float, float, float>  PreprocessImage_GPU(cv::Mat &img, void *
     dh /= 2.0f;
     return std::make_tuple(r, dw, dh);
 }
+// 后处理解析格式开关(换模型只改这里)：
+// 1 = YOLO26端到端(NMS-free)模型：输出[batch,300,6]每行(x1,y1,x2,y2,score,class)，图内已NMS
+// 0 = YOLO11/one-to-many模型：输出[batch,4+nc,8400]每列(cx,cy,w,h+nc个分数)，需本地解码+NMS
+#define YOLO_E2E_OUTPUT 1
+#if !YOLO_E2E_OUTPUT
 static float IoU(const cv::Rect2f& a, const cv::Rect2f& b) {
     float inter = (a & b).area();
     float uni = a.area() + b.area() - inter;
@@ -227,17 +232,47 @@ static std::vector<int> NMS(const std::vector<Detection>& dets, float iou_thres)
     }
     return keep;
 }
-// 解析形状: [output_pred, anchors], 每一列表示一个目标的所有信息 4 + len(class_names)
+#endif
+// 解析形状由 YOLO_E2E_OUTPUT 决定：见上方开关说明
 static std::vector<Detection> PostprocessDetections(
     const float* feat,              // 指向单张图的输出首地址
-    int output_pred,                // 4 + num_classes
-    int anchors,                    // 锚点总数
+    int output_pred,                // e2e: max_det(300); one2many: 4 + num_classes
+    int anchors,                    // e2e: 字段数(6); one2many: 锚点总数(8400)
     float r, float dw, float dh,    // 反 letterbox 参数
     int orig_w, int orig_h,         // 原图大小
     int num_classes,
     float conf_thres = 0.5f,
     float iou_thres  = 0.5f)
 {
+#if YOLO_E2E_OUTPUT
+    std::vector<Detection> dets;
+    dets.reserve(64);
+    for (int k = 0; k < output_pred; ++k) {
+        const float* row = feat + (size_t)k * anchors;
+        float score = row[4];
+        if (score < conf_thres) break;  // e2e输出按score降序，可直接提前结束
+        int cls = (int)row[5];
+        if (cls < 0 || cls >= num_classes) continue;
+        float x1 = (row[0] - dw) / r;
+        float y1 = (row[1] - dh) / r;
+        float x2 = (row[2] - dw) / r;
+        float y2 = (row[3] - dh) / r;
+        x1 = std::max(0.f, std::min(x1, (float)orig_w - 1.f));
+        y1 = std::max(0.f, std::min(y1, (float)orig_h - 1.f));
+        x2 = std::max(0.f, std::min(x2, (float)orig_w - 1.f));
+        y2 = std::max(0.f, std::min(y2, (float)orig_h - 1.f));
+        float ww = x2 - x1;
+        float hh = y2 - y1;
+        if (ww <= 0.f || hh <= 0.f) continue;
+        Detection d;
+        d.box = cv::Rect2f(x1, y1, ww, hh);
+        d.score = score;
+        d.class_id = cls;
+        d.track_id = -1;
+        dets.push_back(d);
+    }
+    return dets;  // 图内已完成NMS，无需本地NMS
+#else
     std::vector<Detection> dets;
     dets.reserve(512);
 
@@ -290,6 +325,7 @@ static std::vector<Detection> PostprocessDetections(
     out.reserve(keep.size());
     for (int idx : keep) out.push_back(dets[idx]);
     return out;
+#endif
 }
 YoloDetectionNode::YoloDetectionNode(std::string eng_path, int device_id){
     eng_path_ = eng_path;
