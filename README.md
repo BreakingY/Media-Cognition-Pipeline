@@ -157,7 +157,6 @@
    * `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../third_party/libflv/test/test_1280x720_h264_aac.flv)/ts(../third_party/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 2. AI推理：
    * `./MediaCodec ../Test/test2.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url> <模型文件>`
-   * 模型文件：NVIDIA使用`yolo26s.engine`，晟腾使用`yolo26s.om`(atc输出目录)，海光使用`yolo26s.mxr`, 瑞芯微(Rockchip)使用`yolo26s.rknn`
 
 # python接口
 * 实时流媒体加速处理库(输入：文件/RTSP/RTMP/SRT;输出：文件/RTMP/SRT)
