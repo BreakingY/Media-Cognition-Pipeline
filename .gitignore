@@ -1,3 +1,5 @@
 .vscode
 .kilo
 yolo26s.onnx
+third_party/rockchip/rknn/*
+third_party/rockchip/librga/*

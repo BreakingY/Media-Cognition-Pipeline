@@ -19,9 +19,10 @@ option(NVIDIA_SDK_ARM   "Enable Jetson codec" OFF)
 option(MPP              "Enable MPP codec" OFF)
 
 # detection
-option(DETECTION_NVIDIA "Enable Nvidia detection" OFF)
-option(DETECTION_ASCEND "Enable Ascend detection" OFF)
-option(DETECTION_HYGON  "Enable hygon detection" OFF)
+option(DETECTION_NVIDIA     "Enable Nvidia detection" OFF)
+option(DETECTION_ASCEND     "Enable Ascend detection" OFF)
+option(DETECTION_HYGON      "Enable hygon detection" OFF)
+option(DETECTION_ROCKCHIP   "Enable Rockchip detection" OFF)
 
 # python interface
 option(MCP_PYBIND      "Enable Python binding" OFF)
@@ -30,9 +31,10 @@ option(MCP_PYBIND      "Enable Python binding" OFF)
 if(MCP_PYBIND)
     message(STATUS "MCP_PYBIND enabled: disable all detection modules")
 
-    set(DETECTION_NVIDIA OFF CACHE BOOL "Disable Nvidia detection" FORCE)
-    set(DETECTION_ASCEND OFF CACHE BOOL "Disable Ascend detection" FORCE)
-    set(DETECTION_HYGON  OFF CACHE BOOL "Disable Hygon detection" FORCE)
+    set(DETECTION_NVIDIA    OFF CACHE BOOL "Disable Nvidia detection" FORCE)
+    set(DETECTION_ASCEND    OFF CACHE BOOL "Disable Ascend detection" FORCE)
+    set(DETECTION_HYGON     OFF CACHE BOOL "Disable Hygon detection" FORCE)
+    set(DETECTION_ROCKCHIP  OFF CACHE BOOL "Disable Rockchip detection" FORCE)
 endif()
 
 if(WIN32)
@@ -229,14 +231,18 @@ elseif(MPP)
     add_definitions(-DUSE_MPP)
     include_directories(
         /usr/include/rockchip 
-        /usr/include/rga
+        # /usr/include/rga
+        third_party/rockchip/librga/include
+    )
+    link_directories(
+        third_party/rockchip/librga/libs/Linux/gcc-aarch64
     )
 endif()
 
 # ==============================================================================
 # Cognition / Detection modules
 # ==============================================================================
-if(DETECTION_NVIDIA OR DETECTION_ASCEND OR DETECTION_HYGON)
+if(DETECTION_NVIDIA OR DETECTION_ASCEND OR DETECTION_HYGON OR DETECTION_ROCKCHIP)
     message(STATUS "Enable detection")
     include_directories(
         Cognition/Detection
@@ -295,6 +301,19 @@ elseif(DETECTION_HYGON)
     link_directories(
         /opt/dtk/cuda/cuda/lib64
         /opt/dtk/lib
+    )
+elseif(DETECTION_ROCKCHIP)
+
+    add_definitions(-DDETECTION_ROCKCHIP)
+
+    include_directories(
+        third_party/rockchip/rknn/runtime/Linux/librknn_api/include
+        third_party/rockchip/librga/include
+    )
+
+    link_directories(
+        third_party/rockchip/rknn/runtime/Linux/librknn_api/aarch64
+        third_party/rockchip/librga/libs/Linux/gcc-aarch64
     )
 
 endif()
@@ -468,6 +487,12 @@ elseif(DETECTION_HYGON)
         migraphx
         migraphx_gpu
         migraphx_onnx
+    )
+elseif(DETECTION_ROCKCHIP)
+    target_link_libraries(
+        mcp
+        rknnrt
+        rga
     )
 endif()
 

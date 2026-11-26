@@ -218,11 +218,11 @@ void HardVideoDecoder::DecodeVideo(HardDataNode *data)
                         rga_buffer_t src_img = wrapbuffer_handle(src_handle, width_, height_, RK_FORMAT_YCbCr_420_SP, hor_stride_frame_, ver_stride_frame_);
                         rga_buffer_t dst_img = wrapbuffer_handle(dst_handle_, width_, height_, RK_FORMAT_BGR_888, dst_w_align, height_);
 
-                        // imsetColorSpace(&src_img, IM_YUV_BT709_LIMIT_RANGE);
-                        // imsetColorSpace(&dst_img, IM_RGB_FULL_RANGE);
+                        imsetColorSpace(&src_img, IM_YUV_BT709_LIMIT_RANGE);
+                        imsetColorSpace(&dst_img, IM_RGB_FULL_RANGE);
 
-                        // IM_STATUS ret_rga = imcvtcolor(src_img, dst_img, RK_FORMAT_YCbCr_420_SP, RK_FORMAT_BGR_888);
-                        IM_STATUS ret_rga = imcvtcolor(src_img, dst_img, RK_FORMAT_YCbCr_420_SP, RK_FORMAT_BGR_888, IM_YUV_TO_RGB_BT709_LIMIT);
+                        IM_STATUS ret_rga = imcvtcolor(src_img, dst_img, RK_FORMAT_YCbCr_420_SP, RK_FORMAT_BGR_888);
+                        // IM_STATUS ret_rga = imcvtcolor(src_img, dst_img, RK_FORMAT_YCbCr_420_SP, RK_FORMAT_BGR_888, IM_YUV_TO_RGB_BT709_LIMIT);
                         if(ret_rga != IM_STATUS_SUCCESS){ 
                             log_error("rga failed: {}", imStrError(ret_rga)); 
                         }

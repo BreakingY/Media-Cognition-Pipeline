@@ -1,6 +1,6 @@
 # Media-Cognition-Pipeline
 实时流媒体及深度学习推理加速通用处理框架，支持H264、H265、AAC、MP4、FLV、TS、RTSP、RTMP、SRT、YOLO。
-* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；NVIDIA、晟腾、瑞芯微RK3588)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；NVIDIA、晟腾、海光)pipeline, 采用模块化、节点化和接口化管理。
+* 音视频解封装(MP4、FLV、TS、RTSP、RTMP、SRT(TODO))、重采样、编解码(H264、H265、AAC；英伟达NVIDIA、晟腾Ascend、瑞芯微Rockchip)、封装(MP4、FLV、TS、RTMP、SRT)，视觉感知(YOLO目标检测 + ByteTrack多目标跟踪；英伟达NVIDIA、晟腾Ascend、海光Hygon、瑞芯微Rockchip)pipeline, 采用模块化、节点化和接口化管理。
 
 # 解封装
 * mp4
@@ -47,8 +47,11 @@
     * 实现参考：jetson_multimedia_api/samples/02_video_dec_cuda、jetson_multimedia_api/samples/01_video_encode
     * 考虑到Jetson一般作为边缘设备，为了降低时延，Jetson默认不支持解码B帧，解码B帧会出现画面倒退的情况，如果要支持B帧请修改`Jetson_utils-->JetsonDec.cpp`，注释掉`JetsonDec::decode_pro`中的`ret = ctx.dec->disableDPB();`
   * MPP-瑞芯微(MPPDecoder.cpp、H264MPPEncoder.cpp)
+    * 把`https://github.com/airockchip/librga`里面的`include`和`libs`拷贝到`third_party/rockchip/librga`里面
+    * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PATH}/third_party/rockchip/librga/libs/Linux/gcc-aarch64`
     * `cmake -DMPP=ON ..`
     * 解码器内存分配模式: 半内部分配模式
+    
 
 # 封装
 * mp4
@@ -86,6 +89,13 @@
     * `migraphx-driver compile --onnx yolo26s.onnx --dyn-input-dim @images "[{min:1,max:8,optimals:[1,4,8]},3,640,640]" --binary -o yolo26s.mxr --fp16 --gpu`
   * 静态batch
     * `migraphx-driver compile --onnx yolo26s.onnx --input-dim @images 4 3 640 640 --binary -o yolo26s.mxr --fp16 --gpu`
+* Rockchip RKNN(TODO)
+  * 把`https://github.com/airockchip/rknn-toolkit2`里面的`rknpu2/runtime`拷贝到`third_party/rockchip/rknn`里面
+  * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PATH}/third_party/rockchip/rknn/runtime/Linux/librknn_api/aarch64`
+  * 把`https://github.com/airockchip/librga`里面的`include`和`libs`拷贝到`third_party/rockchip/librga`里面
+  * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PATH}/third_party/rockchip/librga/libs/Linux/gcc-aarch64`
+  * `-DDETECTION_ROCKCHIP=ON`
+  * `pip3 install rknn-toolkit2` && `python3 convert.py yolo26s.onnx rk3588`
 * YOLO26: 动态batch, 80个类别
 * 导出onnx: pip install ultralytics && yolo export model=yolo26s.pt format=onnx imgsz=640 dynamic=True simplify=True
   * 注意：YOLO26为端到端(NMS-free)模型，导出输出固定为`[N,300,6]`(x1,y1,x2,y2,score,class)，图内已完成NMS，`nms`参数无效。本项目后处理已按该格式实现；若换回YOLO11等输出`[N,4+nc,8400]`(需本地NMS)的模型，把各平台`YoloDetection*Node.cpp`中的`YOLO_E2E_OUTPUT`开关由1改为0即可。
@@ -106,7 +116,7 @@
     * X86: cuda 12.4; 驱动 550.163.01; Video_Codec_SDK 11.0.10
     * ARM: Jetson 5.0.2
   * Hygon DCU: DTK 26.04; migraphx 5.2.0
-  * 瑞芯微: RK3588
+  * 瑞芯微: RK3588 MPP: 1.5.0-1(查看命令`dpkg-query -W | grep mpp`); RGA: `https://github.com/airockchip/librga`; rknn: `https://github.com/airockchip/rknn-toolkit2`
 * ByteTrack依赖: `apt install libeigen3-dev`
 * Jetson依赖：v4l2
 * librtmp依赖：openssl
@@ -141,18 +151,19 @@
    * NVIDIA: `cmake -D<FFMPEG_SOFT/FFMPEG_NVIDIA/NVIDIA_SDK_X86/NVIDIA_SDK_ARM>=ON -DDETECTION_NVIDIA=ON ..`
    * ASCEND: `cmake -D<FFMPEG_SOFT/DVPP_MPI>=ON -DDETECTION_ASCEND=ON ..`
    * Hygon : `cmake -DFFMPEG_SOFT=ON -DDETECTION_HYGON=ON ..`
+   * Rockchip: `cmake -DMPP=ON -DDETECTION_ROCKCHIP=ON ..`
 # 测试：
 1. pipeline测试：
-   `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../third_party/libflv/test/test_1280x720_h264_aac.flv)/ts(../third_party/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
+   * `./MediaCodec <mp4(../Test/test*.mp4)>/<flv(../third_party/libflv/test/test_1280x720_h264_aac.flv)/ts(../third_party/libmpeg2core/media/h264_aac.ts)>/<srt url>/<rtsp url>/<rtmp url> <mp4>/<flv>/<ts>/<srt url>/<rtmp url>`
 2. AI推理：
-   `./MediaCodec ../Test/test2.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url> <模型文件>`
-   * 模型文件：NVIDIA使用`yolo26s.engine`，晟腾使用`yolo26s.om`(atc输出目录)，海光使用`yolo26s.mxr`
+   * `./MediaCodec ../Test/test2.mp4 <mp4>/<flv>/<ts>/<srt url>/<rtmp url> <模型文件>`
+   * 模型文件：NVIDIA使用`yolo26s.engine`，晟腾使用`yolo26s.om`(atc输出目录)，海光使用`yolo26s.mxr`, 瑞芯微(Rockchip)使用`yolo26s.rknn`
 
 # python接口
 * 实时流媒体加速处理库(输入：文件/RTSP/RTMP/SRT;输出：文件/RTMP/SRT)
 * 流媒体处理库：为Python提供高性能的视频处理功能，包括音视频采集、编解码加速、帧数据交互以及实时流媒体处理。
 * 典型应用场景：C++负责视频采集(文件，实时流)、编解码加速、输出(文件，实时流)；Python负责目标检测、人脸识别、行为分析等模型算法。
-* `-DMCP_PYBIND=ON`此时仅作为媒体库供python使用，无法开启`DETECTION_NVIDIA/DETECTION_ASCEND/DETECTION_HYGON`
+* `-DMCP_PYBIND=ON`此时仅作为媒体库供python使用，无法开启`ETECTION_NVIDIA/ETECTION_ASCEND/ETECTION_HYGON/ETECTION_ROCKCHIP`
 * 如果要指定特定python版本，请参考下面命令,例如编译python3.12和python3.7
   * `-DPYTHON_LIBRARY=/usr/local/lib/libpython3.12.so -DPYTHON_INCLUDE_DIR=/usr/local/include/python3.12 -DPYTHON_EXECUTABLE=/usr/local/bin/python3.12`
   * `-DPYTHON_LIBRARY=/usr/local/lib/libpython3.7m.so -DPYTHON_INCLUDE_DIR=/usr/local/include/python3.7m -DPYTHON_EXECUTABLE=/usr/local/bin/python3.7`
