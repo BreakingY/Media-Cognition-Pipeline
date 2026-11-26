@@ -95,7 +95,7 @@
   * 把`https://github.com/airockchip/librga`里面的`include`和`libs`拷贝到`third_party/rockchip/librga`里面
   * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PATH}/third_party/rockchip/librga/libs/Linux/gcc-aarch64`
   * `-DDETECTION_ROCKCHIP=ON`
-  * `pip3 install rknn-toolkit2` && `python3 convert.py yolo26s.onnx rk3588`
+  * `pip3 install rknn-toolkit2` && `cd script` && `python3 convert.py yolo26s.onnx rk3588`
 * YOLO26: 动态batch, 80个类别
 * 导出onnx: pip install ultralytics && yolo export model=yolo26s.pt format=onnx imgsz=640 dynamic=True simplify=True
   * 注意：YOLO26为端到端(NMS-free)模型，导出输出固定为`[N,300,6]`(x1,y1,x2,y2,score,class)，图内已完成NMS，`nms`参数无效。本项目后处理已按该格式实现；若换回YOLO11等输出`[N,4+nc,8400]`(需本地NMS)的模型，把各平台`YoloDetection*Node.cpp`中的`YOLO_E2E_OUTPUT`开关由1改为0即可。
