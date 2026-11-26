@@ -116,7 +116,7 @@
     * X86: cuda 12.4; 驱动 550.163.01; Video_Codec_SDK 11.0.10
     * ARM: Jetson 5.0.2
   * Hygon DCU: DTK 26.04; migraphx 5.2.0
-  * 瑞芯微: RK3588 MPP: 1.5.0-1(查看命令`dpkg-query -W | grep mpp`); RGA: `https://github.com/airockchip/librga`; rknn: `https://github.com/airockchip/rknn-toolkit2`
+  * 瑞芯微: RK3588; MPP: 1.5.0-1(查看命令`dpkg-query -W | grep mpp`); RGA: `https://github.com/airockchip/librga`; rknn: `https://github.com/airockchip/rknn-toolkit2`
 * ByteTrack依赖: `apt install libeigen3-dev`
 * Jetson依赖：v4l2
 * librtmp依赖：openssl
